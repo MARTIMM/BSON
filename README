@@ -1,2 +1,8 @@
 BSON encoding for Perl6
 
+http://bsonspec.org/
+
+Perl <-> BSON mapping
+
+Int = int32
+Num = int64
