@@ -2,7 +2,45 @@ BSON encoding for Perl6
 
 http://bsonspec.org/
 
-Perl <-> BSON mapping
+Usage:
 
-Int = int32
-Num = int64
+    my $b = BSON.new();
+    my Buf $encoded = $b.encode(
+        {
+            "some string" => "foo",
+            "some number" => 123,
+            "some array" => [ ],
+            "some hash" => { },
+            "some bool" => Bool::True,
+        }
+    );
+
+Current implementation status of conversion between Perl6 and BSON:
+
+    => means one way
+    <=> means bot ways
+
+    Perl6 .. BSON
+
+    Str => UTF-8 string
+    Int => 32-bit Integer
+    Bool => Boolean "true" / "false"
+    Array => Array
+    Hash => Embedded document
+
+Known limitations:
+
+    Perl6 pack/unpack is currently almost not documented, spec says:
+
+        "Need more documentation and need to figure out
+        what Perl 5 things no longer make sense."
+
+    So most work was done using P5 documentation and reading Rakudo source.
+
+    Negative 32 bit integer - currently is converted using "V" pragma -
+        which in P5 was reserved for 32 bit unsigned - instead of "l" pragma.
+        But it looks like it can convert negative values properly,
+        compared with Python BSON MongoDB driver.
+
+    Rats, Reals, Nums - sorry, no "b" pragma yet.
+
