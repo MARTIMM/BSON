@@ -22,11 +22,11 @@ Current implementation status of conversion between Perl6 and BSON:
 
     Perl6 .. BSON
 
-    Str => UTF-8 string
-    Int => 32-bit Integer
-    Bool => Boolean "true" / "false"
-    Array => Array
-    Hash => Embedded document
+    Str <=> UTF-8 string
+    Int <=> 32-bit Integer
+    Bool <=> Boolean "true" / "false"
+    Array <=> Array
+    Hash <=> Embedded document
 
 Known limitations:
 

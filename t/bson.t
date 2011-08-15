@@ -3,7 +3,7 @@ BEGIN { @*INC.unshift( 'lib' ) }
 use Test;
 use BSON;
 
-plan( 8 );
+plan( 16 );
 
 # Test cases borrowed from
 # https://github.com/mongodb/mongo-python-driver/blob/master/test/test_bson.py
@@ -59,5 +59,9 @@ for %samples {
         $b.encode( .value.{ 'decoded' } ).contents,
         .value.{ 'encoded' },
         'encode ' ~ .key;
-}
 
+    is_deeply
+        $b.decode( Buf.new( ||.value.{ 'encoded' } ) ),
+        .value.{ 'decoded' },
+        'decode ' ~ .key;
+}
