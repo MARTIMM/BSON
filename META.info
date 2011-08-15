@@ -5,5 +5,5 @@
     "author" : "Pawel Pabian",
     "authority" : "bbkr",
     "depends" : [ ],
-    "source-url" : "git://github.com/bbkr/bson.git"
+    "source-url" : "git://github.com/bbkr/BSON.git"
 }
