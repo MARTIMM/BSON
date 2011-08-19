@@ -7,6 +7,7 @@ Usage:
     my $b = BSON.new();
     my Buf $encoded = $b.encode(
         {
+            "_id" => BSON::ObjectId.new( "4e4987edfed4c16f8a56ed1d" ),
             "some string" => "foo",
             "some number" => 123,
             "some array" => [ ],
@@ -14,11 +15,12 @@ Usage:
             "some bool" => Bool::True,
         }
     );
+    my $decoded = $b.decode( $encoded );
 
 Current implementation status of conversion between Perl6 and BSON:
 
     => means one way
-    <=> means bot ways
+    <=> means both ways
 
     Perl6 .. BSON
 
@@ -27,6 +29,19 @@ Current implementation status of conversion between Perl6 and BSON:
     Bool <=> Boolean "true" / "false"
     Array <=> Array
     Hash <=> Embedded document
+    BSON::ObjectId <=> ObjectId
+
+Extended types:
+
+    BSON::ObjectId - Internal representation is 12 bytes,
+        but to keep it consistent with MongoDB presentation described in
+        http://dochub.mongodb.org/core/objectids
+        constructor accepts string containing 12 hex pairs:
+
+            BSON::ObjectId.new( '4e4987edfed4c16f8a56ed1d' )
+
+        Supports .Str context.
+        Internal Buf can be reached by .Buf accessor.
 
 Known limitations:
 

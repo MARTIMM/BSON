@@ -1,5 +1,7 @@
 class BSON;
 
+use BSON::ObjectId;
+
 # The int32 is the total number of bytes comprising the document.
 has Int $int32 = 2147483647;
 
@@ -9,7 +11,7 @@ method encode ( %h ) {
 }
 
 method decode ( Buf $b is copy ) {
-    
+
     return self._document( $b );
 }
 
@@ -33,13 +35,13 @@ multi method _document ( Buf $b ) {
     my $s = +$b.contents;
 
     my $i = self._int32( $b );
-    
+
     my %h = self._e_list( $b );
 
     die 'Parse error' unless $b.contents.shift ~~ 0x00;
-    
+
     die 'Parse error' unless $s ~~ +$b.contents + $i;
-        
+
     return %h;
 }
 
@@ -61,14 +63,14 @@ multi method _e_list ( Buf $b ) {
     # Sequence of elements
     # e_list ::= element e_list
     # | ""
-    
+
     my @p;
-        
+
     # Parse elements until _document ends
     while $b.[ 0 ] !~~ 0x00 {
         push @p, self._element( $b );
     }
-    
+
     return @p;
 }
 
@@ -111,7 +113,7 @@ multi method _element ( Pair $p ) {
 
                 return Buf.new( 0x08 ) ~ self._e_name( $p.key ) ~ Buf.new( 0x00 );
             }
-            
+
         }
 
         when Array {
@@ -126,7 +128,7 @@ multi method _element ( Pair $p ) {
             # The keys must be in ascending numerical order.
 
             my %h = .kv;
-            
+
             return Buf.new( 0x04 ) ~  self._e_name( $p.key ) ~ self._document( %h );
         }
 
@@ -137,8 +139,15 @@ multi method _element ( Pair $p ) {
             return Buf.new( 0x03 ) ~  self._e_name( $p.key ) ~ self._document( $_ );
         }
 
+        when BSON::ObjectId {
+            # ObjectId
+            # "\x07" e_name (byte*12)
+
+            return Buf.new( 0x07 ) ~ self._e_name( $p.key ) ~ .Buf;
+        }
+
         default {
-            
+
             die 'Sorry, not yet supported type: ' ~ .WHAT;
         }
 
@@ -147,16 +156,16 @@ multi method _element ( Pair $p ) {
 }
 
 multi method _element ( Buf $b ) {
-    
+
     given $b.contents.shift {
-        
+
         when 0x0A {
             # Null value
             # "\x0A" e_name
 
             return self._e_name( $b ) => Any;
         }
-        
+
         when 0x02 {
             # UTF-8 string
             # "\x02" e_name string
@@ -170,35 +179,35 @@ multi method _element ( Buf $b ) {
 
             return self._e_name( $b ) => self._int32( $b );
         }
-        
+
         when 0x08 {
             my $n = self._e_name( $b );
 
             given $b.contents.shift {
-                
+
                 when 0x01 {
                     # Boolean "true"
                     # "\x08" e_name "\x01
 
                     return $n => Bool::True;
                 }
-                
+
                 when 0x00 {
                     # Boolean "false"
                     # "\x08" e_name "\x00
 
                     return $n => Bool::False;
                 }
-                
+
                 default {
-                    
+
                     die 'Parse error';
                 }
 
             }
 
         }
-        
+
         when 0x04 {
             # Array
             # "\x04" e_name document
@@ -212,7 +221,7 @@ multi method _element ( Buf $b ) {
 
             return self._e_name( $b ) => [ self._document( $b ).values ];
         }
-        
+
         when 0x03 {
             # Embedded document
             # "\x03" e_name document
@@ -220,13 +229,26 @@ multi method _element ( Buf $b ) {
             return self._e_name( $b )  => self._document( $b );
         }
 
+        when 0x07 {
+            # ObjectId
+            # "\x07" e_name (byte*12)
+
+            my $n = self._e_name( $b );
+
+            my $a = Buf.new( );
+
+            $a.contents.push( $b.contents.shift ) for ^ 12;
+
+            return $n => BSON::ObjectId.new( $a );
+        }
+
         default {
-            
+
             die 'Sorry, not yet supported type: ' ~ $_;
         }
 
     }
-    
+
 }
 
 multi method _int32 ( Int $i ) {
@@ -241,7 +263,7 @@ multi method _int32 ( Buf $b ) {
     my $a = Buf.new( );
 
     $a.contents.push( $b.contents.shift ) for ^ 4;
-    
+
     return $a.unpack( 'V' );
 }
 
@@ -314,7 +336,7 @@ multi method _cstring ( Buf $b ) {
     while $b.[ 0 ] !~~ 0x00 {
         push $a.contents, $b.contents.shift;
     }
-    
+
     die 'Parse error' unless $b.contents.shift ~~ 0x00;
 
     return $a.decode( 'utf-8' );
