@@ -3,7 +3,7 @@ BEGIN { @*INC.unshift( 'lib' ) }
 use Test;
 use BSON;
 
-plan( 16 );
+plan( 18 );
 
 # Test mapping between native Perl 6 types and BSON representation.
 
@@ -66,4 +66,19 @@ for %samples {
         $b.decode( Buf.new( ||.value.{ 'encoded' } ) ),
         .value.{ 'decoded' },
         'decode ' ~ .key;
+}
+
+
+# check flattening apsects of Perl6
+
+my %flattening = {
+	'Array of Embedded documents' => { "ahh" => [ { }, { "not" => "empty" } ] },
+	'Array of Arrays' => { "aaa" => [ [ ], [ "not", "empty" ] ] },
+};
+
+for %flattening {
+    is_deeply
+		$b.decode( $b.encode( .value ) ),
+		.value,
+		.key;
 }
