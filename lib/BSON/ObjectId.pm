@@ -24,13 +24,12 @@ multi method new( Str $oid ) {
     self.bless( *, oid => $b );
 }
 
-
-method Str ( ) {
-
-    return 'ObjectId( "' ~ $!oid.unpack( 'H' ) ~ '" )';
-}
-
 method Buf ( ) {
 
     return $!oid;
+}
+
+method perl ( ) {
+
+    return 'ObjectId( "' ~ $!oid.unpack( 'H' ) ~ '" )';
 }

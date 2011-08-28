@@ -21,8 +21,8 @@ my %samples = {
 
 for %samples {
     is_deeply
-        BSON::ObjectId.new( .value{ 'str' } ).Str,
-        BSON::ObjectId.new( Buf.new( ||.value{ 'buf' } ) ).Str,
+        BSON::ObjectId.new( .value{ 'str' } ).perl,
+        BSON::ObjectId.new( Buf.new( ||.value{ 'buf' } ) ).perl,
         .key;
 }
 
