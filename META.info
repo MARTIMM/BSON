@@ -1,6 +1,6 @@
 {
     "name" : "BSON",
-    "version" : "0.1",
+    "version" : "0.2",
     "description" : "BSON encoding/decoding, used in MongoDB drivers",
     "author" : "Pawel Pabian",
     "authority" : "bbkr",

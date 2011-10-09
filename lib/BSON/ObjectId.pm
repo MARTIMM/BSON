@@ -3,33 +3,40 @@ class BSON::ObjectId;
 # Represents ObjectId BSON type described in
 # http://dochub.mongodb.org/core/objectids
 
-has Buf $!oid is rw;
+has Buf $.oid is rw;
 
-multi method new( Buf $oid ) {
+multi method new( Buf $b ) {
 
     die 'ObjectId must be exactly 12 bytes'
-        unless +$oid.contents ~~ 12;
+        unless $b.elems ~~ 12;
 
-    self.bless( *, oid => $oid );
+    self.bless( *, oid => $b );
 }
 
 
-multi method new( Str $oid ) {
+multi method new( Str $s ) {
 
-    my Buf $b = pack( 'H', $oid );
+    my @a = map { :16( $_ ) }, $s.comb(/../);
+
+    my Buf $b = Buf.new( @a );
 
     die 'ObjectId must be exactly 12 bytes'
-        unless +$b.contents ~~ 12;
+        unless $b.elems ~~ 12;
 
     self.bless( *, oid => $b );
 }
 
 method Buf ( ) {
 
-    return $!oid;
+    return $.oid;
 }
 
 method perl ( ) {
 
-    return 'ObjectId( "' ~ $!oid.unpack( 'H' ) ~ '" )';
+    my $s = '';
+    for $.oid.list {
+        $s ~= ( $_ +> 4 ).fmt( '%x' ) ~ ( $_ % 16 ).fmt( '%x' );
+    }
+    
+    return 'ObjectId( "' ~ $s ~ '" )';
 }

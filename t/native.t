@@ -58,12 +58,12 @@ my %samples = {
 
 for %samples {
     is_deeply
-        $b.encode( .value.{ 'decoded' } ).contents,
+        $b.encode( .value.{ 'decoded' } ).list,
         .value.{ 'encoded' },
         'encode ' ~ .key;
 
     is_deeply
-        $b.decode( Buf.new( ||.value.{ 'encoded' } ) ),
+        $b.decode( Buf.new( .value.{ 'encoded' }.list ) ),
         .value.{ 'decoded' },
         'decode ' ~ .key;
 }

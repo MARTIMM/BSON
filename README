@@ -2,7 +2,14 @@ BSON encoding for Perl6
 
 http://bsonspec.org/
 
-Usage:
+
+VERSION
+
+Version 0.2 is compatible with Rakudo 2011.09+,
+and will be merged into main branch after Star release.
+
+
+SYNOPSIS
 
     my $b = BSON.new();
     my Buf $encoded = $b.encode(
@@ -17,21 +24,22 @@ Usage:
     );
     my $decoded = $b.decode( $encoded );
 
-Current implementation status of conversion between Perl6 and BSON:
 
-    => means one way
-    <=> means both ways
+NATIVE TYPES
+    
+    Perl6           <=>         BSON
+    
+    Str             <=>         UTF-8 string
+    Int             <=>         32-bit Integer
+    Bool            <=>         Boolean "true" / "false"
+    Array           <=>         Array
+    Hash            <=>         Embedded document
+    BSON::ObjectId  <=>         ObjectId
+    
+    Rat, Real - Not Yet Implemented
 
-    Perl6 .. BSON
 
-    Str <=> UTF-8 string
-    Int <=> 32-bit Integer
-    Bool <=> Boolean "true" / "false"
-    Array <=> Array
-    Hash <=> Embedded document
-    BSON::ObjectId <=> ObjectId
-
-Extended types:
+EXTENDED TYPES
 
     BSON::ObjectId - Internal representation is 12 bytes,
         but to keep it consistent with MongoDB presentation described in
@@ -40,22 +48,15 @@ Extended types:
 
             BSON::ObjectId.new( '4e4987edfed4c16f8a56ed1d' )
 
-        Supports .Str context.
         Internal Buf can be reached by .Buf accessor.
+        Method .perl is available for easy debug.
 
-Known limitations:
 
-    Perl6 pack/unpack is currently almost not documented, spec says:
+BIG THANKS
 
-        "Need more documentation and need to figure out
-        what Perl 5 things no longer make sense."
+For everyone on #perl6
 
-    So most work was done using P5 documentation and reading Rakudo source.
 
-    Negative 32 bit integer - currently is converted using "V" pragma -
-        which in P5 was reserved for 32 bit unsigned - instead of "l" pragma.
-        But it looks like it can convert negative values properly,
-        compared with Python BSON MongoDB driver.
+CONTACT
 
-    Rats, Reals, Nums - sorry, no "b" pragma yet.
-
+You can find me on irc.freenode.net #perl6 channel as 'bbkr'.
