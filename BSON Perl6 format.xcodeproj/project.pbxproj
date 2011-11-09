@@ -12,7 +12,6 @@
 		81C2472C141ADDCB000A420F /* logo_32x32.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = logo_32x32.png; sourceTree = "<group>"; };
 		81C2472D141ADDCB000A420F /* META.info */ = {isa = PBXFileReference; lastKnownFileType = text; path = META.info; sourceTree = "<group>"; };
 		81C2472E141ADDCB000A420F /* README */ = {isa = PBXFileReference; lastKnownFileType = text; path = README; sourceTree = "<group>"; };
-		81C24730141ADDCB000A420F /* bson.t */ = {isa = PBXFileReference; lastKnownFileType = text; path = bson.t; sourceTree = "<group>"; };
 		81C24731141ADDCB000A420F /* extended.t */ = {isa = PBXFileReference; lastKnownFileType = text; path = extended.t; sourceTree = "<group>"; };
 		81C24732141ADDCB000A420F /* native.t */ = {isa = PBXFileReference; lastKnownFileType = text; path = native.t; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -57,7 +56,6 @@
 		81C2472F141ADDCB000A420F /* t */ = {
 			isa = PBXGroup;
 			children = (
-				81C24730141ADDCB000A420F /* bson.t */,
 				81C24731141ADDCB000A420F /* extended.t */,
 				81C24732141ADDCB000A420F /* native.t */,
 			);
