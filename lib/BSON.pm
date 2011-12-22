@@ -1,4 +1,4 @@
-class BSON;
+class BSON:ver<0.2>;
 
 use BSON::ObjectId;
 

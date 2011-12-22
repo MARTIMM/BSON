@@ -5,8 +5,7 @@ http://bsonspec.org/
 
 VERSION
 
-Version 0.2 is compatible with Rakudo 2011.09+,
-and will be merged into main branch after Star release.
+Version 0.2 is compatible with Rakudo 2011.09+.
 
 
 SYNOPSIS
