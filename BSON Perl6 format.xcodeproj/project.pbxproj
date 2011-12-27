@@ -7,11 +7,11 @@
 	objects = {
 
 /* Begin PBXFileReference section */
+		816FA7A414AA78D4001ED8B2 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = README.md; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.simpleColoring; };
 		81C24729141ADDCB000A420F /* ObjectId.pm */ = {isa = PBXFileReference; lastKnownFileType = text.script.perl; path = ObjectId.pm; sourceTree = "<group>"; };
 		81C2472A141ADDCB000A420F /* BSON.pm */ = {isa = PBXFileReference; lastKnownFileType = text.script.perl; path = BSON.pm; sourceTree = "<group>"; };
 		81C2472C141ADDCB000A420F /* logo_32x32.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = logo_32x32.png; sourceTree = "<group>"; };
 		81C2472D141ADDCB000A420F /* META.info */ = {isa = PBXFileReference; lastKnownFileType = text; path = META.info; sourceTree = "<group>"; };
-		81C2472E141ADDCB000A420F /* README */ = {isa = PBXFileReference; lastKnownFileType = text; path = README; sourceTree = "<group>"; };
 		81C24731141ADDCB000A420F /* extended.t */ = {isa = PBXFileReference; lastKnownFileType = text; path = extended.t; sourceTree = "<group>"; };
 		81C24732141ADDCB000A420F /* native.t */ = {isa = PBXFileReference; lastKnownFileType = text; path = native.t; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -20,10 +20,10 @@
 		81C2471E141ADCA5000A420F = {
 			isa = PBXGroup;
 			children = (
+				816FA7A414AA78D4001ED8B2 /* README.md */,
 				81C24727141ADDCB000A420F /* lib */,
 				81C2472B141ADDCB000A420F /* logotype */,
 				81C2472D141ADDCB000A420F /* META.info */,
-				81C2472E141ADDCB000A420F /* README */,
 				81C2472F141ADDCB000A420F /* t */,
 			);
 			sourceTree = "<group>";
