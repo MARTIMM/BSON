@@ -23,7 +23,7 @@ Compatible with Perl 6 [Rakudo Star](http://rakudo.org/) 2012.01+.
     my $decoded = $b.decode( $encoded );
 
 
-## NATIVE TYPES
+### NATIVE TYPES
 
     Perl6           <=>         BSON
     
@@ -37,7 +37,7 @@ Compatible with Perl 6 [Rakudo Star](http://rakudo.org/) 2012.01+.
 `Rat`, `Real` - Not Yet Implemented
 
 
-## EXTENDED TYPES
+### EXTENDED TYPES
 
 ```BSON::ObjectId``` - Internal representation is 12 bytes,
 but to keep it consistent with MongoDB presentation described in
