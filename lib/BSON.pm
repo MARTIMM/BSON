@@ -278,7 +278,8 @@ multi method _e_name ( Array $a ) {
 
 multi method _string ( Str $s ) {
 
-    return self._int32( $s.bytes + 1 ) ~ $s.encode( ) ~ Buf.new( 0x00 );
+    my $b = $s.encode( 'UTF-8' );
+    return self._int32( $b.bytes + 1 ) ~ $b ~ Buf.new( 0x00 );
 }
 
 multi method _string ( Array $a ) {
