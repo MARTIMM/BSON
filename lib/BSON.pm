@@ -46,7 +46,7 @@ multi method _document ( Array $a ) {
 # e_list ::= element e_list
 # | ""
 
-multi method _e_list ( @p ) {
+multi method _e_list ( *@p ) {
 
     my Buf $b = Buf.new( );
 
