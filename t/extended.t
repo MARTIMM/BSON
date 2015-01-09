@@ -6,7 +6,7 @@ use BSON::ObjectId;
 
 plan( 7 );
 
-my %samples = {
+my %samples = (
 
     'ObjectId minimum' => {
         'str' => '000000000000000000000000',
@@ -16,8 +16,8 @@ my %samples = {
     'ObjectId maximum' => {
         'str' => 'ffffffffffffffffffffffff',
         'buf' => [ 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff ],
-    },
-}
+    }
+);
 
 for %samples {
     is_deeply
