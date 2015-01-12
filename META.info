@@ -1,9 +1,12 @@
 {
-    "name" : "BSON",
-    "version" : "0.2",
-    "description" : "BSON encoding/decoding, used in MongoDB drivers",
-    "author" : "Pawel Pabian",
-    "authority" : "bbkr",
-    "depends" : [ ],
-    "source-url" : "git://github.com/bbkr/BSON.git"
+    "author": "Pawel Pabian (2011-2015), Marcel Timmerman (2015-present)",
+    "depends": [],
+    "description": "BSON encoding/decoding, used in MongoDB drivers",
+    "name": "BSON",
+    "provides": {
+        "BSON": "lib/BSON.pm",
+        "BSON::ObjectId": "lib/BSON/ObjectId.pm"
+    },
+    "source-url": "git://github.com/bbkr/BSON.git",
+    "version": "0.3.0"
 }

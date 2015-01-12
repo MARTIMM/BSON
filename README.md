@@ -4,16 +4,6 @@
 
 Implements [BSON specification](http://bsonspec.org/).
 
-## ADOPT ME
-
-I am friendly module that looks for a new home along with my best friend [MongoDB driver](https://github.com/bbkr/mongo-perl6-driver).
-
-My owner played with me for the last time in early 2012 and a lot has changed since then in Rakudo.
-
-If you want to take care of me please leave comment under last commit.
-
-![Paw prints](http://emoji.fileformat.info/gemoji/feet.png)
-
 ## SYNOPSIS
 
     my $b = BSON.new;
