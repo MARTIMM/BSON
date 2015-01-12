@@ -51,8 +51,12 @@ Method ```.perl``` is available for easy debug.
 
 Released under [Artistic License 2.0](http://www.perlfoundation.org/artistic_license_2_0).
 
+## AUTHOR
+
+Original creator of the modules is Pawel Pabian (2011-2015)(bbkr on github)
+Current maintainer Marcel Timmerman (2015-present)
 
 ## CONTACT
 
-You can find me (and many awesome people who helped me to develop this module)
-on irc.freenode.net #perl6 channel as __bbkr__.
+MARTIMM on github
+
