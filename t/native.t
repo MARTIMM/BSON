@@ -52,8 +52,13 @@ my %samples = (
     'Embedded document' => {
         'decoded' => { "none" => { } },
         'encoded' => [ 0x10, 0x00, 0x00, 0x00, 0x03, 0x6E, 0x6F, 0x6E, 0x65, 0x00, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00 ],
-    }
+    },
 
+#`((    'Double' => {
+        'decoded' => { "number" => 218103808 },
+        'encoded' => [ 0, 0, 0, 0, 0, 0, 0xAA, 0x41 ],
+    },
+))
 );
 
 for %samples {

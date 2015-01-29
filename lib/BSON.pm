@@ -159,6 +159,13 @@ multi method _element ( Array $a ) {
             return self._e_name( $a ) => Any;
         }
 
+        when 0x01 {
+            # Double precision 
+            # "\x01" e_name Num
+
+            return self._e_name( $a ) => self._double64( $a );
+        }
+
         when 0x02 {
             # UTF-8 string
             # "\x02" e_name string
@@ -236,7 +243,8 @@ multi method _element ( Array $a ) {
 
         default {
 
-            die 'Sorry, not yet supported type: ' ~ $_;
+            X::NYI.new(feature => "Type $_")
+#            die 'Sorry, not yet supported type: ' ~ $_;
         }
 
     }
@@ -253,6 +261,54 @@ multi method _int32 ( Int $i ) {
 multi method _int32 ( Array $a ) {
 
     return [+] $a.shift, $a.shift +< 0x08, $a.shift +< 0x10, $a.shift +< 0x18;
+}
+
+# 8 bytes (64-bit number)
+multi method _double64 ( Num $i ) {
+
+    my Buf $a = self._int64($i);
+    
+    return $a;
+}
+
+# We have to do some simulation using the information on
+# http://en.wikipedia.org/wiki/Double-precision_floating-point_format#Endianness
+# until better times come.
+#
+multi method _double64 ( Array $a ) {
+
+    my $i = self._int64($a);
+    my $sign = $i +& 63 ?? True !! False;
+
+    # Significand + implicit bit
+    my $significand =  0x10000000000000 +| ($i +& 0xFFFFFFFFFFFFF);
+
+    # Exponent - bias (1023) - the number of bits for precision
+    my $exponent = (($i +& 0x7FF0000000000000) +> 52) - 1023 - 52;
+
+#say sprintf( "I: %016x -> %x, %x, %x", $i, $significand, $exponent, $sign);
+#say "E: {$exponent-52}";
+    my Num $value = (2 ** $exponent) * $significand;
+#say "V: $value: ", sprintf( "%016x", $value);
+
+    return $value; #X::NYI.new(feature => "Type Double");
+}
+
+# 8 bytes (64-bit int)
+multi method _int64 ( Num $i ) {
+    
+    return Buf.new( $i % 0x100, $i +> 0x08 % 0x100, $i +> 0x10 % 0x100
+                  , $i +> 0x18 % 0x100, $i +> 0x20 % 0x100, $i +> 0x28 % 0x100
+                  , $i +> 0x30 % 0x100, $i +> 0x38 % 0x100
+                  );
+}
+
+multi method _int64 ( Array $a ) {
+
+    return [+] $a.shift, $a.shift +< 0x08, $a.shift +< 0x10, $a.shift +< 0x18
+             , $a.shift +< 0x20, $a.shift +< 0x28, $a.shift +< 0x30
+             , $a.shift +< 0x38
+             ;
 }
 
 
