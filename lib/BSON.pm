@@ -71,13 +71,6 @@ multi method _element ( Pair $p ) {
 
     given $p.value {
 
-        when not .defined {
-            # Null value
-            # "\x0A" e_name
-
-            return Buf.new( 0x0A ) ~ self._e_name( $p.key );
-        }
-
         when Str {
             # UTF-8 string
             # "\x02" e_name string
@@ -85,11 +78,44 @@ multi method _element ( Pair $p ) {
             return Buf.new( 0x02 ) ~ self._e_name( $p.key ) ~ self._string( $p.value );
         }
 
-        when Int {
-            # 32-bit Integer
-            # "\x10" e_name int32
+        when Hash {
+            # Embedded document
+            # "\x03" e_name document
 
-            return Buf.new( 0x10 ) ~ self._e_name( $p.key ) ~ self._int32( $p.value );
+            return Buf.new( 0x03 ) ~  self._e_name( $p.key ) ~ self._document( $_ );
+        }
+
+        when Array {
+            # Array
+            # "\x04" e_name document
+
+            # The document for an array is a normal BSON document
+            # with integer values for the keys,
+            # starting with 0 and continuing sequentially.
+            # For example, the array ['red', 'blue']
+            # would be encoded as the document {'0': 'red', '1': 'blue'}.
+            # The keys must be in ascending numerical order.
+
+            my %h = .kv;
+
+            return Buf.new( 0x04 ) ~  self._e_name( $p.key ) ~ self._document( %h );
+        }
+
+        when Buf {
+            # Binary data
+            # "\x05" e_name int32 subtype byte*
+            # subtype is '\x00' for the moment (Generic binary subtype)
+            #
+            return [~] Buf.new( 0x05 ),
+                       self._e_name( $p.key ),
+                       self._binary( 0x00, $_);
+        }
+
+        when BSON::ObjectId {
+            # ObjectId
+            # "\x07" e_name (byte*12)
+
+            return Buf.new( 0x07 ) ~ self._e_name( $p.key ) ~ .Buf;
         }
 
         when Bool {
@@ -109,34 +135,18 @@ multi method _element ( Pair $p ) {
 
         }
 
-        when Array {
-            # Array
-            # "\x04" e_name document
+        when not .defined {
+            # Null value
+            # "\x0A" e_name
 
-            # The document for an array is a normal BSON document
-            # with integer values for the keys,
-            # starting with 0 and continuing sequentially.
-            # For example, the array ['red', 'blue']
-            # would be encoded as the document {'0': 'red', '1': 'blue'}.
-            # The keys must be in ascending numerical order.
-
-            my %h = .kv;
-
-            return Buf.new( 0x04 ) ~  self._e_name( $p.key ) ~ self._document( %h );
+            return Buf.new( 0x0A ) ~ self._e_name( $p.key );
         }
 
-        when Hash {
-            # Embedded document
-            # "\x03" e_name document
+        when Int {
+            # 32-bit Integer
+            # "\x10" e_name int32
 
-            return Buf.new( 0x03 ) ~  self._e_name( $p.key ) ~ self._document( $_ );
-        }
-
-        when BSON::ObjectId {
-            # ObjectId
-            # "\x07" e_name (byte*12)
-
-            return Buf.new( 0x07 ) ~ self._e_name( $p.key ) ~ .Buf;
+            return Buf.new( 0x10 ) ~ self._e_name( $p.key ) ~ self._int32( $p.value );
         }
 
         default {
@@ -148,16 +158,21 @@ multi method _element ( Pair $p ) {
 
 }
 
+# Test elements see http://bsonspec.org/spec.html
+#
+# Basic types are;
+#
+# byte 	        1 byte (8-bits)
+# int32 	4 bytes (32-bit signed integer, two's complement)
+# int64 	8 bytes (64-bit signed integer, two's complement)
+# double 	8 bytes (64-bit IEEE 754 floating point)
+#
 multi method _element ( Array $a ) {
 
+    # Type is given in first byte.
+    #
     given $a.shift {
 
-        when 0x0A {
-            # Null value
-            # "\x0A" e_name
-
-            return self._e_name( $a ) => Any;
-        }
 
         when 0x01 {
             # Double precision 
@@ -173,11 +188,45 @@ multi method _element ( Array $a ) {
             return self._e_name( $a ) => self._string( $a );
         }
 
-        when 0x10 {
-            # 32-bit Integer
-            # "\x10" e_name int32
+        when 0x03 {
+            # Embedded document
+            # "\x03" e_name document
 
-            return self._e_name( $a ) => self._int32( $a );
+            return self._e_name( $a )  => self._document( $a );
+        }
+
+        when 0x04 {
+            # Array
+            # "\x04" e_name document
+
+            # The document for an array is a normal BSON document
+            # with integer values for the keys,
+            # starting with 0 and continuing sequentially.
+            # For example, the array ['red', 'blue']
+            # would be encoded as the document {'0': 'red', '1': 'blue'}.
+            # The keys must be in ascending numerical order.
+
+            return self._e_name( $a ) => [ self._document( $a ).values ];
+        }
+
+        when 0x05 {
+            # Binary
+            # "\x05 e_name int32 subtype byte*
+            # subtype = byte \x00 .. \x05, \x80
+            
+            return self._e_name( $a ) => self._binary( $a );
+        }
+
+        when 0x07 {
+            # ObjectId
+            # "\x07" e_name (byte*12)
+
+            my $n = self._e_name( $a );
+
+            my @a;
+            @a.push( $a.shift ) for ^ 12;
+
+            return $n => BSON::ObjectId.new( Buf.new( @a ) );
         }
 
         when 0x08 {
@@ -208,48 +257,91 @@ multi method _element ( Array $a ) {
 
         }
 
-        when 0x04 {
-            # Array
-            # "\x04" e_name document
+        when 0x0A {
+            # Null value
+            # "\x0A" e_name
 
-            # The document for an array is a normal BSON document
-            # with integer values for the keys,
-            # starting with 0 and continuing sequentially.
-            # For example, the array ['red', 'blue']
-            # would be encoded as the document {'0': 'red', '1': 'blue'}.
-            # The keys must be in ascending numerical order.
-
-            return self._e_name( $a ) => [ self._document( $a ).values ];
+            return self._e_name( $a ) => Any;
         }
 
-        when 0x03 {
-            # Embedded document
-            # "\x03" e_name document
+        when 0x10 {
+            # 32-bit Integer
+            # "\x10" e_name int32
 
-            return self._e_name( $a )  => self._document( $a );
-        }
-
-        when 0x07 {
-            # ObjectId
-            # "\x07" e_name (byte*12)
-
-            my $n = self._e_name( $a );
-
-            my @a;
-            @a.push( $a.shift ) for ^ 12;
-
-            return $n => BSON::ObjectId.new( Buf.new( @a ) );
+            return self._e_name( $a ) => self._int32( $a );
         }
 
         default {
 
-            X::NYI.new(feature => "Type $_")
+            # Number of bytes must be taken from $a otherwise a parse
+            # error will occur later on.
+            #
+            return X::NYI.new(feature => "Type $_")
 #            die 'Sorry, not yet supported type: ' ~ $_;
         }
 
     }
 
 }
+
+
+# Binary buffer
+#
+multi method _binary ( Int $sub_type, Buf $b ) {
+
+     return [~] self._int32($b.elems), Buf.new( $sub_type, $b.list);
+}
+
+multi method _binary ( Array $a ) {
+
+    # Get length
+    my $lng = self._int32( $a );
+    
+    # Get subtype
+    my $sub_type = $a.shift;
+
+    # Most of the tests are not necessary because of arbitrary sizes.
+    # UUID and MD5 can be tested.
+    #
+    given $sub_type {
+        when 0x00 {
+            # Generic binary subtype
+        }
+
+        when 0x01 {
+            # Function
+        }
+        
+        when 0x02 {
+            # Binary (Old - deprecated)
+            die 'Code (0x02) Deprecated binary data';
+        }
+        
+        when 0x03 {
+            # UUID (Old - deprecated)
+            die 'UUID(0x03) Deprecated binary data';
+        }
+
+        when 0x04 {
+            # UUID. According to http://en.wikipedia.org/wiki/Universally_unique_identifier
+            # the universally unique identifier is a 128-bit (16 byte) value.
+            die 'UUID(0x04) Binary string parse error' unless $lng ~~ 16;
+        }
+        
+        when 0x05 {
+            # MD5. This is a 16 byte number (32 character hex string)
+            die 'UUID(0x04) Binary string parse error' unless $lng ~~ 16;
+        }
+
+        when 0x80 {
+            # User defined. That is, all other codes 0x80 .. 0xFF
+        }
+    }
+
+    # Just return part of the array.
+    return Buf.new( $a.splice( 0, $lng));
+}
+
 
 
 # 4 bytes (32-bit signed integer)
@@ -277,7 +369,14 @@ multi method _double64 ( Num $i ) {
 #
 multi method _double64 ( Array $a ) {
 
-    my $i = self._int64($a);
+    # Test special cases
+    #
+    # 0x 0000 0000 0000 0000 = 0
+    # 0x 8000 0000 0000 0000 = -0
+    # 0x 7ff0 0000 0000 0000 = Inf
+    # 0x fff0 0000 0000 0000 = -Inf
+
+    my $i = self._int64( $a );
     my $sign = $i +& 63 ?? True !! False;
 
     # Significand + implicit bit

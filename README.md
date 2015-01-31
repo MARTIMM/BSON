@@ -45,7 +45,9 @@ $ panda install MongoDB
     
     Str             <=>         UTF-8 string
     Int             <=>         32-bit Integer
+    Num             <=          64-bit Double
     Bool            <=>         Boolean "true" / "false"
+    Buf             <=>         Generic binary subtype
     Array           <=>         Array
     Hash            <=>         Embedded document
     BSON::ObjectId  <=>         ObjectId
@@ -69,6 +71,7 @@ Method ```.perl``` is available for easy debug.
 
 ## CHANGELOG
 
+* 0.4.1 - Added Buf to binary
 * 0.4.0 - Added processing of double number coming from server. Sending not
           yet possible.
 * 0.2 .. 0.3 Something happened no doubt ;-).
