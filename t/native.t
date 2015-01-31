@@ -3,8 +3,6 @@ BEGIN { @*INC.unshift( 'lib' ) }
 use Test;
 use BSON;
 
-plan( 18 );
-
 # Test mapping between native Perl 6 types and BSON representation.
 
 # Test cases borrowed from
@@ -54,7 +52,21 @@ my %samples = (
         'encoded' => [ 0x10, 0x00, 0x00, 0x00, 0x03, 0x6E, 0x6F, 0x6E, 0x65, 0x00, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00 ],
     },
 
-#`((    'Double' => {
+    'Binary' => {
+        'decoded' => { "b" => Buf.new(0..4) },
+        'encoded' => [ 0x12, 0x00, 0x00, 0x00,          # Total size
+                       0x05,                            # Type
+                       0x62, 0x00,                      # 'b' + 0
+                       0x05, 0x00, 0x00, 0x00,          # Size of buf
+                       0x00,                            # Generic binary type
+                       0x00, 0x01, 0x02, 0x03, 0x04,    # Binary data
+                       0x00                             # + 0
+                     ],
+    },
+
+
+#`((
+    'Double' => {
         'decoded' => { "number" => 218103808 },
         'encoded' => [ 0, 0, 0, 0, 0, 0, 0xAA, 0x41 ],
     },
@@ -74,7 +86,7 @@ for %samples {
 }
 
 
-# check flattening apsects of Perl6
+# check flattening aspects of Perl6
 
 my %flattening = (
 	'Array of Embedded documents' => { "ahh" => [ { }, { "not" => "empty" } ] },
@@ -87,3 +99,10 @@ for %flattening {
 		.value,
 		.key;
 }
+
+
+#-------------------------------------------------------------------------------
+# Cleanup
+#
+done();
+exit(0);
