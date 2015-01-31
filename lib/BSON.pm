@@ -217,6 +217,7 @@ multi method _element ( Array $a ) {
             return self._e_name( $a ) => self._binary( $a );
         }
 
+<<<<<<< HEAD
         when 0x06 {
             # Undefined and deprecated
             # parse error
@@ -224,6 +225,8 @@ multi method _element ( Array $a ) {
             die "Parse error. Undefined(0x06) is deprecated.";
         }
 
+=======
+>>>>>>> a0fb2a6a589857d5677396af01f08c429ede17dd
         when 0x07 {
             # ObjectId
             # "\x07" e_name (byte*12)
