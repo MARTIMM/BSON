@@ -1,4 +1,4 @@
-class BSON:ver<0.5.0>;
+class BSON:auth<MARTIMM>:ver<0.5.1>;
 
 use BSON::ObjectId;
 
@@ -363,8 +363,68 @@ multi method _int32 ( Array $a ) {
 }
 
 # 8 bytes (64-bit number)
-multi method _double64 ( Num $i ) {
+multi method _double64 ( Num $r ) {
+    
+    my $sign = $r.sign == -1 ?? True !! False;
+    
+    my $exponent = 1023;
+    my @bits = $r.base(2).split('');
+#say $r.base(2);
+    if @bits[0] eq 0 {
+        # Remove first two characters '0.'.
+        @bits.splice( 0, 2),
 
+        do for @bits -> $bit {
+            if $bit eq '0' {
+                $exponent--;
+
+                # remove the 0 character
+                @bits.shift;
+            }
+            
+            else {
+                $exponent--;
+
+                # remove the 1 character
+                @bits.shift;
+                last;
+            }
+        }
+    }
+    
+    else {
+        my $idx = 0;
+        do for @bits -> $bit {
+            if $bit eq '.' {
+                # Remove the dot
+                @bits.splice( $idx, 1);
+                $exponent++;
+                last;
+            }
+            
+            else {
+                $idx++;
+                $exponent++;
+            }
+        }
+
+        # Remove the first 1
+        @bits.shift;
+    }
+
+
+#say "E: $exponent, ", $exponent.fmt('%04X');;
+
+    my Int $i = $sign ?? 0x8000_0000_0000_0000 !! 0;
+    $i = $i +| ($exponent +< 52);
+    my $bit-pattern = 1 +< 51;
+    do for @bits -> $bit {
+        $i = $i +| $bit-pattern if $bit eq '1';
+
+        $bit-pattern = $bit-pattern +> 1;
+    }
+
+#say "I: ", $i.fmt('%16x');
     my Buf $a = self._int64($i);
     
     return $a;
@@ -383,8 +443,8 @@ multi method _double64 ( Array $a ) {
     # 0x 7ff0 0000 0000 0000 = Inf
     # 0x fff0 0000 0000 0000 = -Inf
 
-    my $i = self._int64( $a );
-    my $sign = $i +& 63 ?? True !! False;
+    my Int $i = self._int64( $a );
+    my Bool $sign = $i +& 63 ?? True !! False;
 
     # Significand + implicit bit
     my $significand =  0x10000000000000 +| ($i +& 0xFFFFFFFFFFFFF);
@@ -394,14 +454,15 @@ multi method _double64 ( Array $a ) {
 
 #say sprintf( "I: %016x -> %x, %x, %x", $i, $significand, $exponent, $sign);
 #say "E: {$exponent-52}";
-    my Num $value = (2 ** $exponent) * $significand;
-#say "V: $value: ", sprintf( "%016x", $value);
+
+    my Num $value = Num.new((2 ** $exponent) * $significand);
+#say "V: $value: ", $value == Inf ?? Inf !! $value.base(2);
 
     return $value; #X::NYI.new(feature => "Type Double");
 }
 
 # 8 bytes (64-bit int)
-multi method _int64 ( Num $i ) {
+multi method _int64 ( Int $i ) {
     
     return Buf.new( $i % 0x100, $i +> 0x08 % 0x100, $i +> 0x10 % 0x100
                   , $i +> 0x18 % 0x100, $i +> 0x20 % 0x100, $i +> 0x28 % 0x100

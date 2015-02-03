@@ -1,4 +1,4 @@
-BEGIN { @*INC.unshift( 'lib' ) }
+#BEGIN { @*INC.unshift( 'lib' ) }
 
 use Test;
 use BSON;

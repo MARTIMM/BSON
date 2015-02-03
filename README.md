@@ -41,18 +41,28 @@ $ panda install MongoDB
 
 ### NATIVE TYPES
 
-    Perl6           <=>         BSON
+        Perl6           <=> BSON
     
-    Str             <=>         UTF-8 string
-    Int             <=>         32-bit Integer
-    Num             <=          64-bit Double
-    Bool            <=>         Boolean "true" / "false"
-    Buf             <=>         Generic binary subtype
-    Array           <=>         Array
-    Hash            <=>         Embedded document
-    BSON::ObjectId  <=>         ObjectId
+    [x] Str             <=> UTF-8 string
+    [x] Int             <=> 32-bit Integer
+    [x] Bool            <=> Boolean "true" / "false"
+    [x] Buf             <=> Generic binary subtype
+    [x] Array           <=> Array
+    [x] Hash            <=> Embedded document
+    [x] BSON::ObjectId  <=> ObjectId
 
-`Rat`, `Real` - Not Yet Implemented
+    [x] Num             <=> 64-bit Double. *When sending a Num to the server
+                            some precision is lost*. Also this is kind of
+                            emulated and therefore slower. It suffices to say
+                            that this will be implemented differently later.
+    [ ] FatRat
+    [ ] Rat
+    [ ] Real
+    [ ] int64
+
+        And quite a few more perl6 types. Now binary types are possible it
+        might be an idea to put the perl6 specific types into binary. There
+        are 127 user definable types there, so place enough.
 
 
 ### EXTENDED TYPES
@@ -71,6 +81,7 @@ Method ```.perl``` is available for easy debug.
 
 ## CHANGELOG
 
+* 0.5.1 - Sending of double number to server with lower precision.
 * 0.5.0 - Added Buf to binary
 * 0.4.0 - Added processing of double number coming from server. Sending not
           yet possible.
