@@ -1,4 +1,4 @@
-class BSON:auth<MARTIMM>:ver<0.5.1>;
+class BSON:ver<0.5.1>;
 
 use BSON::ObjectId;
 
