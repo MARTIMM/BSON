@@ -4,7 +4,7 @@
 
 Implements [BSON specification](http://bsonspec.org/).
 
-## VERSION 0.4.0
+## VERSION PERL AND MOARVM
 
 ```
 $ perl6 -v
