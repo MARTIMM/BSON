@@ -1,4 +1,4 @@
-class BSON:ver<0.5.4>;
+class BSON:ver<0.5.5>;
 
 use BSON::ObjectId;
 
@@ -29,13 +29,10 @@ method _enc_document ( %h ) {
 method _dec_document ( Array $a ) {
 
     my $s = $a.elems;
-
-    my $i = self._dec_int32( $a );
-
-    my %h = self._dec_e_list( $a );
+    my $i = self._dec_int32($a);
+    my %h = self._dec_e_list($a);
 
     die 'Parse error' unless $a.shift ~~ 0x00;
-
     die 'Parse error' unless $s ~~ $a.elems + $i;
 
     return %h;
@@ -60,8 +57,8 @@ method _enc_e_list ( *@p ) {
 method _dec_e_list ( Array $a ) {
 
     my @p;
-    while $a[ 0 ] !~~ 0x00 {
-        push @p, self._dec_element( $a );
+    while $a[0] !~~ 0x00 {
+        push @p, self._dec_element($a);
     }
 
     return @p;
@@ -266,9 +263,7 @@ method _dec_element ( Array $a ) {
 
                     die 'Parse error';
                 }
-
             }
-
         }
 
         when 0x0A {
@@ -505,9 +500,16 @@ method _dec_double ( Array $a ) {
         }
     }
 
+    # If value is set by the special cases above, remove the 8 bytes from
+    # the array.
+    #
+    if $value.defined {
+        $a.splice( 0, 8);
+    }
+    
     # If value is not set by the special cases above, calculate it here
     #
-    if !$value.defined {
+    else {
       my Int $i = self._dec_int64( $a );
       my Int $sign = $i +& 0x8000_0000_0000_0000 ?? -1 !! 1;
 
@@ -565,8 +567,8 @@ method _dec_e_name ( Array $a ) {
 
 method _enc_string ( Str $s ) {
 
-    my $b = $s.encode( 'UTF-8' );
-    return self._enc_int32( $b.bytes + 1 ) ~ $b ~ Buf.new( 0x00 );
+    my $b = $s.encode('UTF-8');
+    return self._enc_int32($b.bytes + 1) ~ $b ~ Buf.new(0x00);
 }
 
 method _dec_string ( Array $a ) {
@@ -592,7 +594,7 @@ method _enc_cstring ( Str $s ) {
 
     die "Forbidden 0x00 sequence in $s" if $s ~~ /\x00/;
 
-    return $s.encode( ) ~ Buf.new( 0x00 );
+    return $s.encode() ~ Buf.new(0x00);
 }
 
 method _dec_cstring ( Array $a ) {
@@ -603,6 +605,5 @@ method _dec_cstring ( Array $a ) {
     }
 
     die 'Parse error' unless $a.shift ~~ 0x00;
-
-    return Buf.new( @a ).decode( );
+    return Buf.new( @a ).decode();
 }
