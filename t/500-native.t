@@ -31,6 +31,27 @@ my %samples = (
                      ],
     },
 
+    'Boolean "true"' => {
+        'decoded' => { "true" => True },
+        'encoded' => [ 0x0C, 0x00, 0x00, 0x00,          # 12 bytes
+                       0x08,                            # Boolean
+                       0x74, 0x72, 0x75, 0x65, 0x00,    # 'true' + 0
+                       0x01,                            # true
+                       0x00                             # + 0
+                     ],
+    },
+
+    'Boolean "false"' => {
+        'decoded' => { "false" => False },
+        'encoded' => [ 0x0D, 0x00, 0x00, 0x00,          # 13 bytes
+                       0x08,                            # Boolean
+                       0x66, 0x61, 0x6C, 0x73, 0x65, 0x00,
+                                                        # 'false' + 0
+                       0x00,                            # false
+                       0x00                             # + 0
+                     ],
+    },
+
     '32-bit Integer' => {
         'decoded' => { "mike" => 100 },
         'encoded' => [ 0x0F, 0x00, 0x00, 0x00,          # 16 bytes
@@ -50,24 +71,16 @@ my %samples = (
                      ],
     },
 
-    'Boolean "true"' => {
-        'decoded' => { "true" => True },
-        'encoded' => [ 0x0C, 0x00, 0x00, 0x00,          # 12 bytes
-                       0x08,                            # Boolean
-                       0x74, 0x72, 0x75, 0x65, 0x00,    # 'true' + 0
-                       0x01,                            # true
-                       0x00                             # + 0
-                     ],
-    },
-
-    'Boolean "false"' => {
-        'decoded' => { "false" => False },
-        'encoded' => [ 0x0D, 0x00, 0x00, 0x00, 0x08, 0x66, 0x61, 0x6C, 0x73, 0x65, 0x00, 0x00, 0x00 ],
-    },
-
     'Array' => {
         'decoded' => { "empty" => [ ] },
-        'encoded' => [ 0x11, 0x00, 0x00, 0x00, 0x04, 0x65, 0x6D, 0x70, 0x74, 0x79, 0x00, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00 ],
+        'encoded' => [ 0x11, 0x00, 0x00, 0x00,          # 17 bytes
+                       0x04,                            # Array
+                       0x65, 0x6D, 0x70, 0x74, 0x79, 0x00,
+                                                        # 'empty' + 0
+                       0x05, 0x00, 0x00, 0x00,          # array size 4 + 1
+                       0x00,                            # end of array
+                       0x00                             # + 0
+                     ],
     },
 
     'Embedded document' => {
