@@ -19,6 +19,17 @@ my %samples = (
                      ],
     },
 
+    'Double float' => {
+         decoded => { b => Num.new(0.3333333333333333)},
+         encoded => [ 0x10, 0x00, 0x00, 0x00,           # Total size
+                      0x01,                             # Double
+                      0x62, 0x00,                       # 'b' + 0
+                      0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0xD5, 0x3F,
+                                                        # 8 byte double
+                      0x00                              # + 0
+                    ],
+     },
+
     'UTF-8 string' => {
         'decoded' => { "test" => "hello world" },
         'encoded' => [ 0x1B, 0x00, 0x00, 0x00,          # 27 bytes
