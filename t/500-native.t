@@ -31,6 +31,41 @@ my %samples = (
                      ],
     },
 
+    'Embedded document' => {
+        'decoded' => { "none" => { } },
+        'encoded' => [ 0x10, 0x00, 0x00, 0x00,          # 16 bytes
+                       0x03,                            # document
+                       0x6E, 0x6F, 0x6E, 0x65, 0x00,    # 'none' + 0
+                       0x05, 0x00, 0x00, 0x00,          # doc size 4 + 1
+                       0x00,                            # end of doc
+                       0x00                             # + 0
+                     ],
+    },
+
+    'Array' => {
+        'decoded' => { "empty" => [ ] },
+        'encoded' => [ 0x11, 0x00, 0x00, 0x00,          # 17 bytes
+                       0x04,                            # Array
+                       0x65, 0x6D, 0x70, 0x74, 0x79, 0x00,
+                                                        # 'empty' + 0
+                       0x05, 0x00, 0x00, 0x00,          # array size 4 + 1
+                       0x00,                            # end of array
+                       0x00                             # + 0
+                     ],
+    },
+
+    'Binary' => {
+        'decoded' => { "b" => Buf.new(0..4) },
+        'encoded' => [ 0x12, 0x00, 0x00, 0x00,          # Total size
+                       0x05,                            # Type
+                       0x62, 0x00,                      # 'b' + 0
+                       0x05, 0x00, 0x00, 0x00,          # Size of buf
+                       0x00,                            # Generic binary type
+                       0x00, 0x01, 0x02, 0x03, 0x04,    # Binary data
+                       0x00                             # + 0
+                     ],
+    },
+
     'Boolean "true"' => {
         'decoded' => { "true" => True },
         'encoded' => [ 0x0C, 0x00, 0x00, 0x00,          # 12 bytes
@@ -70,43 +105,6 @@ my %samples = (
                        0x00                             # + 0
                      ],
     },
-
-    'Array' => {
-        'decoded' => { "empty" => [ ] },
-        'encoded' => [ 0x11, 0x00, 0x00, 0x00,          # 17 bytes
-                       0x04,                            # Array
-                       0x65, 0x6D, 0x70, 0x74, 0x79, 0x00,
-                                                        # 'empty' + 0
-                       0x05, 0x00, 0x00, 0x00,          # array size 4 + 1
-                       0x00,                            # end of array
-                       0x00                             # + 0
-                     ],
-    },
-
-    'Embedded document' => {
-        'decoded' => { "none" => { } },
-        'encoded' => [ 0x10, 0x00, 0x00, 0x00, 0x03, 0x6E, 0x6F, 0x6E, 0x65, 0x00, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00 ],
-    },
-
-    'Binary' => {
-        'decoded' => { "b" => Buf.new(0..4) },
-        'encoded' => [ 0x12, 0x00, 0x00, 0x00,          # Total size
-                       0x05,                            # Type
-                       0x62, 0x00,                      # 'b' + 0
-                       0x05, 0x00, 0x00, 0x00,          # Size of buf
-                       0x00,                            # Generic binary type
-                       0x00, 0x01, 0x02, 0x03, 0x04,    # Binary data
-                       0x00                             # + 0
-                     ],
-    },
-
-
-#`((
-    'Double' => {
-        'decoded' => { "number" => 218103808 },
-        'encoded' => [ 0, 0, 0, 0, 0, 0, 0xAA, 0x41 ],
-    },
-))
 );
 
 for %samples {
