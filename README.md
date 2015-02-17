@@ -84,7 +84,8 @@ Method ```.perl``` is available for easy debug.
   class while the standard type Int can be coded as a binary array.
 * Num is implemented but kind off emulated which makes it slower. However it was
   necessary to implement it because much information from the MongoDB server is
-  send back as a double like count() and list_databases().
+  send back as a double like count() and list_databases(). Num needs test for
+  NaN.
 * Lack of other Perl 6 types support, this is directly related to not yet
   specified pack/unpack in Perl6.
 * Change die() statements in return with exception to notify caller and place

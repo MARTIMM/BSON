@@ -12,14 +12,14 @@ my $b = BSON.new( );
 
 my %samples = (
 
-    'Empty object' => {
+    '0x00 Empty object' => {
         'decoded' => { },
         'encoded' => [ 0x05, 0x00, 0x00, 0x00,          # Total size
                        0x00                             # + 0
                      ],
     },
 
-    'Double float' => {
+    '0x01 Double float' => {
          decoded => { b => Num.new(0.3333333333333333)},
          encoded => [ 0x10, 0x00, 0x00, 0x00,           # Total size
                       0x01,                             # Double
@@ -30,7 +30,7 @@ my %samples = (
                     ],
      },
 
-    'UTF-8 string' => {
+    '0x02 UTF-8 string' => {
         'decoded' => { "test" => "hello world" },
         'encoded' => [ 0x1B, 0x00, 0x00, 0x00,          # 27 bytes
                        0x02,                            # string
@@ -42,7 +42,7 @@ my %samples = (
                      ],
     },
 
-    'Embedded document' => {
+    '0x03 Embedded document' => {
         'decoded' => { "none" => { } },
         'encoded' => [ 0x10, 0x00, 0x00, 0x00,          # 16 bytes
                        0x03,                            # document
@@ -53,7 +53,7 @@ my %samples = (
                      ],
     },
 
-    'Array' => {
+    '0x04 Array' => {
         'decoded' => { "empty" => [ ] },
         'encoded' => [ 0x11, 0x00, 0x00, 0x00,          # 17 bytes
                        0x04,                            # Array
@@ -65,10 +65,10 @@ my %samples = (
                      ],
     },
 
-    'Binary' => {
-        'decoded' => { "b" => Buf.new(0..4) },
+    '0x05 Binary' => {
+        'decoded' => { b => Buf.new(0..4) },
         'encoded' => [ 0x12, 0x00, 0x00, 0x00,          # Total size
-                       0x05,                            # Type
+                       0x05,                            # Binary
                        0x62, 0x00,                      # 'b' + 0
                        0x05, 0x00, 0x00, 0x00,          # Size of buf
                        0x00,                            # Generic binary type
@@ -77,7 +77,25 @@ my %samples = (
                      ],
     },
 
-    'Boolean "true"' => {
+#`{{
+    '0x06 Undefined - deprecated' => {
+        decoded => { b => Mu.new(0x00) },
+        encoded => [ 0x09, 0x00, 0x00, 0x00,            # Total size
+                     0x06,                              # Undefined
+                     0x62, 0x00,                        # 'b' + 0
+                     0x00,                              # undef
+                     0x00                               # + 0
+                   ]
+    },
+}}
+
+#`{{
+    '0x07 ObjectId' => {
+        # Tested in t/600-extended.t
+    }
+}}
+
+    '0x08 Boolean "true"' => {
         'decoded' => { "true" => True },
         'encoded' => [ 0x0C, 0x00, 0x00, 0x00,          # 12 bytes
                        0x08,                            # Boolean
@@ -87,7 +105,7 @@ my %samples = (
                      ],
     },
 
-    'Boolean "false"' => {
+    '0x08 Boolean "false"' => {
         'decoded' => { "false" => False },
         'encoded' => [ 0x0D, 0x00, 0x00, 0x00,          # 13 bytes
                        0x08,                            # Boolean
@@ -98,17 +116,22 @@ my %samples = (
                      ],
     },
 
-    '32-bit Integer' => {
+#`{{
+    '0x09 Date time' => {
+    }
+}}
+
+    '0x10 32-bit Integer' => {
         'decoded' => { "mike" => 100 },
         'encoded' => [ 0x0F, 0x00, 0x00, 0x00,          # 16 bytes
                        0x10,                            # 32 bits integer
-                       0x6D, 0x69, 0x6B, 0x65, 0x00,    # "mike" + 0
+                       0x6D, 0x69, 0x6B, 0x65, 0x00,    # 'mike' + 0
                        0x64, 0x00, 0x00, 0x00,          # 100
                        0x00                             # + 0
                      ],
     },
 
-    'Null value' => {
+    '0xA0 Null value' => {
         'decoded' => { "test" => Any },
         'encoded' => [ 0x0B, 0x00, 0x00, 0x00,          # 11 bytes
                        0x0A,                            # null value
