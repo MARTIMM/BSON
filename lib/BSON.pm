@@ -13,7 +13,7 @@ class X::BSON:Deprecated is Exception {
 }
 
 
-class BSON:ver<0.5.5> {
+class BSON:ver<0.6.0> {
 
   method encode ( %h ) {
 
@@ -160,10 +160,20 @@ class BSON:ver<0.5.5> {
 
           }
 
+          when DateTime {
+              # UTC dateime
+              # "\x09" e_name int64
+              #
+              return [~] Buf.new( 0x09 ),
+                         self._enc_e_name( $p.key ),
+                         self._enc_int64( $p.value().posix() )
+                         ;
+          }
+
           when not .defined {
               # Null value
               # "\x0A" e_name
-
+              #
               return Buf.new( 0x0A ) ~ self._enc_e_name( $p.key );
           }
 
@@ -245,8 +255,10 @@ class BSON:ver<0.5.5> {
           when 0x06 {
               # Undefined and deprecated
               # parse error
-
-              die "Parse error. Undefined(0x06) is deprecated.";
+              #
+              die X::BSON:Deprecated.new( :operation('decode'),
+                                          :type('Undefined(0x06)')
+                                        );
           }
 
           when 0x07 {
@@ -287,10 +299,17 @@ class BSON:ver<0.5.5> {
               }
           }
 
+          when 0x09 {
+              # Datetime
+              # "\x09" e_name int64
+              #
+              return self._dec_e_name( $a ) => DateTime.new(self._dec_int64( $a ));
+          }
+
           when 0x0A {
               # Null value
               # "\x0A" e_name
-
+              #
               return self._dec_e_name( $a ) => Any;
           }
 
@@ -551,9 +570,10 @@ class BSON:ver<0.5.5> {
   # 8 bytes (64-bit int)
   method _enc_int64 ( Int $i ) {
 
-      return Buf.new( $i % 0x100, $i +> 0x08 % 0x100, $i +> 0x10 % 0x100
-                    , $i +> 0x18 % 0x100, $i +> 0x20 % 0x100, $i +> 0x28 % 0x100
-                    , $i +> 0x30 % 0x100, $i +> 0x38 % 0x100
+      return Buf.new( $i % 0x100, $i +> 0x08 % 0x100, $i +> 0x10 % 0x100,
+                      $i +> 0x18 % 0x100, $i +> 0x20 % 0x100,
+                      $i +> 0x28 % 0x100, $i +> 0x30 % 0x100,
+                      $i +> 0x38 % 0x100
                     );
   }
 

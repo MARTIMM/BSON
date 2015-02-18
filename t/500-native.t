@@ -10,7 +10,7 @@ use BSON;
 
 my $b = BSON.new( );
 
-my %samples = (
+my Hash $samples = {
 
     '0x00 Empty object' => {
         'decoded' => { },
@@ -116,10 +116,18 @@ my %samples = (
                      ],
     },
 
-#`{{
+#`{{}}
     '0x09 Date time' => {
-    }
-}}
+        decoded => { t => DateTime.new('2015-02-18T11:08:00+0100') },
+        encoded => [ 0x10, 0x00, 0x00, 0x00,            # 16 bytes
+                     0x09,                              # datetime
+                     0x74, 0x00,                        # 't' + 0
+                     0x80, 0x64, 0xe4, 0x54, 0x00, 0x00, 0x00, 0x00,
+                                                        # 1424128080 seconds
+                     0x00                               # + 0
+                   ]
+    },
+
 
     '0x10 32-bit Integer' => {
         'decoded' => { "mike" => 100 },
@@ -139,18 +147,41 @@ my %samples = (
                        0x00                             # + 0
                      ],
     },
-);
+};
 
-for %samples {
-    is_deeply
-        $b.encode( .value.{ 'decoded' } ).list,
-        .value.{ 'encoded' },
-        'encode ' ~ .key;
+for $samples.keys -> $key {
+    my $value = $samples{$key};
 
-    is_deeply
-        $b.decode( Buf.new( .value.{ 'encoded' }.list ) ),
-        .value.{ 'decoded' },
-        'decode ' ~ .key;
+    if $key eq '0x09 Date time' {
+      my @enc = $b.encode( $value<decoded> ).list;
+      my Hash $dec = $b.decode( Buf.new( $value<encoded> ));
+
+      is_deeply @enc, $value<encoded>, 'encode ' ~ $key;
+      my @dec_kv = $dec.kv;
+      my @enc_kv = $value<decoded>.kv;
+      is @dec_kv[0], @enc_kv[0], 'Keys equal';
+
+      # Must compare seconds because the dates will not compare right
+      #
+      # Failed test 'Values equal'
+      # at t/500-native.t line 163
+      # expected: '2015-02-18T11:08:00+0100'
+      #      got: '2015-02-18T10:08:00Z'
+      #
+      is @dec_kv[1].posix, @enc_kv[1].posix, 'Values equal';
+    }
+    
+    else {
+      is_deeply
+          $b.encode( $value<decoded> ).list,
+          $value<encoded>,
+          'encode ' ~ $key;
+
+      is_deeply
+          $b.decode( Buf.new( $value<encoded>.list ) ),
+          $value<decoded>,
+          'decode ' ~ $key;
+    }
 }
 
 
