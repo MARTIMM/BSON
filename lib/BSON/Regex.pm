@@ -12,6 +12,6 @@ class BSON::Regex {
       # See also: http://docs.mongodb.org/manual/reference/operator/query/regex/
       #
       $!regex = $regex // '';
-      $!options = $options.split('').sort.join // '';
+      $!options = ($options // '').split('').sort.join;
   }
 }
