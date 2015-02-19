@@ -117,7 +117,7 @@ my Hash $samples = {
     },
 
 #`{{}}
-    '0x09 Date time' => {
+    '0x09 Datetime' => {
         decoded => { t => DateTime.new('2015-02-18T11:08:00+0100') },
         encoded => [ 0x10, 0x00, 0x00, 0x00,            # 16 bytes
                      0x09,                              # datetime
@@ -128,6 +128,25 @@ my Hash $samples = {
                    ]
     },
 
+    '0x0A Null value' => {
+        'decoded' => { "test" => Any },
+        'encoded' => [ 0x0B, 0x00, 0x00, 0x00,          # 11 bytes
+                       0x0A,                            # null value
+                       0x74, 0x65, 0x73, 0x74, 0x00,    # 'test' + 0
+                       0x00                             # + 0
+                     ],
+    },
+
+    '0x0B Regex' => {
+        'decoded' => { "t" => BSON::Regex.new( :regex('abc'), :options('i')) },
+        'encoded' => [ 0x0E, 0x00, 0x00, 0x00,          # 11 bytes
+                       0x0B,                            # regex
+                       0x74, 0x00,                      # 't' + 0
+                       0x61, 0x62, 0x63, 0x00,          # /abc/
+                       0x69, 0x00,                       # i
+                       0x00                             # + 0
+                     ],
+    },
 
     '0x10 32-bit Integer' => {
         'decoded' => { "mike" => 100 },
@@ -138,49 +157,56 @@ my Hash $samples = {
                        0x00                             # + 0
                      ],
     },
-
-    '0xA0 Null value' => {
-        'decoded' => { "test" => Any },
-        'encoded' => [ 0x0B, 0x00, 0x00, 0x00,          # 11 bytes
-                       0x0A,                            # null value
-                       0x74, 0x65, 0x73, 0x74, 0x00,    # 'test' + 0
-                       0x00                             # + 0
-                     ],
-    },
 };
 
 for $samples.keys -> $key {
     my $value = $samples{$key};
+    my @enc = $b.encode( $value<decoded> ).list;
+    is_deeply @enc, $value<encoded>, 'encode ' ~ $key;
 
-    if $key eq '0x09 Date time' {
-      my @enc = $b.encode( $value<decoded> ).list;
-      my Hash $dec = $b.decode( Buf.new( $value<encoded> ));
-
-      is_deeply @enc, $value<encoded>, 'encode ' ~ $key;
-      my @dec_kv = $dec.kv;
-      my @enc_kv = $value<decoded>.kv;
-      is @dec_kv[0], @enc_kv[0], 'Keys equal';
-
-      # Must compare seconds because the dates will not compare right
-      #
-      # Failed test 'Values equal'
-      # at t/500-native.t line 163
-      # expected: '2015-02-18T11:08:00+0100'
-      #      got: '2015-02-18T10:08:00Z'
-      #
-      is @dec_kv[1].posix, @enc_kv[1].posix, 'Values equal';
-    }
+    given $key {
     
-    else {
-      is_deeply
-          $b.encode( $value<decoded> ).list,
-          $value<encoded>,
-          'encode ' ~ $key;
+        when '0x09 Datetime' {
+            my Hash $dec = $b.decode( Buf.new( $value<encoded> ));
 
-      is_deeply
-          $b.decode( Buf.new( $value<encoded>.list ) ),
-          $value<decoded>,
-          'decode ' ~ $key;
+            my @dec_kv = $dec.kv;
+            my @enc_kv = $value<decoded>.kv;
+            is @dec_kv[0], @enc_kv[0], [~] 'decode ', $key, ' Keys equal';
+
+            # Must compare seconds because the dates will not compare right
+            #
+            # Failed test 'Values equal'
+            # at t/500-native.t line 163
+            # expected: '2015-02-18T11:08:00+0100'
+            #      got: '2015-02-18T10:08:00Z'
+            #
+            is @dec_kv[1].posix, @enc_kv[1].posix, [~] 'decode ', $key, ' Values equal';
+        }
+    
+        when '0x0B Regex' {
+            my Hash $dec = $b.decode( Buf.new( $value<encoded> ));
+
+            my @dec_kv = $dec.kv;
+            my @enc_kv = $value<decoded>.kv;
+            is @dec_kv[0], @enc_kv[0], [~] 'decode ', $key, ' Keys equal';
+
+            # Must compare content because addresses are not same
+            #
+            # Failed test 'decode 0x0B Regex'
+            # at t/500-native.t line 188
+            # expected: {"t" => BSON::Regex.new(regex => "abc", options => "i")}
+            #      got: {"t" => BSON::Regex.new(regex => "abc", options => "i")}
+            #
+            is @dec_kv[1].regex, @enc_kv[1].regex, [~] 'decode ', $key, ' Regex equal';
+            is @dec_kv[1].options, @enc_kv[1].options, [~] 'decode ', $key, ' Options equal';
+        }
+
+        default {
+            is_deeply
+                $b.decode( Buf.new( $value<encoded>.list ) ),
+                $value<decoded>,
+                'decode ' ~ $key;
+        }
     }
 }
 

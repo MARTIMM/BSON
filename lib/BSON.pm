@@ -1,19 +1,30 @@
 use v6;
 use BSON::ObjectId;
+use BSON::Regex;
 
-class X::BSON:Deprecated is Exception {
+class X::BSON::Deprecated is Exception {
   has $.operation;                      # Operation encode, decode
   has $.type;                           # Type to encode/decode
 
-  method message() {
+  method message () {
       return [~] "\n$!operation\() error:\n",
                  "  Type $!type is deprecated by BSON specification\n"
                  ;
   }
 }
 
+class X::BSON::ImProperUse is Exception {
+  has $.operation;                      # Operation encode, decode
+  has $.type;                           # Type to encode/decode
+  has $.emsg;                           # Extra message
 
-class BSON:ver<0.6.0> {
+  method message () {
+      return "\n$!operation\() on $!type error: $!emsg";
+  }
+}
+
+
+class BSON:ver<0.7.0> {
 
   method encode ( %h ) {
 
@@ -177,6 +188,17 @@ class BSON:ver<0.6.0> {
               return Buf.new( 0x0A ) ~ self._enc_e_name( $p.key );
           }
 
+          when BSON::Regex {
+              # Regular expression
+              # "\x0B" e_name cstring cstring
+              #
+              return [~] Buf.new( 0x0B ),
+                         self._enc_e_name( $p.key ),
+                         self._enc_cstring( $p.value.regex ),
+                         self._enc_cstring( $p.value.options )
+                         ;
+          }
+
           when Int {
               # 32-bit Integer
               # "\x10" e_name int32
@@ -256,9 +278,9 @@ class BSON:ver<0.6.0> {
               # Undefined and deprecated
               # parse error
               #
-              die X::BSON:Deprecated.new( :operation('decode'),
-                                          :type('Undefined(0x06)')
-                                        );
+              die X::BSON::Deprecated.new( :operation('decode'),
+                                           :type('Undefined(0x06)')
+                                         );
           }
 
           when 0x07 {
@@ -311,6 +333,16 @@ class BSON:ver<0.6.0> {
               # "\x0A" e_name
               #
               return self._dec_e_name( $a ) => Any;
+          }
+
+          when 0x0B {
+              # Regular expression
+              # "\x0B" e_name cstring cstring
+              #
+              return self._dec_e_name( $a ) =>
+                  BSON::Regex.new( :regex(self._dec_cstring($a)),
+                                   :options(self._dec_cstring($a))
+                                 );
           }
 
           when 0x10 {
