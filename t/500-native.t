@@ -10,6 +10,7 @@ use BSON;
 
 my BSON $b .= new();
 my Str $script = 'function(x){return x;}';
+my Hash $scope = { n => 10 };
 
 my Hash $samples = {
 
@@ -151,6 +152,32 @@ my Hash $samples = {
 
 # '0x0E ? - deprecated' => { },
 
+    '0x0F Javascript with scope' => {
+        'decoded' => { "t" => BSON::Javascript.new( :javascript($script)
+                                                    :scope($scope)
+                                                  )
+                     },
+        'encoded' => [ 0x33, 0x00, 0x00, 0x00,          # 51 bytes
+                       0x0F,                            # javascript
+                       0x74, 0x00,                      # 't' + 0
+                       
+                       0x27, 0x00, 0x00, 0x00,          # 39 bytes size js + doc
+                       
+                       0x17, 0x00, 0x00, 0x00,          # 23 bytes js code + 1
+                       0x66, 0x75, 0x6e, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x28,
+                       0x78, 0x29, 0x7b, 0x72, 0x65, 0x74, 0x75, 0x72, 0x6e,
+                       0x20, 0x78, 0x3b, 0x7d, 0x00,    # UTF8 encoded Javascript
+                       
+                       0x0C, 0x00, 0x00, 0x00,          # 12 bytes embedded
+                       0x10,                            # int32
+                       0x6e, 0x00,                      # 'n' + 0
+                       0x0A, 0x00, 0x00, 0x00,          # 10
+                       0x00,                            # end emedded doc
+                       
+                       0x00                             # + 0
+                     ],
+    },
+
     '0x10 32-bit Integer' => {
         'decoded' => { "mike" => 100 },
         'encoded' => [ 0x0F, 0x00, 0x00, 0x00,          # 16 bytes
@@ -214,6 +241,19 @@ for $samples.keys -> $key {
             # Must compare content because addresses are not same
             #
             is @dec_kv[1].javascript, @enc_kv[1].javascript, [~] 'decode ', $key, ' Javascript equal';
+        }
+
+        when '0x0F Javascript with scope' {
+            my Hash $dec = $b.decode( Buf.new( $value<encoded> ));
+
+            my @dec_kv = $dec.kv;
+            my @enc_kv = $value<decoded>.kv;
+            is @dec_kv[0], @enc_kv[0], [~] 'decode ', $key, ' Keys equal';
+
+            # Must compare content because addresses are not same
+            #
+            is @dec_kv[1].javascript, @enc_kv[1].javascript, [~] 'decode ', $key, ' Javascript equal';
+            is_deeply @dec_kv[1].scope, @enc_kv[1].scope, [~] 'decode ', $key, ' scope equal';
         }
 
         default {

@@ -207,15 +207,48 @@ class BSON:ver<0.8.0> {
               # "\x0C" e_name string (byte*12)
           }
 }}
+          
+          # This entry does 2 codes. 0x0D for javascript only and 0x0F when
+          # there is a scope document defined in the object
+          #
           when BSON::Javascript {
               # Javascript code
               # "\x0D" e_name string
+              # "\x0F" e_name string document
               #
-              return [~] Buf.new( 0x0D ),
-                         self._enc_e_name( $p.key ),
-                         self._enc_string( $p.value.javascript )
-                         ;
+              if $p.value.scope.defined {
+              
+                  my Buf $js = self._enc_string($p.value.javascript);
+                  my Buf $doc = self._enc_document($p.value.scope);
+
+                  return [~] Buf.new( 0x0F ),
+                             self._enc_e_name($p.key),
+                             self._enc_int32($js.elems + $doc.elems),
+                             $js, $doc
+                             ;
+              }
+
+              else {
+                  return [~] Buf.new( 0x0D ),
+                             self._enc_e_name( $p.key ),
+                             self._enc_string( $p.value.javascript )
+                             ;
+              }
           }
+
+#`{{
+          when ... {
+              # ? - deprecated
+              # "\x0E" e_name string (byte*12)
+          }
+}}
+
+#`{{
+          when ... {
+              # Javascript code. Handled above.
+              # "\x0F" e_name string document
+          }
+}}
 
           when Int {
               # 32-bit Integer
@@ -386,6 +419,31 @@ class BSON:ver<0.8.0> {
               #
               return self._dec_e_name($a) =>
                   BSON::Javascript.new( :javascript(self._dec_string($a)));
+          }
+
+          when 0x0E {
+              # ? deprecated
+              # "\x0E" e_name string
+              #
+              # Must drop some bytes from array.
+              #
+              self._dec_e_name($a);
+              self._dec_string($a);
+              die X::BSON::Deprecated.new( :operation('decode'),
+                                           :type('(0x0E)')
+                                         );
+          }
+
+          when 0x0F {
+              # Javascript code with scope
+              # "\x0F" e_name string document
+              #
+              my $name = self._dec_e_name($a);
+              my $js_scope_size = self._dec_int32($a);
+              return $name =>
+                  BSON::Javascript.new( :javascript(self._dec_string($a)),
+                                        :scope(self._dec_document($a))
+                                      );
           }
 
           when 0x10 {
