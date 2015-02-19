@@ -1,6 +1,7 @@
 use v6;
 use BSON::ObjectId;
 use BSON::Regex;
+use BSON::Javascript;
 
 class X::BSON::Deprecated is Exception {
   has $.operation;                      # Operation encode, decode
@@ -24,7 +25,7 @@ class X::BSON::ImProperUse is Exception {
 }
 
 
-class BSON:ver<0.7.0> {
+class BSON:ver<0.8.0> {
 
   method encode ( %h ) {
 
@@ -139,7 +140,7 @@ class BSON:ver<0.7.0> {
           }
 
 #`{{
-          when Buf {
+          when ... {
               # Undefined deprecated 
               # "\x06" e_name
               
@@ -155,7 +156,9 @@ class BSON:ver<0.7.0> {
           }
 
           when Bool {
-
+              # Bool
+              # \0x08 e_name (\0x00 or \0x01)
+              #
               if .Bool {
                   # Boolean "true"
                   # "\x08" e_name "\x01
@@ -168,7 +171,6 @@ class BSON:ver<0.7.0> {
 
                   return Buf.new( 0x08 ) ~ self._enc_e_name( $p.key ) ~ Buf.new( 0x00 );
               }
-
           }
 
           when DateTime {
@@ -196,6 +198,22 @@ class BSON:ver<0.7.0> {
                          self._enc_e_name( $p.key ),
                          self._enc_cstring( $p.value.regex ),
                          self._enc_cstring( $p.value.options )
+                         ;
+          }
+
+#`{{
+          when ... {
+              # DBPointer - deprecated
+              # "\x0C" e_name string (byte*12)
+          }
+}}
+          when BSON::Javascript {
+              # Javascript code
+              # "\x0D" e_name string
+              #
+              return [~] Buf.new( 0x0D ),
+                         self._enc_e_name( $p.key ),
+                         self._enc_string( $p.value.javascript )
                          ;
           }
 
@@ -276,8 +294,11 @@ class BSON:ver<0.7.0> {
 
           when 0x06 {
               # Undefined and deprecated
-              # parse error
+              # "\x06" e_name
               #
+              # Must drop some bytes from array.
+              #
+              self._dec_e_name( $a );
               die X::BSON::Deprecated.new( :operation('decode'),
                                            :type('Undefined(0x06)')
                                          );
@@ -339,10 +360,32 @@ class BSON:ver<0.7.0> {
               # Regular expression
               # "\x0B" e_name cstring cstring
               #
-              return self._dec_e_name( $a ) =>
+              return self._dec_e_name($a) =>
                   BSON::Regex.new( :regex(self._dec_cstring($a)),
                                    :options(self._dec_cstring($a))
                                  );
+          }
+
+          when 0x0C {
+              # DPPointer and deprecated
+              # \0x0C e_name string (byte*12)
+              #
+              # Must drop some bytes from array.
+              #
+              self._dec_e_name($a);
+              self._dec_string($a);
+              $a.splice( 0, 12);
+              die X::BSON::Deprecated.new( :operation('decode'),
+                                           :type('Undefined(0x06)')
+                                         );
+          }
+
+          when 0x0D {
+              # Javascript code
+              # "\x0D" e_name string
+              #
+              return self._dec_e_name($a) =>
+                  BSON::Javascript.new( :javascript(self._dec_string($a)));
           }
 
           when 0x10 {

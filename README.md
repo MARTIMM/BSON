@@ -59,7 +59,8 @@ This is perl6 version 2015.01-77-gd320f00 built on MoarVM version 2015.01-21-g4e
     [ ] UUID
     [ ] MD5
     [x] DateTime        <=> int64 UTC datetime, seconds since January 1st 1970
-    [x] BSON::Regex     <=> Regular expression for Javascript
+    [x] BSON::Regex     <=> Regular expression serverside searches
+    [x] BSON::Javascript<=> Javascript code transport
 
         And quite a few more perl6 types. Now binary types are possible it
         might be an idea to put the perl6 specific types into binary. There
@@ -101,7 +102,8 @@ See [semantic versioning](http://semver.org/). Please note point 4. on
 that page: *Major version zero (0.y.z) is for initial development. Anything may
 change at any time. The public API should not be considered stable*.
 
-* 0.7.0 - Added BSON::Regex type.
+* 0.8.0 - Added BSON::Javascript
+* 0.7.0 - Added BSON::Regex type
 * 0.6.0 - Added DateTime type.
 * 0.5.5 - Big problems. Bugs fixed.
 * 0.5.4 - Double numbers better precision calculations

@@ -8,7 +8,8 @@ use BSON;
 # Test cases borrowed from
 # https://github.com/mongodb/mongo-python-driver/blob/master/test/test_bson.py
 
-my $b = BSON.new( );
+my BSON $b .= new();
+my Str $script = 'function(x){return x;}';
 
 my Hash $samples = {
 
@@ -77,23 +78,9 @@ my Hash $samples = {
                      ],
     },
 
-#`{{
-    '0x06 Undefined - deprecated' => {
-        decoded => { b => Mu.new(0x00) },
-        encoded => [ 0x09, 0x00, 0x00, 0x00,            # Total size
-                     0x06,                              # Undefined
-                     0x62, 0x00,                        # 'b' + 0
-                     0x00,                              # undef
-                     0x00                               # + 0
-                   ]
-    },
-}}
+# '0x06 Undefined - deprecated' => { },
 
-#`{{
-    '0x07 ObjectId' => {
-        # Tested in t/600-extended.t
-    }
-}}
+#`'0x07 ObjectId' => { Tested in t/600-extended.t },
 
     '0x08 Boolean "true"' => {
         'decoded' => { "true" => True },
@@ -116,7 +103,6 @@ my Hash $samples = {
                      ],
     },
 
-#`{{}}
     '0x09 Datetime' => {
         decoded => { t => DateTime.new('2015-02-18T11:08:00+0100') },
         encoded => [ 0x10, 0x00, 0x00, 0x00,            # 16 bytes
@@ -143,10 +129,27 @@ my Hash $samples = {
                        0x0B,                            # regex
                        0x74, 0x00,                      # 't' + 0
                        0x61, 0x62, 0x63, 0x00,          # /abc/
-                       0x69, 0x00,                       # i
+                       0x69, 0x00,                      # i
                        0x00                             # + 0
                      ],
     },
+
+# '0x0C DBPointer - deprecated' => { },
+
+    '0x0D Javascript' => {
+        'decoded' => { "t" => BSON::Javascript.new( :javascript($script)) },
+        'encoded' => [ 0x23, 0x00, 0x00, 0x00,          # 35 bytes
+                       0x0D,                            # javascript
+                       0x74, 0x00,                      # 't' + 0
+                       0x17, 0x00, 0x00, 0x00,          # 23 bytes js code + 1
+                       0x66, 0x75, 0x6e, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x28,
+                       0x78, 0x29, 0x7b, 0x72, 0x65, 0x74, 0x75, 0x72, 0x6e,
+                       0x20, 0x78, 0x3b, 0x7d, 0x00,    # UTF8 encoded Javascript
+                       0x00                             # + 0
+                     ],
+    },
+
+# '0x0E ? - deprecated' => { },
 
     '0x10 32-bit Integer' => {
         'decoded' => { "mike" => 100 },
@@ -199,6 +202,18 @@ for $samples.keys -> $key {
             #
             is @dec_kv[1].regex, @enc_kv[1].regex, [~] 'decode ', $key, ' Regex equal';
             is @dec_kv[1].options, @enc_kv[1].options, [~] 'decode ', $key, ' Options equal';
+        }
+
+        when '0x0D Javascript' {
+            my Hash $dec = $b.decode( Buf.new( $value<encoded> ));
+
+            my @dec_kv = $dec.kv;
+            my @enc_kv = $value<decoded>.kv;
+            is @dec_kv[0], @enc_kv[0], [~] 'decode ', $key, ' Keys equal';
+
+            # Must compare content because addresses are not same
+            #
+            is @dec_kv[1].javascript, @enc_kv[1].javascript, [~] 'decode ', $key, ' Javascript equal';
         }
 
         default {
