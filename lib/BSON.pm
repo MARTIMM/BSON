@@ -25,7 +25,7 @@ class X::BSON::ImProperUse is Exception {
 }
 
 
-class BSON:ver<0.8.0> {
+class BSON:ver<0.8.1> {
 
   method encode ( %h ) {
 
