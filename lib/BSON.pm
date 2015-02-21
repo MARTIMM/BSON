@@ -25,7 +25,7 @@ class X::BSON::ImProperUse is Exception {
 }
 
 
-class BSON:ver<0.8.2> {
+class BSON:ver<0.8.3> {
 
   method encode ( %h ) {
 
@@ -216,22 +216,33 @@ class BSON:ver<0.8.2> {
               # "\x0D" e_name string
               # "\x0F" e_name int32 string document
               #
-              if $p.value.has_scope {
-              
-                  my Buf $js = self._enc_string($p.value.javascript);
-                  my Buf $doc = self._enc_document($p.value.scope);
-                  return [~] Buf.new( 0x0F ),
-                             self._enc_e_name($p.key),
-                             self._enc_int32([+] $js.elems, $doc.elems, 4),
-                             $js, $doc
-                             ;
-              }
+              if $p.value.has_javascript {
 
+                  my Buf $js = self._enc_string($p.value.javascript);
+                  if $p.value.has_scope {
+
+                      my Buf $doc = self._enc_document($p.value.scope);
+                      return [~] Buf.new( 0x0F ),
+                                 self._enc_e_name($p.key),
+                                 self._enc_int32([+] $js.elems, $doc.elems, 4),
+                                 $js, $doc
+                                 ;
+                  }
+
+                  else {
+                      my Buf $js = self._enc_string($p.value.javascript);
+                      return [~] Buf.new( 0x0D ),
+                                 self._enc_e_name($p.key),
+                                 $js
+                                 ;
+                  }
+              }
+              
               else {
-                  return [~] Buf.new( 0x0D ),
-                             self._enc_e_name($p.key),
-                             self._enc_string($p.value.javascript)
-                             ;
+                  die X::BSON::ImProperUse.new( :operation('encode'),
+                                                :type('javascript 0x0D/0x0F'),
+                                                :emsg('cannot send empty code')
+                                              );
               }
           }
 
@@ -739,7 +750,7 @@ class BSON:ver<0.8.2> {
   # The (byte*) is zero or more UTF-8 encoded characters.
 
   method _enc_string ( Str $s ) {
-
+#say "CF: ", callframe(1).file, ', ', callframe(1).line;
       my $b = $s.encode('UTF-8');
       return self._enc_int32($b.bytes + 1) ~ $b ~ Buf.new(0x00);
   }
