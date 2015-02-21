@@ -25,7 +25,7 @@ class X::BSON::ImProperUse is Exception {
 }
 
 
-class BSON:ver<0.8.1> {
+class BSON:ver<0.8.2> {
 
   method encode ( %h ) {
 
@@ -214,16 +214,15 @@ class BSON:ver<0.8.1> {
           when BSON::Javascript {
               # Javascript code
               # "\x0D" e_name string
-              # "\x0F" e_name string document
+              # "\x0F" e_name int32 string document
               #
               if $p.value.has_scope {
               
                   my Buf $js = self._enc_string($p.value.javascript);
                   my Buf $doc = self._enc_document($p.value.scope);
-
                   return [~] Buf.new( 0x0F ),
                              self._enc_e_name($p.key),
-                             self._enc_int32($js.elems + $doc.elems),
+                             self._enc_int32([+] $js.elems, $doc.elems, 4),
                              $js, $doc
                              ;
               }
