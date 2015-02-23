@@ -180,10 +180,40 @@ my Hash $samples = {
 
     '0x10 32-bit Integer' => {
         'decoded' => { "mike" => 100 },
-        'encoded' => [ 0x0F, 0x00, 0x00, 0x00,          # 16 bytes
+        'encoded' => [ 0x0F, 0x00, 0x00, 0x00,          # 15 bytes
                        0x10,                            # 32 bits integer
                        0x6D, 0x69, 0x6B, 0x65, 0x00,    # 'mike' + 0
                        0x64, 0x00, 0x00, 0x00,          # 100
+                       0x00                             # + 0
+                     ],
+    },
+
+    '0x12 64-bit Integer' => {
+        'decoded' => { "mike" => -72057594037927935 },
+        'encoded' => [ 0x13, 0x00, 0x00, 0x00,          # 19 bytes
+                       0x12,                            # 64 bits integer
+                       0x6D, 0x69, 0x6B, 0x65, 0x00,    # 'mike' + 0
+                       0x01, 0x00 xx 6, 0xff,           # -72057594037927935
+                       0x00                             # + 0
+                     ],
+    },
+
+    '0x12 64-bit Integer, too small' => {
+        'decoded' => { "mike" => -72057594037927935 * 2**8 },
+        'encoded' => [ 0x13, 0x00, 0x00, 0x00,          # 19 bytes
+                       0x12,                            # 64 bits integer
+                       0x6D, 0x69, 0x6B, 0x65, 0x00,    # 'mike' + 0
+                       0x00, 0x01, 0x00 xx 6,           # ?
+                       0x00                             # + 0
+                     ],
+    },
+
+    '0x12 64-bit Integer, too large' => {
+        'decoded' => { "mike" => 0x7fffffff_ffffffff + 1 },
+        'encoded' => [ 0x13, 0x00, 0x00, 0x00,          # 19 bytes
+                       0x12,                            # 64 bits integer
+                       0x6D, 0x69, 0x6B, 0x65, 0x00,    # 'mike' + 0
+                       0x00 xx 7, 0x80,                 # ?
                        0x00                             # + 0
                      ],
     },
@@ -261,6 +291,12 @@ for $samples.keys -> $key {
                 $b.decode( Buf.new( $value<encoded>.list ) ),
                 $value<decoded>,
                 'decode ' ~ $key;
+        }
+    }
+
+    CATCH {
+        when X::BSON::ImProperUse {
+            is $_.type, 'integer 0x10/0x12', $_.message.substr(1);
         }
     }
 }

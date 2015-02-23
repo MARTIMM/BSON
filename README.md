@@ -43,7 +43,10 @@ This is perl6 version 2015.01-77-gd320f00 built on MoarVM version 2015.01-21-g4e
         Perl6           <=> BSON
     
     [x] Str             <=> UTF-8 string
-    [x] Int             <=> 32-bit Integer
+    [x] Int              => 32-bit Integer if -2147483646 < n < 2147483647
+                         => 64-bit Integer if -9,22337203685e+18 < n < 9,22337203685e+18
+                            Fails if larger/smaller with X::BSON::ImProperUse
+        Int             <=  32/64 bit integers.
     [x] Bool            <=> Boolean "true" / "false"
     [x] Buf             <=> Generic binary subtype
     [x] Array           <=> Array
@@ -55,7 +58,6 @@ This is perl6 version 2015.01-77-gd320f00 built on MoarVM version 2015.01-21-g4e
                             be implemented differently later.
     [ ] FatRat
     [ ] Rat
-    [ ] int64
     [ ] UUID
     [ ] MD5
     [x] DateTime        <=> int64 UTC datetime, seconds since January 1st 1970
@@ -81,26 +83,38 @@ Method ```.perl``` is available for easy debug.
 
 ## BUGS, KNOWN LIMITATIONS AND TODO
 
-* Big integers (int64). Perl 6 Int variables are integral numbers of arbitrary
-  size. This means that any integer can be stored as large or small as you like.
-  This also means that BSON or another package must introduce an Int32 and Int64
-  class while the standard type Int can be coded as a binary array.
 * Num is implemented but kind off emulated which makes it slower. However it was
   necessary to implement it because much information from the MongoDB server is
-  send back as a double like count() and list_databases(). Num needs test for
-  NaN.
+  send back as a double like count() and list_databases().
+* Num needs test for NaN.
 * Lack of other Perl 6 types support, this is directly related to not yet
   specified pack/unpack in Perl6.
 * Change die() statements in return with exception to notify caller and place
   further responsability there.
 * Tests needs to be extended to test larger documents. The failure in version
   0.5.4 could then be prevented.
+* Perl 6 Int variables are integral numbers of arbitrary size. This means that
+  any integer can be stored as large or small as you like. Int can be coded as
+  described in version 0.8.4 and when larger or smaller then maybe it is
+  possible the Int can be coded as a binary array with some type.
 
 ## CHANGELOG
 
 See [semantic versioning](http://semver.org/). Please note point 4. on
 that page: *Major version zero (0.y.z) is for initial development. Anything may
 change at any time. The public API should not be considered stable*.
+
+* 0.8.4 - Modification of Int translation.
+          Tests have shown that incrementing a 32bit integer can change into
+          64bit integers. 
+
+          So, to keep minimal number of bytes to represent an integer Int should
+          be translated to int32 when -2147483646 < n < 2147483647 and it should
+          be translated to int64 when -9,22337203685e+18 < n < 9,22337203685e+18
+          and should fail when otherwise.
+
+        - With these changes also some bugs are removed involving negative
+          numbers and int64 numbers are now handled.
 
 * 0.8.3 - Bugfix test on empty javascript objects
 * 0.8.2 - Bugfix Javascript type wrong size for javascript and scope 
