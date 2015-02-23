@@ -79,7 +79,14 @@ my Hash $samples = {
                      ],
     },
 
-# '0x06 Undefined - deprecated' => { },
+    '0x06 Undefined - deprecated' => {
+#        decoded => { u => '?'}
+        encoded => [ 0x08, 0x00, 0x00, 0x00,            # 8 bytes
+                     0x06,                              # Undefined
+                     0x75, 0x00,                        # 'u' + 0
+                     0x00                               # + 0
+                   ],
+    },
 
 #`'0x07 ObjectId' => { Tested in t/600-extended.t },
 
@@ -135,7 +142,17 @@ my Hash $samples = {
                      ],
     },
 
-# '0x0C DBPointer - deprecated' => { },
+    '0x0C DBPointer - deprecated' => {
+#        decoded => { u => '?'}
+        encoded => [ 0x0D, 0x00, 0x00, 0x00,            # 14 bytes
+                     0x0C,                              # DBPointer
+                     0x75, 0x00,                        # 'u' + 0
+                     0x02, 0x00 xx 3,                   # length of string + 1
+                     0x74, 0x00,                        # 't' + 0
+                     0x00                               # + 0
+                   ],
+    },
+
 
     '0x0D Javascript' => {
         'decoded' => { "t" => BSON::Javascript.new( :javascript($script)) },
@@ -220,12 +237,15 @@ my Hash $samples = {
 };
 
 for $samples.keys -> $key {
-    my $value = $samples{$key};
-    my @enc = $b.encode( $value<decoded> ).list;
-    is_deeply @enc, $value<encoded>, 'encode ' ~ $key;
+#say "Do $key";
 
-    given $key {
+    my $value = $samples{$key};
+    if $value<decoded>:exists {
+        my @enc = $b.encode( $value<decoded> ).list;
+        is_deeply @enc, $value<encoded>, 'encode ' ~ $key;
+    }
     
+    given $key {
         when '0x09 Datetime' {
             my Hash $dec = $b.decode( Buf.new( $value<encoded> ));
 
@@ -295,8 +315,17 @@ for $samples.keys -> $key {
     }
 
     CATCH {
+        my $msg = $_.message;
+        my $type = $_.type;
+        $msg ~~ s:g/\n//;
+
+        when X::BSON::Deprecated {
+            ok $_.type ~~ m/Undefined \(0x06\)
+                           || DPPointer \(0x0C\)/, $msg;
+        }
+
         when X::BSON::ImProperUse {
-            is $_.type, 'integer 0x10/0x12', $_.message.substr(1);
+            is $_.type, 'integer 0x10/0x12', $msg;
         }
     }
 }

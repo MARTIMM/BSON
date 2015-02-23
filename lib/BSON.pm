@@ -8,9 +8,7 @@ class X::BSON::Deprecated is Exception {
   has $.type;                           # Type to encode/decode
 
   method message () {
-      return [~] "\n$!operation\() error:\n",
-                 "  Type $!type is deprecated by BSON specification\n"
-                 ;
+      return "\n$!operation\() error: BSON type $!type is deprecated\n";
   }
 }
 
@@ -264,7 +262,6 @@ class BSON:ver<0.8.4> {
               # "\x10" e_name int32
               # '\x12' e_name int64
 
-#              if -2147483646 < $p.value < 2147483647 {
               if -0xffffffff < $p.value < 0xffffffff {
                   return [~] Buf.new( 0x10 ),
                              self._enc_e_name($p.key),
@@ -451,7 +448,7 @@ class BSON:ver<0.8.4> {
               self._dec_string($a);
               $a.splice( 0, 12);
               die X::BSON::Deprecated.new( :operation('decode'),
-                                           :type('Undefined(0x06)')
+                                           :type('DPPointer(0x0C)')
                                          );
           }
 
@@ -510,6 +507,19 @@ class BSON:ver<0.8.4> {
               #
               return self._dec_e_name($a) => self._dec_int64($a);
           }
+#`{{
+          when 0x7F {
+              # Max key.
+              # "\x7F" e_name
+          }
+}}
+
+#`{{
+          when 0xFF {
+              # Min key.
+              # "\xFF" e_name
+          }
+}}
 
           default {
 
