@@ -324,35 +324,35 @@ class BSON:ver<0.8.4> {
           when 0x01 {
               # Double precision
               # "\x01" e_name Num
-
+              #
               return self._dec_e_name( $a ) => self._dec_double( $a );
           }
 
           when 0x02 {
               # UTF-8 string
               # "\x02" e_name string
-
+              #
               return self._dec_e_name( $a ) => self._dec_string( $a );
           }
 
           when 0x03 {
               # Embedded document
               # "\x03" e_name document
-
+              #
               return self._dec_e_name( $a )  => self._dec_document( $a );
           }
 
           when 0x04 {
               # Array
               # "\x04" e_name document
-
+              #
               # The document for an array is a normal BSON document
               # with integer values for the keys,
               # starting with 0 and continuing sequentially.
               # For example, the array ['red', 'blue']
               # would be encoded as the document {'0': 'red', '1': 'blue'}.
               # The keys must be in ascending numerical order.
-
+              #
               return self._dec_e_name( $a ) => [ self._dec_document( $a ).values ];
           }
 
@@ -360,7 +360,7 @@ class BSON:ver<0.8.4> {
               # Binary
               # "\x05 e_name int32 subtype byte*
               # subtype = byte \x00 .. \x05, \x80
-
+              #
               return self._dec_e_name( $a ) => self._dec_binary( $a );
           }
 
@@ -379,7 +379,7 @@ class BSON:ver<0.8.4> {
           when 0x07 {
               # ObjectId
               # "\x07" e_name (byte*12)
-
+              #
               my $n = self._dec_e_name( $a );
 
               my @a;
@@ -488,7 +488,7 @@ class BSON:ver<0.8.4> {
           when 0x10 {
               # 32-bit Integer
               # "\x10" e_name int32
-
+              #
               return self._dec_e_name($a) => self._dec_int32($a);
           }
 #`{{
