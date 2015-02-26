@@ -2,6 +2,7 @@ use v6;
 use BSON::ObjectId;
 use BSON::Regex;
 use BSON::Javascript;
+use BSON::Binary;
 
 class X::BSON::Deprecated is Exception {
   has $.operation;                      # Operation encode, decode
@@ -9,6 +10,15 @@ class X::BSON::Deprecated is Exception {
 
   method message () {
       return "\n$!operation\() error: BSON type $!type is deprecated\n";
+  }
+}
+
+class X::BSON::NYS is Exception {
+  has $.operation;                      # Operation encode, decode
+  has $.type;                           # Type to encode/decode
+
+  method message () {
+      return "\n$!operation\() error: BSON type $!type is not (yet) supported\n";
   }
 }
 
@@ -22,8 +32,7 @@ class X::BSON::ImProperUse is Exception {
   }
 }
 
-
-class BSON:ver<0.8.4> {
+class BSON:ver<0.9.0> {
 
   method encode ( %h ) {
 
@@ -127,14 +136,14 @@ class BSON:ver<0.8.4> {
               return Buf.new( 0x04 ) ~  self._enc_e_name( $p.key ) ~ self._enc_document( %h );
           }
 
-          when Buf {
+          when BSON::Binary {
               # Binary data
               # "\x05" e_name int32 subtype byte*
               # subtype is '\x00' for the moment (Generic binary subtype)
               #
               return [~] Buf.new( 0x05 ),
-                         self._enc_e_name( $p.key ),
-                         self._enc_binary( 0x00, $_);
+                         self._enc_e_name($p.key),
+                         ._enc_binary(self);
           }
 
 #`{{
@@ -296,13 +305,19 @@ class BSON:ver<0.8.4> {
           }
 }}
 
-          default {
-
-              die 'Sorry, not yet supported type: ' ~ .WHAT;
+          when Buf {
+              die X::BSON::ImProperUse.new(
+                  :operation('encode'),
+                  :type('Binary Buf'),
+                  :emsg('Buf not supported, please use BSON::Binary')
+              );
           }
 
+          default {
+                die X::BSON::NYS.new( :operation('encode'), :type($_.WHAT));
+#              die "Sorry, not yet supported type: $_"; # ~ .WHAT;
+          }
       }
-
   }
 
   # Test elements see http://bsonspec.org/spec.html
@@ -361,7 +376,10 @@ class BSON:ver<0.8.4> {
               # "\x05 e_name int32 subtype byte*
               # subtype = byte \x00 .. \x05, \x80
               #
-              return self._dec_e_name( $a ) => self._dec_binary( $a );
+              my $name = self._dec_e_name($a);
+              my BSON::Binary $bin_obj .= new;
+              $bin_obj._dec_binary( self, $a);
+              return $name => $bin_obj;
           }
 
           when 0x06 {
@@ -370,7 +388,7 @@ class BSON:ver<0.8.4> {
               #
               # Must drop some bytes from array.
               #
-              self._dec_e_name( $a );
+              self._dec_e_name($a);
               die X::BSON::Deprecated.new( :operation('decode'),
                                            :type('Undefined(0x06)')
                                          );
@@ -396,14 +414,14 @@ class BSON:ver<0.8.4> {
                   when 0x01 {
                       # Boolean "true"
                       # "\x08" e_name "\x01
-
+                      #
                       return $n => Bool::True;
                   }
 
                   when 0x00 {
                       # Boolean "false"
                       # "\x08" e_name "\x00
-
+                      #
                       return $n => Bool::False;
                   }
 
@@ -526,15 +544,17 @@ class BSON:ver<0.8.4> {
               # Number of bytes must be taken from $a otherwise a parse
               # error will occur later on.
               #
-              return X::NYI.new(feature => "Type $_")
-  #            die 'Sorry, not yet supported type: ' ~ $_;
+
+              die X::BSON::NYS.new( :operation('encode'),
+                                    :type('code ' ~ $_.fmt('%02x'))
+                                  );
+#              return X::NYI.new(feature => "Type $_");
+#              die 'Sorry, not yet supported type: ' ~ $_;
           }
-
       }
-
   }
 
-
+#`{{
   #-----------------------------------------------------------------------------
   # Binary buffer
   #
@@ -592,7 +612,7 @@ class BSON:ver<0.8.4> {
       # Just return part of the array.
       return Buf.new( $a.splice( 0, $lng));
   }
-
+}}
 
 
   #-----------------------------------------------------------------------------
