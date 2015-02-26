@@ -79,6 +79,10 @@ my Hash $samples = {
 #                     ],
     },
 
+    '0x?? Rat' => {
+        'decoded' => { b => 0.4 },
+    },
+
     '0x05 Binary' => {
 #        'decoded' => { b => Buf.new(0..4) },
         'decoded' => { b => BSON::Binary.new().raw(Buf.new(0..4)) },
@@ -340,6 +344,7 @@ for $samples.keys -> $key {
         my $msg = $_.message;
         my $type = $_.type;
         $msg ~~ s:g/\n//;
+#say "M: $msg";
 
         when X::BSON::Deprecated {
             ok $_.type ~~ m/Undefined \(0x06\)
@@ -352,6 +357,11 @@ for $samples.keys -> $key {
             ok $_.type ~~ m/integer \s* 0x10\/0x12
                             || Binary \s* Buf
                            /,
+               $msg;
+        }
+
+        when X::BSON::NYS {
+            ok $_.type ~~ m/unknown/,
                $msg;
         }
     }

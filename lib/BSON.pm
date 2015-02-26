@@ -18,7 +18,7 @@ class X::BSON::NYS is Exception {
   has $.type;                           # Type to encode/decode
 
   method message () {
-      return "\n$!operation\() error: BSON type $!type is not (yet) supported\n";
+      return "\n$!operation\() error: BSON type '$!type' is not (yet) supported\n";
   }
 }
 
@@ -314,7 +314,7 @@ class BSON:ver<0.9.0> {
           }
 
           default {
-                die X::BSON::NYS.new( :operation('encode'), :type($_.WHAT));
+                die X::BSON::NYS.new( :operation('encode'), :type('unknown'));
 #              die "Sorry, not yet supported type: $_"; # ~ .WHAT;
           }
       }
@@ -399,10 +399,8 @@ class BSON:ver<0.9.0> {
               # "\x07" e_name (byte*12)
               #
               my $n = self._dec_e_name( $a );
-
-              my @a;
-              @a.push( $a.shift ) for ^ 12;
-
+              my @a = $a.splice( 0, 12);
+              
               return $n => BSON::ObjectId.new( Buf.new( @a ) );
           }
 
