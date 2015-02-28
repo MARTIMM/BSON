@@ -13,6 +13,7 @@ class MyThing1 does BSON::Encodable {
 
 #  $bson_code = 0x01;
 #say "MT1: $bson_code";
+  $BSON::Encodable::bson_code = 0x01;
 
   method encode( --> Buf ) {
       return [~] self._encode_code,
@@ -53,6 +54,7 @@ my MyThing1 $m .= new( :bson_code(0x01), :key_name('test'), :key_data(10));
 isa_ok $m, 'MyThing1', 'Is a thing';
 #ok $m.^does(BSON::Encodable), 'Does BSON::Encodable role';
 
+#`{{
 my Buf $bdata = $m.encode();
 is_deeply $bdata,
           Buf.new( 0x01,                                # BSON code
@@ -64,6 +66,7 @@ is_deeply $bdata,
 my MyThing1 $m2 .= new;
 $m2.decode($bdata.list);
 is $m2.key_data, $m.key_data, 'Compare item after encode decode';
+}}
 
 #-------------------------------------------------------------------------------
 # Cleanup
