@@ -22,7 +22,7 @@ class X::BSON::Encodable is Exception {
 #
 role BSON::Encodable is BSON {
 
-  has Int $.bson_code is rw;
+  has Int $.bson_code;
   has Str $.key_name;
   has Any $.key_data;
 
