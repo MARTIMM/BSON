@@ -19,8 +19,34 @@ role BSON::CString_Decoder {
 
 #-------------------------------------------------------------------------------
 #
+role BSON::Int32_Decoder {
+  method decode_int32 ( Array $a --> Int ) {
+      my int $ni = $a.shift +| $a.shift +< 0x08 +|
+                   $a.shift +< 0x10 +| $a.shift +< 0x18
+                   ;
+
+      # Test if most significant bit is set. If so, calculate two's complement
+      # negative number.
+      # Prefix +^: Coerces the argument to Int and does a bitwise negation on
+      # the result, assuming two's complement. (See
+      # http://doc.perl6.org/language/operators^)
+      # Infix +^ :Coerces both arguments to Int and does a bitwise XOR
+      # (exclusive OR) operation.
+      #
+      $ni = (0xffffffff +& (0xffffffff+^$ni) +1) * -1  if $ni +& 0x80000000;
+
+      return $ni;
+
+# Original method goes wrong on negative numbers. Also adding might be slower
+# than the bit operations. 
+# return [+] $a.shift, $a.shift +< 0x08, $a.shift +< 0x10, $a.shift +< 0x18;
+  }
+}
+
+#-------------------------------------------------------------------------------
+#
 role BSON::Int64_Decoder {
-  method decode_int64 ( Array $a ) {
+  method decode_int64 ( Array $a --> Int ) {
       my int $ni = $a.shift +| $a.shift +< 0x08 +|
                    $a.shift +< 0x10 +| $a.shift +< 0x18 +|
                    $a.shift +< 0x20 +| $a.shift +< 0x28 +|
@@ -33,7 +59,7 @@ role BSON::Int64_Decoder {
 #-------------------------------------------------------------------------------
 #
 role BSON::Double_Decoder {
-  method decode_double ( Array $a ) {
+  method decode_double ( Array $a --> Num ) {
 
       # Test special cases
       #
