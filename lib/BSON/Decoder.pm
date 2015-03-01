@@ -2,61 +2,17 @@
 #
 use v6;
 
-#-------------------------------------------------------------------------------
-#
-role BSON::CString_Decoder {
-  method decode_cstring ( Array $a ) {
+class X::BSON::Decoding is Exception {
+  has Str $.type;                       # Type to encode/decode
+  has Str $.emsg;                       # Error message
 
-      my @a;
-      while $a[ 0 ] !~~ 0x00 {
-          @a.push( $a.shift );
-      }
-
-      die 'Parse error' unless $a.shift ~~ 0x00;
-      return Buf.new( @a ).decode();
+  method message () {
+      return "\ndecode\() error: BSON type $!type, $!emsg\n";
   }
 }
 
 #-------------------------------------------------------------------------------
-#
-role BSON::Int32_Decoder {
-  method decode_int32 ( Array $a --> Int ) {
-      my int $ni = $a.shift +| $a.shift +< 0x08 +|
-                   $a.shift +< 0x10 +| $a.shift +< 0x18
-                   ;
-
-      # Test if most significant bit is set. If so, calculate two's complement
-      # negative number.
-      # Prefix +^: Coerces the argument to Int and does a bitwise negation on
-      # the result, assuming two's complement. (See
-      # http://doc.perl6.org/language/operators^)
-      # Infix +^ :Coerces both arguments to Int and does a bitwise XOR
-      # (exclusive OR) operation.
-      #
-      $ni = (0xffffffff +& (0xffffffff+^$ni) +1) * -1  if $ni +& 0x80000000;
-
-      return $ni;
-
-# Original method goes wrong on negative numbers. Also adding might be slower
-# than the bit operations. 
-# return [+] $a.shift, $a.shift +< 0x08, $a.shift +< 0x10, $a.shift +< 0x18;
-  }
-}
-
-#-------------------------------------------------------------------------------
-#
-role BSON::Int64_Decoder {
-  method decode_int64 ( Array $a --> Int ) {
-      my int $ni = $a.shift +| $a.shift +< 0x08 +|
-                   $a.shift +< 0x10 +| $a.shift +< 0x18 +|
-                   $a.shift +< 0x20 +| $a.shift +< 0x28 +|
-                   $a.shift +< 0x30 +| $a.shift +< 0x38
-                   ;
-      return $ni;
-  }
-}
-
-#-------------------------------------------------------------------------------
+# Double or 64 bit floating point.
 #
 role BSON::Double_Decoder {
   method decode_double ( Array $a --> Num ) {
@@ -126,13 +82,93 @@ role BSON::Double_Decoder {
 }
 
 #-------------------------------------------------------------------------------
+# String
+#
+role BSON::String_Decoder {
+  method decode_string ( Array $a --> Str ) {
+
+      my $i = self.decode_int32($a);
+
+      my @a;
+      @a.push( $a.splice( 0, $i-1) );
+
+      # Throw error if next byte isn't a 0 byte
+      #
+      die X::BSON::Decoding.new( :type('String'), :emsg('Parse error'))
+          unless $a.shift ~~ 0x00;
+
+      return Buf.new(@a).decode();
+  }
+}
+
+#-------------------------------------------------------------------------------
+#
+role BSON::CString_Decoder {
+  method decode_cstring ( Array $a --> Str ) {
+
+      my @a;
+      while $a[ 0 ] !~~ 0x00 {
+          @a.push( $a.shift );
+      }
+
+      # Throw error if next byte isn't a 0 byte
+      #
+      die X::BSON::Decoding.new( :type('String'), :emsg('Parse error'))
+          unless $a.shift ~~ 0x00;
+
+      return Buf.new( @a ).decode();
+  }
+}
+
+#-------------------------------------------------------------------------------
+#
+role BSON::Int32_Decoder {
+  method decode_int32 ( Array $a --> Int ) {
+      my Int $ni = $a.shift +| $a.shift +< 0x08 +|
+                   $a.shift +< 0x10 +| $a.shift +< 0x18
+                   ;
+
+      # Test if most significant bit is set. If so, calculate two's complement
+      # negative number.
+      # Prefix +^: Coerces the argument to Int and does a bitwise negation on
+      # the result, assuming two's complement. (See
+      # http://doc.perl6.org/language/operators^)
+      # Infix +^ :Coerces both arguments to Int and does a bitwise XOR
+      # (exclusive OR) operation.
+      #
+      $ni = (0xffffffff +& (0xffffffff+^$ni) +1) * -1  if $ni +& 0x80000000;
+
+      return $ni;
+  }
+}
+
+#-------------------------------------------------------------------------------
+#
+role BSON::Int64_Decoder {
+  method decode_int64 ( Array $a --> Int ) {
+      my int $ni = $a.shift +| $a.shift +< 0x08 +|
+                   $a.shift +< 0x10 +| $a.shift +< 0x18 +|
+                   $a.shift +< 0x20 +| $a.shift +< 0x28 +|
+                   $a.shift +< 0x30 +| $a.shift +< 0x38
+                   ;
+
+      # Don't have to test for sign bit because int(=64) type will use
+      # it as such.
+      #
+      return $ni;
+  }
+}
+#-------------------------------------------------------------------------------
 #
 class BSON::Decoder {
-  also does BSON::CString_Decoder;
-  also does BSON::Int64_Decoder;
   also does BSON::Double_Decoder;
+  also does BSON::String_Decoder;
+  also does BSON::CString_Decoder;
+  also does BSON::Int32_Decoder;
+  also does BSON::Int64_Decoder;
 
   constant $DOUBLE = 0x01;
+  constant $STRING = 0x02;
 
   has Int $.code;
   has Str $.key;
@@ -146,9 +182,20 @@ class BSON::Decoder {
 
       when $DOUBLE {
         $!value = self.decode_double($a);
-#say "V: $!value";
+      }
+      
+      when $STRING {
+        $!value = self.decode_string($a);
+      }
+
+      default {
+        die X::BSON::Decoding.new(
+            :emsg('Not (yet) implemented'),
+            :type( [~] "Unknown(", $!code.fmt('0x%02X'), ')' )
+        );
       }
     }
+#say "V: $!value";
   }
 
   method decode_code ( Array $a ) {
