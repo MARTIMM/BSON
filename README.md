@@ -158,7 +158,7 @@ change at any time. The public API should not be considered stable*.
 * 0.2 .. 0.3 Something happened no doubt ;-).
 * 0.1 basic Proof-of-concept working on Rakudo 2011.07.
 
-##LICENSE
+## LICENSE
 
 Released under [Artistic License 2.0](http://www.perlfoundation.org/artistic_license_2_0).
 
