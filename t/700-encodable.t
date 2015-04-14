@@ -3,28 +3,8 @@ use Test;
 use BSON::Encodable;
 
 #-------------------------------------------------------------------------------
-# Forgotten code test
+# Forgotten code test removed. Trapped in compile time now.
 #
-if 1 {
-  class MyThing0 does BSON::Encodable {
-
-    method encode( --> Buf ) { }
-    method decode( List $b ) { }
-  }
-
-  my MyThing0 $m0 .= new( :key_name('t'), :key_data(10));
-  say "m0: {$m0.^name}";
-
-  CATCH {
-    when X::BSON::Encodable {
-      my $emsg = $_.emsg;
-      $emsg ~~ s:g/\n+//;
-
-      ok $_.type ~~ m/MyThing0/, 'Thrown object';
-      is $emsg, "Code - out of bounds, must be positive 8 bit int", $emsg;
-    }
-  }
-}
 
 #-------------------------------------------------------------------------------
 # Code too large test
@@ -59,7 +39,7 @@ if 1 {
 # 
 class MyThing2 does BSON::Encodable {
 
-  multi method new( :$key_name, :$key_data --> MyThing2 ) {
+  multi method new( Str :$key_name, :$key_data --> MyThing2 ) {
 
       return self.bless( :bson_code(0x01), :$key_name, :$key_data);
   }
