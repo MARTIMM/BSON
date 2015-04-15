@@ -1,5 +1,5 @@
 use v6;
-use BSON;
+#use BSON;
 
 class X::BSON::Encodable is Exception {
   has $.operation;                      # Operation encode, decode or other
@@ -20,55 +20,147 @@ class X::BSON::Encodable is Exception {
 #
 # Role to encode to and/or decode from a BSON representation.
 #
-role BSON::Encodable is BSON {
+#role BSON::Encodable is BSON {
+role BSON::Encodable {
 
   has Int $.bson_code;
   has Str $.key_name;
   has Any $.key_data;
 
   submethod BUILD ( Int :$bson_code!, Str :$key_name, :$key_data ) {
-      my $code = $bson_code;
-      if !?$bson_code or $bson_code < 0x00 or $bson_code > 0xFF {
-          die X::BSON::Encodable.new(
-              :operation('bson_code'),
-              :type(self.^name),
-              :emsg("Code $code out of bounds, must be positive 8 bit int")
-          )
-      }
+    my $code = $bson_code;
+    if !?$bson_code or $bson_code < 0x00 or $bson_code > 0xFF {
+      die X::BSON::Encodable.new(
+          :operation('bson_code'),
+          :type(self.^name),
+          :emsg("Code $code out of bounds, must be positive 8 bit int")
+      )
+    }
 
-      $!bson_code = $bson_code;
-      $!key_name = $key_name if ?$key_name;
-      $!key_data = $key_data if ?$key_data;
+    $!bson_code = $bson_code;
+    $!key_name = $key_name if ?$key_name;
+    $!key_data = $key_data if ?$key_data;
   }
 
-  # Encode internal data to a binary buffer
+  #-----------------------------------------------------------------------------
+  # Basic encoding functions
+  #
+
+  # Abstract method to encode internal data to a binary buffer
   #
   method encode( --> Buf ) { ... }
 
-  # Decode a binary buffer to internal data.
+
+
+  # Encode bson code
+  #
+  method !encode_code ( --> Buf ) {
+
+    return Buf.new($!bson_code);
+  }
+
+  # Encode key
+  #
+  method !encode_key ( --> Buf ) {
+  
+    return self!enc_e_name($!key_name);
+  }
+
+  method !enc_e_name ( Str $s --> Buf ) {
+
+    return self!enc_cstring($s);
+  }
+
+  method !enc_cstring ( Str $s --> Buf ) {
+
+    die "Forbidden 0x00 sequence in $s" if $s ~~ /\x00/;
+
+    return $s.encode() ~ Buf.new(0x00);
+  }
+
+  # string ::= int32 (byte*) "\x00"
+  #
+  method !enc_string ( Str $s --> Buf ) {
+#say "CF: ", callframe(1).file, ', ', callframe(1).line;
+    my $b = $s.encode('UTF-8');
+    return self!enc_int32($b.bytes + 1) ~ $b ~ Buf.new(0x00);
+  }
+
+  method !enc_int32 ( Int $i #`{{is copy}} ) {
+    my int $ni = $i;      
+    return Buf.new( $ni +& 0xFF, ($ni +> 0x08) +& 0xFF,
+                    ($ni +> 0x10) +& 0xFF, ($ni +> 0x18) +& 0xFF
+                  );
+  }
+  
+
+
+
+
+  #-----------------------------------------------------------------------------
+  # Basic decoding functions
+  #
+
+  # Abstract method to decode a binary buffer to internal data.
   #
   method decode( List $b ) { ... }
 
-
-
-  method _encode_code ( --> Buf ) {
-
-      return Buf.new($!bson_code);
+  method !decode_code ( $b ) {
+  
+    $!bson_code = $b.shift;
   }
 
-  method _encode_key ( --> Buf ) {
+  method !decode_key ( $b ) {
   
-      return self._enc_e_name($!key_name);
+    $!key_name = self!dec_e_name( $b );
   }
 
-  method _decode_code ( $b ) {
-  
-      $!bson_code = $b.shift;
+  method !dec_e_name ( Array $a ) {
+
+    return self!dec_cstring( $a );
   }
 
-  method _decode_key ( $b ) {
-  
-      $!key_name = self._dec_e_name( $b );
+  method !dec_cstring ( Array $a ) {
+
+    my @a;
+    while $a[ 0 ] !~~ 0x00 {
+      @a.push( $a.shift );
+    }
+
+    die 'Parse error' unless $a.shift ~~ 0x00;
+    return Buf.new( @a ).decode();
+  }
+
+  # string ::= int32 (byte*) "\x00"
+  #
+  method !dec_string ( Array $a ) {
+
+    my $i = self!dec_int32( $a );
+
+    my @a;
+    @a.push( $a.shift ) for ^ ( $i - 1 );
+
+    die 'Parse error' unless $a.shift ~~ 0x00;
+
+    return Buf.new( @a ).decode( );
+  }
+
+  method !dec_int32 ( Array $a --> Int ) {
+    my int $ni = $a.shift +| $a.shift +< 0x08 +|
+                 $a.shift +< 0x10 +| $a.shift +< 0x18
+                 ;
+
+    # Test if most significant bit is set. If so, calculate two's complement
+    # negative number.
+    # Prefix +^: Coerces the argument to Int and does a bitwise negation on
+    # the result, assuming two's complement. (See
+    # http://doc.perl6.org/language/operators^)
+    # Infix +^ :Coerces both arguments to Int and does a bitwise XOR
+    # (exclusive OR) operation.
+    #
+    $ni = (0xffffffff +& (0xffffffff+^$ni) +1) * -1  if $ni +& 0x80000000;
+
+    return $ni;
   }
 }
 
