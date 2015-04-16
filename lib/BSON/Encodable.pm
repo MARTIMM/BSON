@@ -23,9 +23,9 @@ class X::BSON::Encodable is Exception {
 #role BSON::Encodable is BSON {
 role BSON::Encodable {
 
-  has Int $.bson_code;
-  has Str $.key_name;
-  has Any $.key_data;
+  has Int $!bson_code;
+  has Str $!key_name;
+  has Any $.key_data is rw;
 
   submethod BUILD ( Int :$bson_code!, Str :$key_name, :$key_data ) {
     my $code = $bson_code;
@@ -86,14 +86,40 @@ role BSON::Encodable {
     return self!enc_int32($b.bytes + 1) ~ $b ~ Buf.new(0x00);
   }
 
+  # 4 bytes (32-bit signed integer)
+  #
   method !enc_int32 ( Int $i #`{{is copy}} ) {
     my int $ni = $i;      
     return Buf.new( $ni +& 0xFF, ($ni +> 0x08) +& 0xFF,
                     ($ni +> 0x10) +& 0xFF, ($ni +> 0x18) +& 0xFF
                   );
+# Original method goes wrong on negative numbers. Also modulo operations are
+# slower than the bit operations.
+# return Buf.new( $i % 0x100, $i +> 0x08 % 0x100, $i +> 0x10 % 0x100, $i +> 0x18 % 0x100 );
   }
   
+  # 8 bytes (64-bit int)
+  #
+  method !enc_int64 ( Int $i ) {
+    # No tests for too large/small numbers because it is called from
+    # _enc_element normally where it is checked
+    #
+    my int $ni = $i;
+    return Buf.new( $ni +& 0xFF, ($ni +> 0x08) +& 0xFF,
+                    ($ni +> 0x10) +& 0xFF, ($ni +> 0x18) +& 0xFF,
+                    ($ni +> 0x20) +& 0xFF, ($ni +> 0x28) +& 0xFF,
+                    ($ni +> 0x30) +& 0xFF, ($ni +> 0x38) +& 0xFF
+                  );
 
+# Original method goes wrong on negative numbers. Also modulo operations are
+# slower than the bit operations.
+#
+#return Buf.new( $i % 0x100, $i +> 0x08 % 0x100, $i +> 0x10 % 0x100,
+#                $i +> 0x18 % 0x100, $i +> 0x20 % 0x100,
+#                $i +> 0x28 % 0x100, $i +> 0x30 % 0x100,
+#                $i +> 0x38 % 0x100
+#              );
+  }
 
 
 
@@ -161,6 +187,28 @@ role BSON::Encodable {
     $ni = (0xffffffff +& (0xffffffff+^$ni) +1) * -1  if $ni +& 0x80000000;
 
     return $ni;
+
+# Original method goes wrong on negative numbers. Also adding might be slower
+# than the bit operations. 
+# return [+] $a.shift, $a.shift +< 0x08, $a.shift +< 0x10, $a.shift +< 0x18;
+  }
+
+  # 8 bytes (64-bit int)
+  #
+  method !dec_int64 ( Array $a ) {
+    my int $ni = $a.shift +| $a.shift +< 0x08 +|
+                 $a.shift +< 0x10 +| $a.shift +< 0x18 +|
+                 $a.shift +< 0x20 +| $a.shift +< 0x28 +|
+                 $a.shift +< 0x30 +| $a.shift +< 0x38
+                 ;
+    return $ni;
+
+# Original method goes wrong on negative numbers. Also adding might be slower
+# than the bit operations. 
+#return [+] $a.shift, $a.shift +< 0x08, $a.shift +< 0x10, $a.shift +< 0x18
+#         , $a.shift +< 0x20, $a.shift +< 0x28, $a.shift +< 0x30
+#         , $a.shift +< 0x38
+#         ;
   }
 }
 

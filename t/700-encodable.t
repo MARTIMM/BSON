@@ -1,6 +1,7 @@
 use v6;
 use Test;
 use BSON::Encodable;
+use BSON::Double;
 
 #-------------------------------------------------------------------------------
 # Forgotten code test
@@ -103,6 +104,18 @@ my MyThing2 $m2 .= new;
 $m2.decode($bdata.list);
 is $m2.key_data, $m.key_data, 'Compare item after encode decode';
 
+
+#-------------------------------------------------------------------------------
+# Test BSON::Double.
+# 
+my BSON::Double $double .= new( :key_name('var1'));
+
+my Buf $b = Buf.new( 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0xD5, 0x3F);
+my Num $r1 = $double.decode($b.list);
+$double.key_data = $r1;
+my Buf $r2 = $double.encode;
+
+say "R1/2: $r1, ", $r2;
 
 #-------------------------------------------------------------------------------
 # Cleanup
