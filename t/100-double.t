@@ -40,6 +40,15 @@ $br = $bson._enc_double($v);
 #say "BR: ", $br;
 is_deeply $br, $b, "$v after encode";
 
+
+$b = Buf.new( 0xd7, 0xa3, 0x70, 0x3d, 0x0a, 0x6b, 0x69, 0xc0);
+#say "B: ", $b;
+$v = $bson._dec_double($b.list);
+#say " -> $v";
+$br = $bson._enc_double($v);
+#say "BR: ", $br;
+is_deeply $br, $b, "$v after encode";
+
 #-------------------------------------------------------------------------------
 # Test special cases
 #
@@ -52,26 +61,26 @@ $b = Buf.new( 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00);
 $v = $bson._dec_double($b.list);
 is $v, 0, 'Result is 0';
 $br = $bson._enc_double($v);
-is_deeply $br, $b, "$v after encode";
+is_deeply $br, $b, "special case $v after encode";
 
 $b = Buf.new( 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00);
 $v = $bson._dec_double($b.list);
 is $v, Num.new(-0), 'Result is -0';
 $br = $bson._enc_double($v);
-is_deeply $br, Buf.new(0 xx 8), "-0 not recognizable and becomes 0";
+is_deeply $br, Buf.new(0 xx 8), "special case -0 not recognizable and becomes 0";
 
 
 $b = Buf.new( 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xF0, 0x7F);
 $v = $bson._dec_double($b.list);
 is $v, Inf, 'Result is Infinite';
 $br = $bson._enc_double($v);
-is_deeply $br, $b, "$v after encode";
+is_deeply $br, $b, "special case $v after encode";
 
 $b = Buf.new( 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xF0, 0xFF);
 $v = $bson._dec_double($b.list);
 is $v, -Inf, 'Result is minus Infinite';
 $br = $bson._enc_double($v);
-is_deeply $br, $b, "$v after encode";
+is_deeply $br, $b, "special case $v after encode";
 
 #-------------------------------------------------------------------------------
 # Cleanup
