@@ -27,7 +27,7 @@ role BSON::Encodable {
   has Str $!key_name;
   has Any $.key_data is rw;
 
-  submethod BUILD ( Int :$bson_code!, Str :$key_name, :$key_data ) {
+  submethod X_BUILD ( Int :$bson_code!, Str :$key_name, :$key_data ) {
     my $code = $bson_code;
     if !?$bson_code or $bson_code < 0x00 or $bson_code > 0xFF {
       die X::BSON::Encodable.new(

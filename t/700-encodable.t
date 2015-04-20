@@ -6,7 +6,7 @@ use BSON::Double;
 #-------------------------------------------------------------------------------
 # Forgotten code test
 #
-if 1 {
+if 0 {
   class MyThing0 does BSON::Encodable {
 
     multi method new( Str :$key_name, :$key_data --> MyThing0 ) {
@@ -34,7 +34,7 @@ if 1 {
 #-------------------------------------------------------------------------------
 # Code too large test
 #
-if 1 {
+if 0 {
   class MyThing1 does BSON::Encodable {
 
     multi method new( Str :$key_name, :$key_data --> MyThing1 ) {
@@ -88,10 +88,10 @@ class MyThing2 does BSON::Encodable {
 my MyThing2 $m .= new( :bson_code(0x01), :key_name('test'), :key_data(10));
 
 
-isa_ok $m, 'MyThing2', 'Is a thing';
+isa_ok $m, 'MyThing2', 'Is a thing 2';
 #ok $m.^does(BSON::Encodable), 'Does BSON::Encodable role';
 
-#`{{}}
+#`{{
 my Buf $bdata = $m.encode();
 is_deeply $bdata,
           Buf.new( 0x01,                                # BSON code
@@ -116,7 +116,7 @@ $double.key_data = $r1;
 my Buf $r2 = $double.encode;
 
 say "R1/2: $r1, ", $r2;
-
+}}
 #-------------------------------------------------------------------------------
 # Cleanup
 #

@@ -32,7 +32,7 @@ class X::BSON::ImProperUse is Exception {
   }
 }
 
-class BSON:ver<0.9.2> {
+class BSON:ver<0.9.3> {
 
   #-----------------------------------------------------------------------------
   # Test elements see http://bsonspec.org/spec.html
@@ -624,96 +624,155 @@ class BSON:ver<0.9.2> {
   # 8 bytes double (64-bit floating point number)
   method _enc_double ( Num $r is copy ) {
 
-      my Buf $a;
+    my Buf $a;
+    my Num $r2;
 
-      # Test special cases
-      #
-      # 0x 0000 0000 0000 0000 = 0
-      # 0x 8000 0000 0000 0000 = -0       Not recognizable
-      # 0x 7ff0 0000 0000 0000 = Inf
-      # 0x fff0 0000 0000 0000 = -Inf
-      #
-      if $r == Num.new(0) {
-          $a = Buf.new(0 xx 8);
+    # Test special cases
+    #
+    # 0x 0000 0000 0000 0000 = 0
+    # 0x 8000 0000 0000 0000 = -0       Not recognizable
+    # 0x 7ff0 0000 0000 0000 = Inf
+    # 0x fff0 0000 0000 0000 = -Inf
+    #
+    given $r {
+      when 0.0 {
+        $a = Buf.new(0 xx 8);
       }
 
-      elsif $r == Num.new(-Inf) {
-          $a = Buf.new( 0 xx 6, 0xF0, 0xFF);
+      when -Inf {
+        $a = Buf.new( 0 xx 6, 0xF0, 0xFF);
       }
 
-      elsif $r == Num.new(Inf) {
-          $a = Buf.new( 0 xx 6, 0xF0, 0x7F);
+      when Inf {
+        $a = Buf.new( 0 xx 6, 0xF0, 0x7F);
       }
 
-      else
-      {
-          my Int $sign = $r.sign == -1 ?? -1 !! 1;
-          $r *= $sign;
+      default {
+        my Int $sign = $r.sign == -1 ?? -1 !! 1;
+        $r *= $sign;
 
-          # Get proper precision from base(2) by first shifting 52 places which
-          # is the number of precision bits. Adjust the exponent bias for this.
+        # Get proper precision from base(2). Adjust the exponent bias for
+        # this.
+        #
+        my Int $exp-shift = 0;
+        my Int $exponent = 1023;
+        my Str $bit-string = $r.base(2);
+#say "bs 1: $exp-shift, $exponent, bs: $bit-string, ", $bit-string.chars;
+        $bit-string ~= '.' unless $bit-string ~~ m/\./;
+
+        # Smaller than one
+        #
+        if $bit-string ~~ m/^0\./ {
+
+          # Normalize, Check if a '1' is found. Possible situation is
+          # a series of zeros because r.base(2) won't give that much
+          # information.
           #
-          my Int $exp-shift = 0;
-          my Int $exponent = 1023;
-          my Str $bit-string = $r.base(2);
-          $bit-string ~= '.' unless $bit-string ~~ m/\./;
 
-          # Smaller than zero
-          #
-          if $bit-string ~~ m/^0\./ {
-
-              # Normalize
-              #
-              my $first-one = $bit-string.index('1');
-              $exponent -= $first-one - 1;
-
-              # Multiply to get more bits in precision
-              #
-              while $bit-string ~~ m/^0\./ {      # Starts with 0.
-                  $exp-shift += 52;               # modify precision
-                  $r *= 2 ** $exp-shift;          # modify number
-                  $bit-string = $r.base(2)        # Get bit string again
-              }
+          my $first-one;
+          while !($first-one = $bit-string.index('1')) {
+            $exponent -= 52;
+#            $exp-shift += 52;
+            $r *= 2 ** 52;
+            $bit-string = $r.base(2);
           }
 
-          # Bigger than zero
+#say "bs 2: $exp-shift. $exponent, $first-one, bs: $bit-string";
+          $first-one--;
+          $exponent -= $first-one;
+
+#          $exp-shift += $first-one;
+          $r *= 2 ** $first-one;                # 1.***
+          $r2 = $r * 2 ** 52;                   # Get max precision
+          $bit-string = $r2.base(2);            # Get bits
+#say "bs 3a: $exp-shift. $exponent, $first-one, bs: $bit-string";
+          $bit-string ~~ s/\.//;                # Remove dot
+          $bit-string ~~ s/^1//;                # Remove first 1
+#say "bs 3b: $exp-shift. $exponent, $first-one, bs: $bit-string";
+
+if 0 {
+          # Multiply to get more bits in precision. Shift it 26 bits or the
+          # length returned by $r.base(2) when smaller than 1.
           #
-          else {
-              # Normalize
-              #
-              my Int $dot-loc = $bit-string.index('.');
-              $exponent += $dot-loc - 1;
-
-              # If dot is in the string, not at the end, the precision might
-              # be not sufficient. Enlarge one time more
-              #
-              my Int $str-len = $bit-string.chars;
-              if $dot-loc < $str-len - 1 {
-                  $r *= 2 ** 52;
-                  $bit-string = $r.base(2)
-              }
+          while $bit-string ~~ m/^0\./ {        # Starts with 0.
+            $exp-shift += 52;                   # modify precision
+            $r *= 2 ** $exp-shift;              # modify number
+            $bit-string = $r.base(2);           # Get bit string again
+            if !?$first-one {
+              $exponent -= 52;
+              $first-one = $bit-string.index('1');
+              $exponent -= $first-one - 1 if ?$first-one;
+            }
           }
+#say "bs 4: $exp-shift. $exponent, Final bs: $bit-string";
+}
+        }
 
-          $bit-string ~~ s/<[0.]>*$//;            # Remove trailing zeros
-          $bit-string ~~ s/\.//;                  # Remove the dot
-          my @bits = $bit-string.split('');       # Create array of '1' and '0'
-          @bits.shift;                            # Remove the first 1.
+        # Bigger than one
+        #
+        else {
+          # Normalize
+          #
+          my Int $dot-loc = $bit-string.index('.');
+          $exponent += ($dot-loc - 1);
+#say "bs 5: $dot-loc, $exponent, $bit-string";
 
-          my Int $i = $sign == -1 ?? 0x8000_0000_0000_0000 !! 0;
-          $i = $i +| ($exponent +< 52);
-          my Int $bit-pattern = 1 +< 51;
-          do for @bits -> $bit {
-              $i = $i +| $bit-pattern if $bit eq '1';
-
-              $bit-pattern = $bit-pattern +> 1;
-
-              last unless $bit-pattern;
+          # If dot is in the string, not at the end, the precision might
+          # be not sufficient. Enlarge one time more
+          #
+          my Int $str-len = $bit-string.chars;
+          if $dot-loc < $str-len - 1 or $str-len < 52 {
+#            $r *= 2 ** 52;
+#            $bit-string = $r.base(2);
+            $r2 = $r * 2 ** 52;                 # Get max precision
+            $bit-string = $r2.base(2);          # Get bits
           }
+            $bit-string ~~ s/\.//;              # Remove dot
+            $bit-string ~~ s/^1//;              # Remove first 1
+        }
 
-          $a = self._enc_int64($i);
+        # Remove the dot. Exponent is calculated and the dot is not needed
+        # anymore. From this string only 52 bits precision are needed after
+        # the first one is removed. This will always be a one and therefore
+        # not needed to store it.
+        #
+#        $bit-string ~~ s/^1\.//;                # Remove first 1 and dot if any
+#        my @bits = $bit-string.split('');       # Create array of '1' and '0'
+#        @bits.shift;                            # Remove the first 1.
+
+        # Prepare the number. First set the sign bit.
+        #
+        my Int $i = $sign == -1 ?? 0x8000_0000_0000_0000 !! 0;
+
+        # Now fit the exponent on its place
+        #
+        $i +|= $exponent +< 52;
+
+        # And the precision
+        #
+#say "bs 6: {$bit-string.substr( 0, 52)}";
+        $i +|= :2($bit-string.substr( 0, 52));
+
+if 0 {
+my @bits;
+        my Int $bit-pattern = 1 +< 51;
+        do for @bits -> $bit {
+          $i +|= $bit-pattern if ?$bit;
+
+          # Shift the one to the right until it disappears after which
+          # the loop will stop
+          #
+          $bit-pattern +>= 1;
+          last unless ?$bit-pattern;
+        }
+}
+#say "I2: {$i.fmt('%016x')}";
+
+        $a = self._enc_int64($i);
       }
+    }
 
-      return $a;
+    return $a;
   }
 
   # We have to do some simulation using the information on

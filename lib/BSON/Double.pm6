@@ -4,13 +4,17 @@ use BSON::Encodable;
 package BSON {
   class Double does BSON::Encodable {
 
-    multi method new( Str :$key_name, :$key_data --> BSON::Double ) {
-      return self.bless( :bson_code(0x01), :$key_name, :$key_data);
+#    has Num $.key_data is rw;
+
+    submethod X_BUILD ( Str :$key_name, Num :$key_data --> BSON::Double ) {
+say "KD0: $key_data";
+#      return self.bless( :bson_code(0x01), :$key_name, :$key_data);
     }
 
-    method encode( --> Buf ) {
+    method encode ( --> Buf ) {
 
-      my Num $r = $!key_data;
+#say "KD1: $!key_data";
+      my $r = Num.new($!key_data);
       my Buf $a;
 
       # Test special cases
@@ -36,7 +40,7 @@ package BSON {
         default {
           my Int $sign = $r.sign == -1 ?? -1 !! 1;
 #          $r *= $sign;
-          $r = -$r unless $sign == 1;
+          $r = -$r if $sign == -1;
 
           # Get proper precision from base(2) by first shifting 52 places which
           # is the number of precision bits. Adjust the exponent bias for this.
@@ -46,25 +50,31 @@ package BSON {
           my Str $bit-string = $r.base(2);
           $bit-string ~= '.' unless $bit-string ~~ m/\./;
 
-          # Smaller than zero
+          # Smaller than one
           #
           if $bit-string ~~ m/^0\./ {
 
-            # Normalize
+            # 
             #
             my $first-one = $bit-string.index('1');
             $exponent -= $first-one - 1;
 
             # Multiply to get more bits in precision
+            # Prepare an array for 2 ** 52, 2 ** 104, etc.
             #
+            my @a = ( 4503599627370496, 20282409603651670423947251286016,
+                      91343852333181432387730302044767688728495783936,
+                      411376139330301510538742295639337626245683966408394965837152256
+                    );
+            my $a-idx = 0;
             while $bit-string ~~ m/^0\./ {    # Starts with 0.
               $exp-shift += 52;               # modify precision
-              $r *= 2 ** $exp-shift;          # modify number
-              $bit-string = $r.base(2)        # Get bit string again
+              $r *= 2 ** $exp-shift;          # 2 ** $exp-shift, modify number
+              $bit-string = $r.base(2);       # Get bit string again
             }
           }
 
-          # Bigger than zero
+          # Bigger than one
           #
           else {
             # Normalize
