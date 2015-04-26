@@ -1,5 +1,4 @@
 use v6;
-#use BSON;
 
 class X::BSON::Encodable is Exception {
   has $.operation;                      # Operation encode, decode or other
@@ -20,24 +19,24 @@ class X::BSON::Encodable is Exception {
 #
 # Role to encode to and/or decode from a BSON representation.
 #
-#role BSON::Encodable is BSON {
 role BSON::Encodable {
 
   has Int $!bson_code;
   has Str $!key_name;
   has Any $.key_data is rw;
 
-  submethod X_BUILD ( Int :$bson_code!, Str :$key_name, :$key_data ) {
-    my $code = $bson_code;
-    if !?$bson_code or $bson_code < 0x00 or $bson_code > 0xFF {
+  submethod init ( Int :$bson_code, Str :$key_name, :$key_data ) {
+    my $code = $bson_code // 'undefined';
+
+    if !?$bson_code or $code < 0x00 or $code > 0xFF {
       die X::BSON::Encodable.new(
           :operation('bson_code'),
           :type(self.^name),
-          :emsg("Code $code out of bounds, must be positive 8 bit int")
+          :emsg("Code $code out of bounds or not defined, must be positive 8 bit int")
       )
     }
 
-    $!bson_code = $bson_code;
+    $!bson_code = $code;
     $!key_name = $key_name if ?$key_name;
     $!key_data = $key_data if ?$key_data;
   }
@@ -45,23 +44,27 @@ role BSON::Encodable {
   #-----------------------------------------------------------------------------
   # Basic encoding functions
   #
+  # Encode code, key and data
+  #
+  method encode( --> Buf ) {
+    return [~] self.encode_code,
+               self.encode_key,
+               self.encode_obj($!key_data);
+  }
 
   # Abstract method to encode internal data to a binary buffer
   #
-  method encode( --> Buf ) { ... }
-
-
+  method encode_obj( $data --> Buf ) { ... }
 
   # Encode bson code
   #
-  method !encode_code ( --> Buf ) {
-
+  method encode_code ( --> Buf ) {
     return Buf.new($!bson_code);
   }
 
   # Encode key
   #
-  method !encode_key ( --> Buf ) {
+  method encode_key ( --> Buf ) {
   
     return self!enc_e_name($!key_name);
   }
@@ -89,6 +92,7 @@ role BSON::Encodable {
   # 4 bytes (32-bit signed integer)
   #
   method !enc_int32 ( Int $i #`{{is copy}} ) {
+#say "CF: $i", callframe(1).file, ', ', callframe(1).line;
     my int $ni = $i;      
     return Buf.new( $ni +& 0xFF, ($ni +> 0x08) +& 0xFF,
                     ($ni +> 0x10) +& 0xFF, ($ni +> 0x18) +& 0xFF
@@ -126,18 +130,28 @@ role BSON::Encodable {
   #-----------------------------------------------------------------------------
   # Basic decoding functions
   #
+  # Decode code, key and data
+  #
+  method decode( Array $b ) {
+    self.decode_code($b);
+    self.decode_key($b);
+    $!key_data = self.decode_obj($b.list);
+  }
 
   # Abstract method to decode a binary buffer to internal data.
   #
-  method decode( List $b ) { ... }
+  method decode_obj( Array $b --> Any ) { ... }
 
-  method !decode_code ( $b ) {
-  
+  # The code must be the first octet in the buffer
+  #
+  method decode_code ( Array $b ) {
+
     $!bson_code = $b.shift;
+    # Test proper range...
   }
 
-  method !decode_key ( $b ) {
-  
+  method decode_key ( Array $b ) {
+
     $!key_name = self!dec_e_name( $b );
   }
 
@@ -147,7 +161,6 @@ role BSON::Encodable {
   }
 
   method !dec_cstring ( Array $a ) {
-
     my @a;
     while $a[ 0 ] !~~ 0x00 {
       @a.push( $a.shift );

@@ -6,19 +6,19 @@ Implements [BSON specification](http://bsonspec.org/).
 
 ## INSTALLING BSON
 
-Use panda to install the package like so. When installing MongoDB, BSON will be
-installed automatically as a dependency.
-
-
+Use panda to install the package like so.
 ```
-$ panda install MongoDB
+$ panda install BSON
 ```
+
+When installing MongoDB, BSON will be installed automatically as a dependency.
+
 
 ## VERSION PERL AND MOARVM
 
 ```
 $ perl6 -v
-This is perl6 version 2015.02-188-ga99a572 built on MoarVM version 2015.02-25-g3d0404a```
+This is perl6 version 2015.04-5-g59f57a8 built on MoarVM version 2015.04-3-gbb50941
 
 ## SYNOPSIS
 
@@ -97,6 +97,11 @@ Method ```.perl``` is available for easy debug.
   any integer can be stored as large or small as you like. Int can be coded as
   described in version 0.8.4 and when larger or smaller then maybe it is
   possible the Int can be coded as a binary array with some type.
+* Working to encapsulate the encoding/decoding work. When also the method used
+  to walk through the byte array using shift() when decoding and instead use an
+  index in the string, it might well be possible to parallelize the encoding as
+  well as decoding process. Also keeping an index is also faster than shifting
+  because the array doesn't have to be changed all the time.
 
 ## CHANGELOG
 

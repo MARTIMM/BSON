@@ -66,28 +66,41 @@ $bench.timethese( 1000,
 
 #`{{
 --------------------------------------------------------------------------------
-2015 04 17 BSON:ver<0.9.2>
+1) 2015 04 17 BSON:ver<0.9.2>
+2) Rakudo perl6 upgrade
 
-Timing 1000 iterations of decode1a, decode1b, decode2a, decode2b, encode1a, encode1b, encode2a, encode2b...
-bson-d-gt1: 0.0870 wallclock secs @ 11494.8112/s (n=1000)
-bson-d-inf: 0.5648 wallclock secs @ 1770.3843/s (n=1000)
-bson-d-lt1: 0.0662 wallclock secs @ 15113.5623/s (n=1000)
-bson-d-mnf: 0.5625 wallclock secs @ 1777.6998/s (n=1000)
-bson-d-nul: 0.5583 wallclock secs @ 1791.1902/s (n=1000)
-bson-e-gt1: 3.1676 wallclock secs @ 315.6995/s (n=1000)
-bson-e-inf: 0.0865 wallclock secs @ 11565.0024/s (n=1000)
-bson-e-lt1: 3.1786 wallclock secs @ 314.6054/s (n=1000)
-bson-e-nul: 0.0426 wallclock secs @ 23475.5695/s (n=1000)
- obj-d-gt1: 0.0835 wallclock secs @ 11976.8050/s (n=1000)
- obj-d-inf: 0.5779 wallclock secs @ 1730.3083/s (n=1000)
- obj-d-lt1: 0.0803 wallclock secs @ 12449.8632/s (n=1000)
- obj-d-mnf: 0.5922 wallclock secs @ 1688.7545/s (n=1000)
- obj-d-nul: 0.5753 wallclock secs @ 1738.2804/s (n=1000)
- obj-e-gt1: 3.4131 wallclock secs @ 292.9893/s (n=1000)
- obj-e-inf: 0.0933 wallclock secs @ 10715.8199/s (n=1000)
- obj-e-lt1: 4.2394 wallclock secs @ 235.8813/s (n=1000)
- obj-e-mnf: 0.0883 wallclock secs @ 11327.6430/s (n=1000)
- obj-e-nul: 0.0411 wallclock secs @ 24337.3836/s (n=1000)
+Timing 1000 iterations
+
+           Wallclock Seconds
+Test Name        1      2      3
+----------  ------ ------ ------
+bson-d-gt1: 0.0870 0.0750 0.0836 
+bson-d-inf: 0.5648 0.5945 0.5580 
+bson-d-lt1: 0.0662 0.0775 0.0746 
+bson-d-mnf: 0.5625 0.5665 0.5510 
+bson-d-nul: 0.5583 0.5563 0.5482 
+bson-e-gt1: 3.1676 3.1933 3.1169 
+bson-e-inf: 0.0865 0.0870 0.0727 
+bson-e-lt1: 3.1786 3.2541 3.1134 
+bson-e-nul: 0.0426 0.0421 0.0414 
+ obj-d-gt1: 0.0835 0.0970 0.0959 
+ obj-d-inf: 0.5779 0.5788 0.5659 
+ obj-d-lt1: 0.0803 0.0917 0.0786 
+ obj-d-mnf: 0.5922 0.5822 0.5648 
+ obj-d-nul: 0.5753 0.5859 0.5650 
+ obj-e-gt1: 3.4131 3.2603 3.1599 
+ obj-e-inf: 0.0933 0.0910 0.0876 
+ obj-e-lt1: 4.2394 3.2889 3.1800 
+ obj-e-mnf: 0.0883 0.0769 0.0756 
+ obj-e-nul: 0.0411 0.0199 0.0433 
 --------------------------------------------------------------------------------
 }}
+
+
+
+
+
+
+
+
 

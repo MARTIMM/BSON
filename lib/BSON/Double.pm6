@@ -1,21 +1,25 @@
 use v6;
+
+BEGIN {
+  @*INC.unshift('/home/marcel/Languages/Perl6/Projects/BSON/lib');
+}
+
 use BSON::Encodable;
 
 package BSON {
+  constant $BSON-DOUBLE = 0x01;
+
   class Double does BSON::Encodable {
 
-#    has Num $.key_data is rw;
-
-    submethod X_BUILD ( Str :$key_name, Num :$key_data --> BSON::Double ) {
-say "KD0: $key_data";
-#      return self.bless( :bson_code(0x01), :$key_name, :$key_data);
+    submethod BUILD ( Str :$key_name, Num :$key_data ) {
+      self.init( :bson_code($BSON-DOUBLE), :$key_name, :$key_data);
     }
 
-    method encode ( --> Buf ) {
+    method encode_obj ( $data --> Buf ) {
 
-#say "KD1: $!key_data";
-      my $r = Num.new($!key_data);
+      my $r = Num.new($data);
       my Buf $a;
+      my Num $r2;
 
       # Test special cases
       #
@@ -39,7 +43,6 @@ say "KD0: $key_data";
 
         default {
           my Int $sign = $r.sign == -1 ?? -1 !! 1;
-#          $r *= $sign;
           $r = -$r if $sign == -1;
 
           # Get proper precision from base(2) by first shifting 52 places which
@@ -48,30 +51,36 @@ say "KD0: $key_data";
           my Int $exp-shift = 0;
           my Int $exponent = 1023;
           my Str $bit-string = $r.base(2);
+#say "bs 1: $exp-shift, $exponent, bs: $bit-string, ", $bit-string.chars;
           $bit-string ~= '.' unless $bit-string ~~ m/\./;
 
           # Smaller than one
           #
           if $bit-string ~~ m/^0\./ {
 
-            # 
-            #
-            my $first-one = $bit-string.index('1');
-            $exponent -= $first-one - 1;
 
-            # Multiply to get more bits in precision
-            # Prepare an array for 2 ** 52, 2 ** 104, etc.
+            # Normalize, Check if a '1' is found. Possible situation is
+            # a series of zeros because r.base(2) won't give that much
+            # information.
             #
-            my @a = ( 4503599627370496, 20282409603651670423947251286016,
-                      91343852333181432387730302044767688728495783936,
-                      411376139330301510538742295639337626245683966408394965837152256
-                    );
-            my $a-idx = 0;
-            while $bit-string ~~ m/^0\./ {    # Starts with 0.
-              $exp-shift += 52;               # modify precision
-              $r *= 2 ** $exp-shift;          # 2 ** $exp-shift, modify number
-              $bit-string = $r.base(2);       # Get bit string again
+            my $first-one;
+            while !($first-one = $bit-string.index('1')) {
+              $exponent -= 52;
+              $r *= 4503599627370496;           # 2 ** 52;
+              $bit-string = $r.base(2);
             }
+
+#say "bs 2: $exp-shift. $exponent, $first-one, bs: $bit-string";
+            $first-one--;
+            $exponent -= $first-one;
+
+            $r *= 2 ** $first-one;              # 1.***              
+            $r2 = $r * 4503599627370496;        # 2 ** 52, Get max precision  
+            $bit-string = $r2.base(2);          # Get bits           
+#say "bs 3a: $exp-shift. $exponent, $first-one, bs: $bit-string";
+            $bit-string ~~ s/\.//;              # Remove dot      
+            $bit-string ~~ s/^1//;              # Remove first 1  
+#say "bs 3b: $exp-shift. $exponent, $first-one, bs: $bit-string";
           }
 
           # Bigger than one
@@ -80,33 +89,36 @@ say "KD0: $key_data";
             # Normalize
             #
             my Int $dot-loc = $bit-string.index('.');
-            $exponent += $dot-loc - 1;
+            $exponent += ($dot-loc - 1);
+#say "bs 5: $dot-loc, $exponent, $bit-string";
 
             # If dot is in the string, not at the end, the precision might
             # be not sufficient. Enlarge one time more
             #
             my Int $str-len = $bit-string.chars;
-            if $dot-loc < $str-len - 1 {
-              $r *= 2 ** 52;
-              $bit-string = $r.base(2)
+            if $dot-loc < $str-len - 1 or $str-len < 52 {
+              $r2 = $r * 4503599627370496;      # 2 ** 52, Get max precision
+              $bit-string = $r2.base(2);        # Get bits
             }
+
+            $bit-string ~~ s/\.//;              # Remove dot
+            $bit-string ~~ s/^1//;              # Remove first 1
           }
 
-          $bit-string ~~ s/<[0.]>*$//;            # Remove trailing zeros
-          $bit-string ~~ s/\.//;                  # Remove the dot
-          my @bits = $bit-string.split('');       # Create array of '1' and '0'
-          @bits.shift;                            # Remove the first 1.
-
+          # Prepare the number. First set the sign bit.
+          #
           my Int $i = $sign == -1 ?? 0x8000_0000_0000_0000 !! 0;
-          $i = $i +| ($exponent +< 52);
-          my Int $bit-pattern = 1 +< 51;
-          do for @bits -> $bit {
-            $i = $i +| $bit-pattern if $bit eq '1';
 
-            $bit-pattern = $bit-pattern +> 1;
+          # Now fit the exponent on its place
+          #
+          $i +|= $exponent +< 52;
 
-            last unless $bit-pattern;
-          }
+          # And the precision
+          #
+#say "bs 6: {$bit-string.substr( 0, 52)}";
+          $i +|= :2($bit-string.substr( 0, 52));
+
+#say "I2: {$i.fmt('%016x')}";
 
           $a = self!enc_int64($i);
         }
@@ -119,7 +131,7 @@ say "KD0: $key_data";
     # http://en.wikipedia.org/wiki/Double-precision_floating-point_format#Endianness
     # until better times come.
     #
-    method decode ( List $a ) {
+    method decode_obj ( List $a --> Num ) {
 
       # Test special cases
       #
