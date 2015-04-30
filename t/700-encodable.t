@@ -101,7 +101,7 @@ is $m2.key_data, $m.key_data, 'Compare item after encode decode';
 
 #-------------------------------------------------------------------------------
 # Test BSON::Double.
-# 
+#
 my BSON::Double $double .= new( :key_name('var1'));
 
 my Buf $b = Buf.new( 0x01,                              # Double
@@ -114,6 +114,7 @@ my Num $r1 = $double.decode($b.list);
 is $r1, Num(1/3), "Decoded 1/3";
 $double.key_data = $r1;
 my Buf $r2 = $double.encode;
+is_deeply $b, $r2, 'Bufs compare';
 
 #say "R1/2: $r1, ", $r2;
 

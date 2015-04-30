@@ -1,19 +1,15 @@
 use v6;
 
-BEGIN {
-  @*INC.unshift('/home/marcel/Languages/Perl6/Projects/BSON/lib');
-}
+#BEGIN {
+#  @*INC.unshift('/home/marcel/Languages/Perl6/Projects/BSON/lib');
+#}
 
-use BSON::Encodable;
+#use BSON::Encodable-Tools;
+use BSON::EDC-Tools;
 
 package BSON {
-  constant $BSON-DOUBLE = 0x01;
 
-  class Double does BSON::Encodable {
-
-    submethod BUILD ( Str :$key_name, Num :$key_data ) {
-      self.init( :bson_code($BSON-DOUBLE), :$key_name, :$key_data);
-    }
+  role Double is BSON::Encodable-Tools {
 
     method encode_obj ( $data --> Buf ) {
 
@@ -119,7 +115,7 @@ package BSON {
 
 #say "I2: {$i.fmt('%016x')}";
 
-          $a = self!enc_int64($i);
+          $a = self.enc_int64($i);
         }
       }
 
@@ -178,7 +174,7 @@ package BSON {
       # If value is not set by the special cases above, calculate it here
       #
       else {
-        my Int $i = self!dec_int64( $a );
+        my Int $i = self.dec_int64( $a );
         my Int $sign = $i +& 0x8000_0000_0000_0000 ?? -1 !! 1;
 
         # Significand + implicit bit

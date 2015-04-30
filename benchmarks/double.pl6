@@ -2,6 +2,8 @@
 #
 use v6;
 BEGIN {
+  say "Remove BEGIN if not running in developers env"
+        unless '/home/marcel/Languages'.IO ~~ :d;
   unshift @*INC, '/home/marcel/Languages/Perl6/Projects/BSON/lib';
 }
 

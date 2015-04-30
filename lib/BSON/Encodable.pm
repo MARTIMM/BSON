@@ -125,8 +125,6 @@ role BSON::Encodable {
 #              );
   }
 
-
-
   #-----------------------------------------------------------------------------
   # Basic decoding functions
   #
@@ -135,7 +133,7 @@ role BSON::Encodable {
   method decode( Array $b ) {
     self.decode_code($b);
     self.decode_key($b);
-    $!key_data = self.decode_obj($b.list);
+    $!key_data = self.decode_obj($b);
   }
 
   # Abstract method to decode a binary buffer to internal data.
@@ -152,22 +150,23 @@ role BSON::Encodable {
 
   method decode_key ( Array $b ) {
 
-    $!key_name = self!dec_e_name( $b );
+#    $!key_name = self!dec_e_name( $b );
+    $!key_name = self!dec_cstring( $b );
   }
 
-  method !dec_e_name ( Array $a ) {
+  method !dec_e_name ( Array $b ) {
 
-    return self!dec_cstring( $a );
+    return self!dec_cstring( $b );
   }
 
-  method !dec_cstring ( Array $a ) {
-    my @a;
-    while $a[ 0 ] !~~ 0x00 {
-      @a.push( $a.shift );
+  method !dec_cstring ( Array $b ) {
+    my @b;
+    while $b[ 0 ] !~~ 0x00 {
+      @b.push( $b.shift );
     }
 
-    die 'Parse error' unless $a.shift ~~ 0x00;
-    return Buf.new( @a ).decode();
+    die 'Parse error' unless $b.shift ~~ 0x00;
+    return Buf.new( @b ).decode();
   }
 
   # string ::= int32 (byte*) "\x00"

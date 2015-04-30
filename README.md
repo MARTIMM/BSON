@@ -97,11 +97,6 @@ Method ```.perl``` is available for easy debug.
   any integer can be stored as large or small as you like. Int can be coded as
   described in version 0.8.4 and when larger or smaller then maybe it is
   possible the Int can be coded as a binary array with some type.
-* Working to encapsulate the encoding/decoding work. When also the method used
-  to walk through the byte array using shift() when decoding and instead use an
-  index in the string, it might well be possible to parallelize the encoding as
-  well as decoding process. Also keeping an index is also faster than shifting
-  because the array doesn't have to be changed all the time.
 
 ## CHANGELOG
 
@@ -109,7 +104,16 @@ See [semantic versioning](http://semver.org/). Please note point 4. on
 that page: *Major version zero (0.y.z) is for initial development. Anything may
 change at any time. The public API should not be considered stable*.
 
-* 0.9.3 Bugfix encoding very small double precision floating point numbers.
+* 0.9.3
+  * Bugfix encoding very small double precision floating point numbers.
+  * Working to encapsulate the encoding/decoding work. When also the method used
+    to walk through the byte array using shift() when decoding and instead use
+    an index in the string, it might well be possible to parallelize the
+    encoding as well as decoding process. Also keeping an index is also faster
+    than shifting because the array doesn't have to be changed all the time.
+  * Changed role/class idea of test files Double.pm6 and Encodable.pm6. These
+    are now D.pm6, EDC.pm6 and EDC-Tools.pm6. The Double is there a role while
+    the Encodable is a class.
 * 0.9.2 Upgraded Rakudo * ===> Bugfix in BSON
 * 0.9.1 Testing with decode/encode classes and roles
 * 0.9.0
