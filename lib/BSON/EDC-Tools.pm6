@@ -132,6 +132,10 @@ package BSON {
                    $a.shift +< 0x20 +| $a.shift +< 0x28 +|
                    $a.shift +< 0x30 +| $a.shift +< 0x38
                    ;
+
+#      # Looks so nice but is awfully slower!
+#      my int $ni = [+|]($a[*] Z+< (0,8,16,24,32,40,48,56));
+#      $a.splice( 0, 8);
       return $ni;
 
   # Original method goes wrong on negative numbers. Also adding might be slower

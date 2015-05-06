@@ -13,7 +13,7 @@ package BSON {
 
     method encode_obj ( $data --> Buf ) {
 
-      my $r = Num.new($data);
+      my Num $r = Num($data);
       my Buf $a;
       my Num $r2;
 
