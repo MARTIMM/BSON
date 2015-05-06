@@ -127,11 +127,18 @@ package BSON {
     # 8 bytes (64-bit int)
     #
     method dec_int64 ( Array $a ) {
-      my int $ni = $a.shift +| $a.shift +< 0x08 +|
-                   $a.shift +< 0x10 +| $a.shift +< 0x18 +|
-                   $a.shift +< 0x20 +| $a.shift +< 0x28 +|
-                   $a.shift +< 0x30 +| $a.shift +< 0x38
+#      my int $ni = $a.shift +| $a.shift +< 0x08 +|
+#                   $a.shift +< 0x10 +| $a.shift +< 0x18 +|
+#                   $a.shift +< 0x20 +| $a.shift +< 0x28 +|
+#                   $a.shift +< 0x30 +| $a.shift +< 0x38
+#                   ;
+
+      my int $ni = $a[0] +| $a[1] +< 0x08 +|
+                   $a[2] +< 0x10 +| $a[3] +< 0x18 +|
+                   $a[4] +< 0x20 +| $a[5] +< 0x28 +|
+                   $a[6] +< 0x30 +| $a[7] +< 0x38
                    ;
+      $a.splice( 0, 8);
 
 #      # Looks so nice but is awfully slower!
 #      my int $ni = [+|]($a[*] Z+< (0,8,16,24,32,40,48,56));
