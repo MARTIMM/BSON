@@ -36,6 +36,7 @@ package BSON {
     method encode ( Hash $document --> Buf ) {
 
       my Int $doc-length = 0;
+      my Buf $data;
       my Buf $stream = Buf.new();
       
       for $document.keys -> $var-name {
@@ -46,9 +47,10 @@ package BSON {
             my $promoted-self = self.clone;
             $promoted-self does BSON::Double;
 
-            $stream = [~] Buf.new($BSON-DOUBLE),
-                          self.enc_e_name($var-name),
-                          $promoted-self.encode_obj($data);
+            $data = [~] Buf.new($BSON-DOUBLE),
+                        self.enc_e_name($var-name),
+                        $promoted-self.encode_obj($data);
+            $stream ~= $data;
           }
         }
       }
@@ -67,18 +69,22 @@ package BSON {
       my Int $doc-length = self.dec_int32($encoded-document);
 
       my $bson_code = $encoded-document.shift;
-      my $key_name = self.dec_cstring($encoded-document);
+      while $bson_code {
+        my $key_name = self.dec_cstring($encoded-document);
 
-      given $bson_code {
-        when $BSON-DOUBLE {
-          my $promoted-self = self.clone;
-          $promoted-self does BSON::Double;
-          $document{$key_name} = $promoted-self.decode_obj($encoded-document);
-        }
+        given $bson_code {
+          when $BSON-DOUBLE {
+            my $promoted-self = self.clone;
+            $promoted-self does BSON::Double;
+            $document{$key_name} = $promoted-self.decode_obj($encoded-document);
+          }
 
-        default {
-          say "What?!: $bson_code";
+          default {
+            say "What?!: $bson_code";
+          }
         }
+      
+        $bson_code = $encoded-document.shift;
       }
 
       return $document;
