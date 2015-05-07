@@ -29,6 +29,8 @@ package BSON {
 
     constant $BSON-DOUBLE = 0x01;
 
+    constant $BSON-DOCUMENT = 0x03;
+
 #    has Int $!enc-doc-idx;
 
     #---------------------------------------------------------------------------
@@ -36,21 +38,27 @@ package BSON {
     method encode ( Hash $document --> Buf ) {
 
       my Int $doc-length = 0;
-      my Buf $data;
+      my Buf $stream-part;
       my Buf $stream = Buf.new();
       
       for $document.keys -> $var-name {
         my $data = $document{$var-name};
         given $data {
           when Num {
-            
             my $promoted-self = self.clone;
             $promoted-self does BSON::Double;
 
-            $data = [~] Buf.new($BSON-DOUBLE),
-                        self.enc_e_name($var-name),
-                        $promoted-self.encode_obj($data);
-            $stream ~= $data;
+            $stream-part = [~] Buf.new($BSON-DOUBLE),
+                               self.enc_cstring($var-name),
+                               $promoted-self.encode_obj($data);
+            $stream ~= $stream-part;
+          }
+          
+          when Hash {
+            $stream-part = [~] Buf.new($BSON-DOCUMENT),
+                               self.enc_cstring($var-name),
+                               self.encode($data);
+            $stream ~= $stream-part;
           }
         }
       }
@@ -60,16 +68,25 @@ package BSON {
 
     #---------------------------------------------------------------------------
     #
-    method decode ( Buf $stream --> Hash ) {
+    multi method decode ( Buf $stream --> Hash ) {
+      return self!decode_document($stream.list);
+    }
+    
+    multi method decode ( Array $stream is rw --> Hash ) {
+      return self!decode_document($stream);
+    }
+    
+    method !decode_document ( Array $encoded-document is rw --> Hash ) {
 #      $!enc-doc-idx = 0;
 #      given $encoded-document[$!enc-doc-idx] {
 
       my Hash $document;
-      my Array $encoded-document = $stream.list;
       my Int $doc-length = self.dec_int32($encoded-document);
+#say "DL: $doc-length";
 
       my $bson_code = $encoded-document.shift;
       while $bson_code {
+#say "BC: $bson_code";
         my $key_name = self.dec_cstring($encoded-document);
 
         given $bson_code {
@@ -77,6 +94,10 @@ package BSON {
             my $promoted-self = self.clone;
             $promoted-self does BSON::Double;
             $document{$key_name} = $promoted-self.decode_obj($encoded-document);
+          }
+          
+          when $BSON-DOCUMENT {
+            $document{$key_name} = self.decode($encoded-document);
           }
 
           default {

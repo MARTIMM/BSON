@@ -28,7 +28,7 @@ package BSON {
     # string ::= int32 (byte*) "\x00"
     #
     method enc_string ( Str $s --> Buf ) {
-  #say "CF: ", callframe(1).file, ', ', callframe(1).line;
+#say "CF: ", callframe(1).file, ', ', callframe(1).line;
       my $b = $s.encode('UTF-8');
       return self.enc_int32($b.bytes + 1) ~ $b ~ Buf.new(0x00);
     }
@@ -36,7 +36,7 @@ package BSON {
     # 4 bytes (32-bit signed integer)
     #
     method enc_int32 ( Int $i #`{{is copy}} ) {
-  #say "CF: $i", callframe(1).file, ', ', callframe(1).line;
+#say "CF: $i", callframe(1).file, ', ', callframe(1).line;
       my int $ni = $i;      
       return Buf.new( $ni +& 0xFF, ($ni +> 0x08) +& 0xFF,
                       ($ni +> 0x10) +& 0xFF, ($ni +> 0x18) +& 0xFF
@@ -80,9 +80,12 @@ package BSON {
 
     method dec_cstring ( Array $b ) {
       my @b;
+
+#say "B 0: ", $b;
       while $b[ 0 ] !~~ 0x00 {
         @b.push( $b.shift );
       }
+#say "B 1: ", @b>>.fmt: '%02x';
 
       die 'Parse error' unless $b.shift ~~ 0x00;
       return Buf.new( @b ).decode();
@@ -103,6 +106,7 @@ package BSON {
     }
 
     method dec_int32 ( Array $a --> Int ) {
+#say "I: ", $a>>.fmt: '%02x';
       my int $ni = $a.shift +| $a.shift +< 0x08 +|
                    $a.shift +< 0x10 +| $a.shift +< 0x18
                    ;
@@ -126,14 +130,14 @@ package BSON {
 
     # 8 bytes (64-bit int)
     #
-    method dec_int64 ( Array $a ) {
+    method dec_int64 ( Array $a, Int $index = 0 --> Int ) {
 #      my int $ni = $a.shift +| $a.shift +< 0x08 +|
 #                   $a.shift +< 0x10 +| $a.shift +< 0x18 +|
 #                   $a.shift +< 0x20 +| $a.shift +< 0x28 +|
 #                   $a.shift +< 0x30 +| $a.shift +< 0x38
 #                   ;
 
-      my int $ni = $a[0] +| $a[1] +< 0x08 +|
+      my Int $ni = $a[0] +| $a[1] +< 0x08 +|
                    $a[2] +< 0x10 +| $a[3] +< 0x18 +|
                    $a[4] +< 0x20 +| $a[5] +< 0x28 +|
                    $a[6] +< 0x30 +| $a[7] +< 0x38
