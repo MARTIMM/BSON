@@ -9,6 +9,7 @@ class X::BSON::Encodable is Exception {
   has $.type;                           # Type to handle
   has $.emsg;                           # Extra message
 
+
   method message () {
       return "\n$!operation\() on $!type error: $!emsg";
   }
@@ -27,11 +28,12 @@ class X::BSON::Encodable is Exception {
 package BSON {
   class Encodable is BSON::Encodable-Tools {
 
-    constant $BSON-DOUBLE = 0x01;
+    constant $BSON-DOUBLE       = 0x01;
+    constant $BSON-DOCUMENT     = 0x03;
 
-    constant $BSON-DOCUMENT = 0x03;
-
-#    has Int $!enc-doc-idx;
+    # Visible in all objects of this class
+    #
+    my Int $index = 0;
 
     #---------------------------------------------------------------------------
     #
@@ -40,7 +42,7 @@ package BSON {
       my Int $doc-length = 0;
       my Buf $stream-part;
       my Buf $stream = Buf.new();
-      
+
       for $document.keys -> $var-name {
         my $data = $document{$var-name};
         given $data {
@@ -53,7 +55,7 @@ package BSON {
                                $promoted-self.encode_obj($data);
             $stream ~= $stream-part;
           }
-          
+
           when Hash {
             $stream-part = [~] Buf.new($BSON-DOCUMENT),
                                self.enc_cstring($var-name),
@@ -67,47 +69,60 @@ package BSON {
     }
 
     #---------------------------------------------------------------------------
+    # This one is used to start decode process
     #
     multi method decode ( Buf $stream --> Hash ) {
+      $index = 0;
+#say "MM D 0: index: $index";
       return self!decode_document($stream.list);
     }
-    
-    multi method decode ( Array $stream is rw --> Hash ) {
+
+    # This one is used to recursively decode sub documents
+    #
+    multi method decode ( Array $stream --> Hash ) {
+#say "MM D 1: index: $index";
       return self!decode_document($stream);
     }
-    
-    method !decode_document ( Array $encoded-document is rw --> Hash ) {
-#      $!enc-doc-idx = 0;
-#      given $encoded-document[$!enc-doc-idx] {
+
+    method !decode_document ( Array $encoded-document --> Hash ) {
 
       my Hash $document;
-      my Int $doc-length = self.dec_int32($encoded-document);
+#say "BC 0: index: $index";
+      my Int $doc-length = self.dec_int32( $encoded-document, $index);
 #say "DL: $doc-length";
 
-      my $bson_code = $encoded-document.shift;
+      my Int $bson_code = $encoded-document[$index++];
       while $bson_code {
-#say "BC: $bson_code";
-        my $key_name = self.dec_cstring($encoded-document);
+#say "BC 1: $bson_code, index: $index";
+        my Str $key_name = self.dec_cstring( $encoded-document, $index);
 
         given $bson_code {
           when $BSON-DOUBLE {
             my $promoted-self = self.clone;
             $promoted-self does BSON::Double;
-            $document{$key_name} = $promoted-self.decode_obj($encoded-document);
+#say "BC 1a: index: $index";
+            $document{$key_name} = $promoted-self.decode_obj( $encoded-document,
+                                                              $index
+                                                            );
+#say "BC 1b: index: $index";
           }
-          
+
           when $BSON-DOCUMENT {
+#say "BC 1c: index: $index";
             $document{$key_name} = self.decode($encoded-document);
+#say "BC 1d: index: $index";
           }
 
           default {
             say "What?!: $bson_code";
           }
         }
-      
-        $bson_code = $encoded-document.shift;
+
+        $bson_code = $encoded-document[$index++];
+#say "BC 1e: $bson_code, index: $index";
       }
 
+#say "BC 2a: index: $index";
       return $document;
     }
   }

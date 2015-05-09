@@ -126,7 +126,7 @@ package BSON {
     # http://en.wikipedia.org/wiki/Double-precision_floating-point_format#Endianness
     # until better times come.
     #
-    method decode_obj ( List $a --> Num ) {
+    method decode_obj ( List $a, $index is rw --> Num ) {
 
       # Test special cases
       #
@@ -167,14 +167,14 @@ package BSON {
       # If value is set by the special cases above, remove the 8 bytes from
       # the array.
       #
-      if $value.defined {
-        $a.splice( 0, 8);
-      }
+#      if $value.defined {
+#        $a.splice( 0, 8);
+#      }
 
       # If value is not set by the special cases above, calculate it here
       #
       else {
-        my Int $i = self.dec_int64( $a );
+        my Int $i = self.dec_int64( $a, $index);
         my Int $sign = $i +& 0x8000_0000_0000_0000 ?? -1 !! 1;
 
         # Significand + implicit bit

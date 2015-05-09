@@ -13,10 +13,11 @@ package BSON {
     #--------------------------------------------------------------------------
     # Encoding tools
     #
-    method enc_e_name ( Str $s --> Buf ) {
-
-      return self.enc_cstring($s);
-    }
+    # Is bypassed by calling enc_cstring directly
+#    method enc_e_name ( Str $s --> Buf ) {
+#
+#      return self.enc_cstring($s);
+#    }
 
     method enc_cstring ( Str $s --> Buf ) {
 
@@ -73,43 +74,46 @@ package BSON {
     #--------------------------------------------------------------------------
     # Decoding tools
     #
-    method dec_e_name ( Array $b ) {
+    # Is bypassed by calling dec_cstring directly
+#    method dec_e_name ( Array $b ) {
+#
+#      return self.dec_cstring( $b );
+#    }
 
-      return self.dec_cstring( $b );
-    }
+    method dec_cstring ( Array $a, Int $index is rw --> Str ) {
+      my @a;
 
-    method dec_cstring ( Array $b ) {
-      my @b;
-
-#say "B 0: ", $b;
-      while $b[ 0 ] !~~ 0x00 {
-        @b.push( $b.shift );
+#say "B 0: ", $a;
+      while $a[$index] !~~ 0x00 {
+        @a.push($a[$index++]);
       }
-#say "B 1: ", @b>>.fmt: '%02x';
+#say "B 1: ", @a>>.fmt: '%02x';
 
-      die 'Parse error' unless $b.shift ~~ 0x00;
-      return Buf.new( @b ).decode();
+      die 'Parse error' unless $a[$index++] ~~ 0x00;
+      return Buf.new(@a).decode();
     }
 
     # string ::= int32 (byte*) "\x00"
     #
-    method dec_string ( Array $a ) {
+    method dec_string ( Array $a, Int $index is rw --> Str ) {
 
-      my $i = self.dec_int32( $a );
+      my $i = self.dec_int32( $a, $index);
 
       my @a;
-      @a.push( $a.shift ) for ^ ( $i - 1 );
+      @a.push( $a[$index++] ) for ^ ( $i - 1 );
 
-      die 'Parse error' unless $a.shift ~~ 0x00;
+      die 'Parse error' unless $a[$index++] ~~ 0x00;
 
-      return Buf.new( @a ).decode( );
+      return Buf.new(@a).decode();
     }
 
-    method dec_int32 ( Array $a --> Int ) {
-#say "I: ", $a>>.fmt: '%02x';
-      my int $ni = $a.shift +| $a.shift +< 0x08 +|
-                   $a.shift +< 0x10 +| $a.shift +< 0x18
+    method dec_int32 ( Array $a, Int $index is rw --> Int ) {
+#say "D32 0: $index, {$a[$index].fmt('%02x')}, {$a.elems}";
+      my int $ni = $a[$index]             +| $a[$index + 1] +< 0x08 +|
+                   $a[$index + 2] +< 0x10 +| $a[$index + 3] +< 0x18
                    ;
+      $index += 4;
+#say "D32 1: $index";
 
       # Test if most significant bit is set. If so, calculate two's complement
       # negative number.
@@ -130,19 +134,22 @@ package BSON {
 
     # 8 bytes (64-bit int)
     #
-    method dec_int64 ( Array $a, Int $index = 0 --> Int ) {
+    method dec_int64 ( Array $a, Int $index is rw --> Int ) {
 #      my int $ni = $a.shift +| $a.shift +< 0x08 +|
 #                   $a.shift +< 0x10 +| $a.shift +< 0x18 +|
 #                   $a.shift +< 0x20 +| $a.shift +< 0x28 +|
 #                   $a.shift +< 0x30 +| $a.shift +< 0x38
 #                   ;
 
-      my Int $ni = $a[0] +| $a[1] +< 0x08 +|
-                   $a[2] +< 0x10 +| $a[3] +< 0x18 +|
-                   $a[4] +< 0x20 +| $a[5] +< 0x28 +|
-                   $a[6] +< 0x30 +| $a[7] +< 0x38
+      my Int $ni = $a[$index]             +| $a[$index + 1] +< 0x08 +|
+                   $a[$index + 2] +< 0x10 +| $a[$index + 3] +< 0x18 +|
+                   $a[$index + 4] +< 0x20 +| $a[$index + 5] +< 0x28 +|
+                   $a[$index + 6] +< 0x30 +| $a[$index + 7] +< 0x38
                    ;
-      $a.splice( 0, 8);
+      $index += 8;
+#say "D64: $index";
+
+#      $a.splice( 0, 8);
 
 #      # Looks so nice but is awfully slower!
 #      my int $ni = [+|]($a[*] Z+< (0,8,16,24,32,40,48,56));
