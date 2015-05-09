@@ -91,8 +91,6 @@ Method ```.perl``` is available for easy debug.
   specified pack/unpack in Perl6.
 * Change die() statements in return with exception to notify caller and place
   further responsability there.
-* Tests needs to be extended to test larger documents. The failure in version
-  0.5.4 could then be prevented.
 * Perl 6 Int variables are integral numbers of arbitrary size. This means that
   any integer can be stored as large or small as you like. Int can be coded as
   described in version 0.8.4 and when larger or smaller then maybe it is
@@ -114,6 +112,13 @@ change at any time. The public API should not be considered stable*.
   * Changed role/class idea of test files Double.pm6 and Encodable.pm6. These
     are now D.pm6, EDC.pm6 and EDC-Tools.pm6. The Double is there a role while
     the Encodable is a class.
+  * Tests needs to be extended to test larger documents. The failure in version
+    0.5.4 could then be prevented. Test 703-encodable.t to test encoding objects
+    has a document with subdocuments and several doubles.
+  * EDC.pm6, D.pm6 and EDC-Tools.pm6 has replaced array shifts with array
+    indexing when decoding which is slightly faster.
+  * EDC.pm6 has first preparations to introduce concurrency using cas() when
+    decoding to update document result atomically.
 * 0.9.2 Upgraded Rakudo * ===> Bugfix in BSON
 * 0.9.1 Testing with decode/encode classes and roles
 * 0.9.0

@@ -43,9 +43,32 @@ package BSON {
       my Buf $stream-part;
       my Buf $stream = Buf.new();
 
+      # Process the document. The order in which the keys are selected
+      # is not important.
+      #
       for $document.keys -> $var-name {
+
+        # Get the data of the given key and test for its type
+        #
         my $data = $document{$var-name};
         given $data {
+
+          # Embedded document
+          # element     ::= "\x03" e_name document
+          # document    ::= int32 e_list "\x00"
+          # e_list      ::= element e_list | ""
+          #
+          when Hash {
+            $stream-part = [~] Buf.new($BSON-DOCUMENT),
+                               self.enc_cstring($var-name),
+                               self.encode($data);
+            $stream ~= $stream-part;
+          }
+
+          # Double precision, e_name is a cstring, double is 64-bit IEEE 754
+          # floating point number
+          # element     ::= "\x01" e_name double.
+          #
           when Num {
             my $promoted-self = self.clone;
             $promoted-self does BSON::Double;
@@ -55,16 +78,12 @@ package BSON {
                                $promoted-self.encode_obj($data);
             $stream ~= $stream-part;
           }
-
-          when Hash {
-            $stream-part = [~] Buf.new($BSON-DOCUMENT),
-                               self.enc_cstring($var-name),
-                               self.encode($data);
-            $stream ~= $stream-part;
-          }
         }
       }
 
+      # Build document
+      # document    ::= int32 e_list "\x00"
+      #
       return [~] self.enc_int32($stream.elems + 5), $stream, Buf.new(0x00);
     }
 
@@ -73,44 +92,60 @@ package BSON {
     #
     multi method decode ( Buf $stream --> Hash ) {
       $index = 0;
-#say "MM D 0: index: $index";
       return self!decode_document($stream.list);
     }
 
     # This one is used to recursively decode sub documents
     #
     multi method decode ( Array $stream --> Hash ) {
-#say "MM D 1: index: $index";
       return self!decode_document($stream);
     }
 
     method !decode_document ( Array $encoded-document --> Hash ) {
-
+      # Result document
+      #
       my Hash $document;
-#say "BC 0: index: $index";
-      my Int $doc-length = self.dec_int32( $encoded-document, $index);
-#say "DL: $doc-length";
 
+      # document    ::= int32 e_list "\x00"
+      # 
+      my Int $doc-length = self.dec_int32( $encoded-document, $index);
+
+      # element     ::= bson_code e_name data
+      # 
       my Int $bson_code = $encoded-document[$index++];
       while $bson_code {
-#say "BC 1: $bson_code, index: $index";
+        # Get e_name
+        #
         my Str $key_name = self.dec_cstring( $encoded-document, $index);
 
         given $bson_code {
           when $BSON-DOUBLE {
+            # Clone this object and then promote it to play the role of the
+            # matched type. In this case BSON::Double.
+            #
             my $promoted-self = self.clone;
             $promoted-self does BSON::Double;
-#say "BC 1a: index: $index";
-            $document{$key_name} = $promoted-self.decode_obj( $encoded-document,
-                                                              $index
-                                                            );
-#say "BC 1b: index: $index";
+            cas( $document,
+                 -> $doc {
+                   my Hash $new-doc = $doc;
+                   $new-doc{$key_name} = $promoted-self.decode_obj(
+                                           $encoded-document,
+                                           $index
+                                         );
+                   $new-doc;
+                 }
+            );
           }
 
           when $BSON-DOCUMENT {
-#say "BC 1c: index: $index";
-            $document{$key_name} = self.decode($encoded-document);
-#say "BC 1d: index: $index";
+            my Hash $sub-doc = self.decode($encoded-document);
+            cas( $document,
+                 -> $doc {
+                   my Hash $new-doc = $doc;
+                   $new-doc{$key_name} = $sub-doc;
+                   $new-doc;
+                 }
+            );
           }
 
           default {
@@ -119,10 +154,8 @@ package BSON {
         }
 
         $bson_code = $encoded-document[$index++];
-#say "BC 1e: $bson_code, index: $index";
       }
 
-#say "BC 2a: index: $index";
       return $document;
     }
   }
