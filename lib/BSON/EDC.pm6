@@ -34,6 +34,8 @@ package BSON {
     # Visible in all objects of this class
     #
     my Int $index = 0;
+    has Int $thread-count = 0;
+    has Array $threads;
 
     #---------------------------------------------------------------------------
     #
@@ -92,6 +94,8 @@ package BSON {
     #
     multi method decode ( Buf $stream --> Hash ) {
       $index = 0;
+#      $thread-count = 0;
+#      $threads = [];
       return self!decode_document($stream.list);
     }
 
@@ -104,7 +108,7 @@ package BSON {
     method !decode_document ( Array $encoded-document --> Hash ) {
       # Result document
       #
-      my Hash $document;
+      my Hash $document;      
 
       # document    ::= int32 e_list "\x00"
       # 
@@ -123,28 +127,51 @@ package BSON {
             # Clone this object and then promote it to play the role of the
             # matched type. In this case BSON::Double.
             #
+            my $nbr-bytes-channel = Channel.new;
             my $promoted-self = self.clone;
             $promoted-self does BSON::Double;
-            cas( $document,
-                 -> $doc {
-                   my Hash $new-doc = $doc;
-                   $new-doc{$key_name} = $promoted-self.decode_obj(
-                                           $encoded-document,
-                                           $index
-                                         );
-                   $new-doc;
-                 }
+            
+#            $threads[$thread-count] = Thread.new(
+#              code => {
+              $*SCHEDULER.cue( {
+#say "Code started";
+                my Num $keyval = $promoted-self.decode_obj(
+                                   $encoded-document,
+                                   $index,
+                                   $nbr-bytes-channel
+                                 );
+
+                cas(
+                  $document,
+                  -> $doc {
+                    my Hash $new-doc = $doc;
+                    $new-doc{$key_name} = $keyval;
+                    $new-doc;
+                  }
+                );
+#say "Code stopped";
+              },
+
+#              name => 't ' ~ $thread-count
             );
+#say "Code scheduled, ";
+
+#            $threads[$thread-count].run;
+#            $thread-count++;
+            $index += $nbr-bytes-channel.receive;
+#say "New index $index";
+            $nbr-bytes-channel.close;
           }
 
           when $BSON-DOCUMENT {
             my Hash $sub-doc = self.decode($encoded-document);
-            cas( $document,
-                 -> $doc {
-                   my Hash $new-doc = $doc;
-                   $new-doc{$key_name} = $sub-doc;
-                   $new-doc;
-                 }
+            cas(
+              $document,
+              -> $doc {
+                my Hash $new-doc = $doc;
+                $new-doc{$key_name} = $sub-doc;
+                $new-doc;
+              }
             );
           }
 
@@ -153,10 +180,24 @@ package BSON {
           }
         }
 
+#        if $thread-count > 9 {
+#          self!clear-threads($threads);
+#          $thread-count = 0;
+#        }
+
         $bson_code = $encoded-document[$index++];
       }
 
+#      self!clear-threads($threads);
+
       return $document;
+    }
+    
+    method !clear-threads ( Array $threads ) {
+      for $threads.list -> $thread {
+        $thread.finish;
+#say "Finished $thread";
+      }
     }
   }
 }

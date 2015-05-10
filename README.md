@@ -119,6 +119,9 @@ change at any time. The public API should not be considered stable*.
     indexing when decoding which is slightly faster.
   * EDC.pm6 has first preparations to introduce concurrency using cas() when
     decoding to update document result atomically.
+  * Tests have shown that scheduled code is too short to run parallel compared
+    to the bookkeeping around it. So keep the original code but replace the
+    array shifts with indexing when decoding.
 * 0.9.2 Upgraded Rakudo * ===> Bugfix in BSON
 * 0.9.1 Testing with decode/encode classes and roles
 * 0.9.0
