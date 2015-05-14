@@ -20,6 +20,8 @@ my Array $bin-test = [ 0x03, 0x00, 0x00, 0x00,          # Size of buf
 my Buf $enc-bin = $bin-obj._enc_binary($bson);
 is_deeply( $enc-bin.list, $bin-test, 'encode test');
 
+#say "EB: ", $enc-bin;
+$bson._init_index;
 $bin-obj .= new;
 $bin-obj._dec_binary( $bson, $enc-bin.list);
 is_deeply( $bin-obj.Buf, $raw-bin, 'compare data after decoding');
@@ -47,6 +49,7 @@ is_deeply
     %test<encoded>,
     "encode type {%test<type>}";
 
+$bson._init_index;
 is_deeply
     $bson.decode(Buf.new(%test<encoded>))<b>.Buf,
     %test<decoded><b>.Buf,

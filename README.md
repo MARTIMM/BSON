@@ -102,6 +102,9 @@ See [semantic versioning](http://semver.org/). Please note point 4. on
 that page: *Major version zero (0.y.z) is for initial development. Anything may
 change at any time. The public API should not be considered stable*.
 
+* 0.9.4
+  * Tests from 0.9.3 has shown that using an index in arrays is faster than
+    shifting the bytes out one by one. This is now modified in BSON.pm6.
 * 0.9.3
   * Bugfix encoding very small double precision floating point numbers.
   * Working to encapsulate the encoding/decoding work. When also the method used

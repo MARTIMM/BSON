@@ -9,22 +9,27 @@ my $bson = BSON.new;
 #-------------------------------------------------------------------------------
 # int32 decoding
 #
+$bson._init_index;
 my Buf $b = Buf.new( 0x00 xx 4 );
 my Int $v = $bson._dec_int32($b.list);
 is( $v, 0, 'int32: dec N = 0');
 
+$bson._init_index;
 $b = Buf.new( 0xFF xx 4 );
 $v = $bson._dec_int32($b.list);
 is( $v, -1, 'int32: dec N = -1');
 
+$bson._init_index;
 $b = Buf.new( 0xFE, 0xFF xx 3 );
 $v = $bson._dec_int32($b.list);
 is( $v, -2, 'int32: dec N = -2');
 
+$bson._init_index;
 $b = Buf.new( 0xfc, 0x4c, 0x01, 0x00);
 $v = $bson._dec_int32($b.list);
 is( $v, 85244, 'int32: dec N = 85244');
 
+$bson._init_index;
 $b = Buf.new( 0x01, 0x00, 0x00, 0xff);
 $v = $bson._dec_int32($b.list);
 is( $v, -16777215, 'int32: dec N = -16777215');
@@ -47,22 +52,27 @@ is_deeply( $b, Buf.new( 0xff xx 3, 0x7f), 'int32: enc 2147483647');
 #-------------------------------------------------------------------------------
 # int64 decoding
 # 
+$bson._init_index;
 $b = Buf.new( 0x00 xx 8 );
 $v = $bson._dec_int64($b.list);
 is( $v, 0, 'int64: dec N = 0');
 
+$bson._init_index;
 $b = Buf.new( 0xFF xx 8 );
 $v = $bson._dec_int64($b.list);
 is( $v, -1, 'int64: dec N = -1');
 
+$bson._init_index;
 $b = Buf.new( 0xFE, 0xFF xx 7 );
 $v = $bson._dec_int64($b.list);
 is( $v, -2, 'int64: dec N = -2');
 
+$bson._init_index;
 $b = Buf.new( 0xfc, 0x4c, 0x01, 0x00 xx 5);
 $v = $bson._dec_int64($b.list);
 is( $v, 85244, 'int64: dec N = 85244');
 
+$bson._init_index;
 $b = Buf.new( 0x01, 0x00 xx 6, 0xff);
 $v = $bson._dec_int64($b.list);
 my int $i = 1 + 0xff * 2**56;
@@ -91,6 +101,7 @@ is_deeply( $b, Buf.new( 0xff xx 7, 0x7f), "int64: enc $i");
 $b = $bson._enc_int64(0x7fffffff_ffffffff + 1);
 is_deeply( $b, Buf.new( 0x00 xx 7, 0x80 ), 'int64: enc too large becomes negative');
 
+$bson._init_index;
 $i = 1 * 2**63;
 $v = $bson._dec_int64($b.list);
 is( $v, $i, "int64: dec N = $i");

@@ -34,8 +34,8 @@ package BSON {
     # Visible in all objects of this class
     #
     my Int $index = 0;
-    has Int $thread-count = 0;
-    has Array $threads;
+#    has Int $thread-count = 0;
+#    has Array $!threads;
 
     #---------------------------------------------------------------------------
     #
@@ -95,7 +95,7 @@ package BSON {
     multi method decode ( Buf $stream --> Hash ) {
       $index = 0;
 #      $thread-count = 0;
-#      $threads = [];
+#      $!threads = [];
       return self!decode_document($stream.list);
     }
 
@@ -131,7 +131,7 @@ package BSON {
             my $promoted-self = self.clone;
             $promoted-self does BSON::Double;
             
-#            $threads[$thread-count] = Thread.new(
+#            $!threads[$thread-count] = Thread.new(
 #              code => {
               $*SCHEDULER.cue( {
 #say "Code started";
@@ -156,7 +156,7 @@ package BSON {
             );
 #say "Code scheduled, ";
 
-#            $threads[$thread-count].run;
+#            $!threads[$thread-count].run;
 #            $thread-count++;
             $index += $nbr-bytes-channel.receive;
 #say "New index $index";
@@ -181,23 +181,24 @@ package BSON {
         }
 
 #        if $thread-count > 9 {
-#          self!clear-threads($threads);
+#          self!clear-threads;
 #          $thread-count = 0;
 #        }
 
         $bson_code = $encoded-document[$index++];
       }
 
-#      self!clear-threads($threads);
+#      self!clear-threads;
 
       return $document;
     }
     
-    method !clear-threads ( Array $threads ) {
-      for $threads.list -> $thread {
-        $thread.finish;
-#say "Finished $thread";
-      }
-    }
+#    method !clear-threads ( ) {
+#      for $!threads.list -> $thread is rw {
+#say "Finished $thread" if $thread.defined;
+#        $thread.finish if $thread.defined;
+#        undefine($thread);
+#      }
+#    }
   }
 }
