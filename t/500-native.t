@@ -343,9 +343,9 @@ for $samples.keys -> $key {
 
     CATCH {
         my $msg = $_.message;
-        my $type = $_.type;
+ say "M: $msg";
+       my $type = $_.type;
         $msg ~~ s:g/\n//;
-#say "M: $msg";
 
         when X::BSON::Deprecated {
             ok $_.type ~~ ms/Undefined \(0x06\)
@@ -372,15 +372,15 @@ for $samples.keys -> $key {
 # check flattening aspects of Perl6
 
 my %flattening = (
-	'Array of Embedded documents' => { "ahh" => [ { }, { "not" => "empty" } ] },
-	'Array of Arrays' => { "aaa" => [ [ ], [ "not", "empty" ] ] },
+  'Array of Embedded documents' => { "ahh" => [ { }, { "not" => "empty" } ] },
+  'Array of Arrays' => { "aaa" => [ [ ], [ "not", "empty" ] ] },
 );
 
 for %flattening {
-    is_deeply
-		$b.decode( $b.encode( .value ) ),
-		.value,
-		.key;
+  is_deeply
+    $b.decode($b.encode(.value)),
+    .value,
+    .key;
 }
 
 

@@ -49,9 +49,8 @@ class BSON:ver<0.9.4> {
   #-----------------------------------------------------------------------------
   # Encoding a document given in a hash variable
   #
-  method encode ( %h ) {
-
-    return self._enc_document( %h );
+  method encode ( Hash $h --> Buf ) {
+    return self._enc_document($h);
   }
 
   # BSON Document
@@ -59,13 +58,11 @@ class BSON:ver<0.9.4> {
   #
   # The int32 is the total number of bytes comprising the document.
   #
-  method _enc_document ( %h ) {
-
-    my $l = self._enc_e_list( %h.pairs );
-
-    return [~] self._enc_int32( $l.elems + 5 ),
-               $l,
-               Buf.new( 0x00 )
+  method _enc_document ( Hash $h --> Buf ) {
+    my Buf $b = self._enc_e_list($h.pairs);
+    return [~] self._enc_int32($b.elems + 5),
+               $b,
+               Buf.new(0x00)
                ;
   }
 
@@ -73,12 +70,11 @@ class BSON:ver<0.9.4> {
   # e_list ::= element e_list
   # | ""
   #
-  method _enc_e_list ( *@p ) {
-
-    my Buf $b = Buf.new( );
+  method _enc_e_list ( *@p --> Buf ) {
+    my Buf $b = Buf.new();
 
     for @p -> $p {
-      $b = $b ~ self._enc_element( $p );
+      $b = $b ~ self._enc_element($p);
     }
 
     return $b;
@@ -87,7 +83,7 @@ class BSON:ver<0.9.4> {
   # Encode a key value pair
   # element ::= type-code e_name some-encoding
   #
-  method _enc_element ( Pair $p ) {
+  method _enc_element ( Pair $p --> Buf ) {
 
     given $p.value {
 
@@ -95,7 +91,9 @@ class BSON:ver<0.9.4> {
         # Double precision
         # "\x01" e_name Num
         #
-        return Buf.new( 0x01 ) ~ self._enc_e_name( $p.key ) ~ self._enc_double( $p.value );
+        return [~] Buf.new(0x01),
+                   self._enc_e_name($p.key),
+                   self._enc_double($p.value);
       }
 
       when Str {
@@ -322,7 +320,7 @@ class BSON:ver<0.9.4> {
 
   # 8 bytes double (64-bit floating point number)
   #
-  method _enc_double ( Num $r is copy ) {
+  method _enc_double ( Num $r is copy --> Buf ) {
 
     my Buf $a;
     my Num $r2;
@@ -434,7 +432,7 @@ class BSON:ver<0.9.4> {
 
   # 4 bytes (32-bit signed integer)
   #
-  method _enc_int32 ( Int $i #`{{is copy}} ) {
+  method _enc_int32 ( Int $i #`{{is copy}} --> Buf ) {
     my int $ni = $i;      
     return Buf.new( $ni +& 0xFF, ($ni +> 0x08) +& 0xFF,
                     ($ni +> 0x10) +& 0xFF, ($ni +> 0x18) +& 0xFF
@@ -446,7 +444,7 @@ class BSON:ver<0.9.4> {
 
   # 8 bytes (64-bit int)
   #
-  method _enc_int64 ( Int $i ) {
+  method _enc_int64 ( Int $i --> Buf ) {
     # No tests for too large/small numbers because it is called from
     # _enc_element normally where it is checked
     #
@@ -470,7 +468,7 @@ class BSON:ver<0.9.4> {
   # Key name
   # e_name ::= cstring
   #
-  method _enc_e_name ( Str $s ) {
+  method _enc_e_name ( Str $s --> Buf ) {
     return self._enc_cstring( $s );
   }
 
@@ -480,10 +478,12 @@ class BSON:ver<0.9.4> {
   # The int32 is the number bytes in the (byte*) + 1 (for the trailing '\x00').
   # The (byte*) is zero or more UTF-8 encoded characters.
   #
-  method _enc_string ( Str $s ) {
+  method _enc_string ( Str $s --> Buf ) {
 #say "CF: ", callframe(1).file, ', ', callframe(1).line;
     my $b = $s.encode('UTF-8');
-    return self._enc_int32($b.bytes + 1) ~ $b ~ Buf.new(0x00);
+    return [~] self._enc_int32($b.bytes + 1),
+               $b,
+               Buf.new(0x00);
   }
 
   # CString
@@ -492,7 +492,7 @@ class BSON:ver<0.9.4> {
   # Zero or more modified UTF-8 encoded characters followed by '\x00'.
   # The (byte*) MUST NOT contain '\x00', hence it is not full UTF-8.
   #
-  method _enc_cstring ( Str $s ) {
+  method _enc_cstring ( Str $s --> Buf ) {
       die "Forbidden 0x00 sequence in $s" if $s ~~ /\x00/;
 
       return $s.encode() ~ Buf.new(0x00);
@@ -500,8 +500,6 @@ class BSON:ver<0.9.4> {
 
 
   #-----------------------------------------------------------------------------
-  # Decoding a document given in a binary buffer
-  #
   # Method used to initialize the index for testing purposes when the decode
   # functions such as _dec_double() are tested directly.
   #
@@ -509,35 +507,43 @@ class BSON:ver<0.9.4> {
     $!index = 0;
   }
   
+  # Method used by objects to adjust the index
+  #
   method adjust_index ( Int $offset ) {
     $!index += $offset;
   }
   
-  method decode ( Buf $b ) {
+  # Decoding a document given in a binary buffer
+  #
+  method decode ( Buf $b --> Hash ) {
     $!index = 0;
     return self._dec_document($b.list);
   }
 
-  method _dec_document ( Array $a ) {
-    my $s = $a.elems;
-    my $i = self._dec_int32($a);
-    my %h = self._dec_e_list($a);
+  method _dec_document ( Array $a --> Hash ) {
+#    my Int $s = $a.elems;
+    my Int $i = self._dec_int32($a);
+    my Hash $h = self._dec_e_list($a);
 
     die 'Parse error' unless $a[$!index++] ~~ 0x00;
 #    die 'Parse error' unless $a.shift ~~ 0x00;
-#    die 'Parse error' unless $s ~~ $a.elems + $i;
 
-    return %h;
+#    die 'Parse error' unless $s ~~ $a.elems + $i;
+    # Test doesn't work anymore because of sub documents
+    #die "Parse error: $!index != \$a elems({$a.elems})"
+    #  unless $!index == $a.elems;
+
+    return $h;
   }
 
-  method _dec_e_list ( Array $a ) {
-    my @p;
+  method _dec_e_list ( Array $a --> Hash ) {
+    my Pair @p;
 #    while $a[0] !~~ 0x00 {
     while $a[$!index] !~~ 0x00 {
       push @p, self._dec_element($a);
     }
 
-    return @p;
+    return hash(@p);
   }
 
   method _dec_element ( Array $a ) {

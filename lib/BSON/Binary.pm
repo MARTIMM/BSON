@@ -1,8 +1,6 @@
 use v6;
-#use BSON;
 
 class BSON::Binary {
-#  our $bson = BSON.new;
 
   constant $GENERIC             = 0x00;
   constant $FUNCTION            = 0x01;
