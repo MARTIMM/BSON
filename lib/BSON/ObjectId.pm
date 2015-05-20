@@ -1,4 +1,4 @@
-class BSON::ObjectId;
+unit class BSON::ObjectId;
 
 # Represents ObjectId BSON type described in
 # http://dochub.mongodb.org/core/objectids
