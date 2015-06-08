@@ -99,14 +99,14 @@ class BSON:ver<0.9.4> {
       when Str {
         # UTF-8 string
         # "\x02" e_name string
-
+        #
         return Buf.new( 0x02 ) ~ self._enc_e_name( $p.key ) ~ self._enc_string( $p.value );
       }
 
       when Hash {
         # Embedded document
         # "\x03" e_name document
-
+        #
         return Buf.new( 0x03 ) ~  self._enc_e_name( $p.key ) ~ self._enc_document( $_ );
       }
 
@@ -120,7 +120,7 @@ class BSON:ver<0.9.4> {
         # For example, the array ['red', 'blue']
         # would be encoded as the document {'0': 'red', '1': 'blue'}.
         # The keys must be in ascending numerical order.
-
+        #
         my %h = .kv;
 
         return Buf.new( 0x04 ) ~  self._enc_e_name( $p.key ) ~ self._enc_document( %h );
@@ -148,7 +148,7 @@ class BSON:ver<0.9.4> {
       when BSON::ObjectId {
         # ObjectId
         # "\x07" e_name (byte*12)
-
+        #
         return Buf.new( 0x07 ) ~ self._enc_e_name( $p.key ) ~ .Buf;
       }
 
@@ -159,13 +159,13 @@ class BSON:ver<0.9.4> {
         if .Bool {
           # Boolean "true"
           # "\x08" e_name "\x01
-
+          #
           return Buf.new( 0x08 ) ~ self._enc_e_name( $p.key ) ~ Buf.new( 0x01 );
         }
         else {
           # Boolean "false"
           # "\x08" e_name "\x00
-
+          #
           return Buf.new( 0x08 ) ~ self._enc_e_name( $p.key ) ~ Buf.new( 0x00 );
         }
       }
@@ -250,7 +250,7 @@ class BSON:ver<0.9.4> {
 
 #`{{
       when ... {
-        # Javascript code. Handled above.
+        # Javascript code with scope. Handled above.
         # "\x0F" e_name string document
       }
 }}
@@ -259,7 +259,7 @@ class BSON:ver<0.9.4> {
         # Integer
         # "\x10" e_name int32
         # '\x12' e_name int64
-
+        #
         if -0xffffffff < $p.value < 0xffffffff {
           return [~] Buf.new( 0x10 ),
                      self._enc_e_name($p.key),
@@ -303,7 +303,7 @@ class BSON:ver<0.9.4> {
       }
 
       default {
-        die X::BSON::NYS.new( :operation('encode'), :type('unknown'));
+        die X::BSON::NYS.new( :operation('encode'), :type($_));
 #              die "Sorry, not yet supported type: $_"; # ~ .WHAT;
       }
     }
