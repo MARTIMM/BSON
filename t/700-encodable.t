@@ -1,7 +1,7 @@
 use v6;
 use Test;
 use BSON::Encodable;
-use BSON::Double;
+#use BSON::Double;
 
 #-------------------------------------------------------------------------------
 # Forgotten code test, skipped, captured at compile time
