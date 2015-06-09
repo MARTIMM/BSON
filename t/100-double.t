@@ -26,7 +26,7 @@ $v = $bson._dec_double($b.list);
 is $v, 0, 'Result is 0';
 
 $br = $bson._enc_double($v);
-is_deeply $br, $b, "special case $v after encode";
+is-deeply $br, $b, "special case $v after encode";
 
 
 # 0x8000 0000 0000 0000 = -0            Will become 0.
@@ -37,7 +37,7 @@ $v = $bson._dec_double($b.list);
 
 is $v, Num.new(-0), 'Result is -0';
 $br = $bson._enc_double($v);
-is_deeply $br, Buf.new(0 xx 8),
+is-deeply $br, Buf.new(0 xx 8),
           "special case -0 not recognizable and becomes 0";
 
 
@@ -49,7 +49,7 @@ $v = $bson._dec_double($b.list);
 
 is $v, Inf, 'Result is Infinite';
 $br = $bson._enc_double($v);
-is_deeply $br, $b, "special case $v after encode";
+is-deeply $br, $b, "special case $v after encode";
 
 
 # 0xFFF0 0000 0000 0000 = -Inf
@@ -60,7 +60,7 @@ $v = $bson._dec_double($b.list);
 
 is $v, -Inf, 'Result is minus Infinite';
 $br = $bson._enc_double($v);
-is_deeply $br, $b, "special case $v after encode";
+is-deeply $br, $b, "special case $v after encode";
 
 
 #-------------------------------------------------------------------------------
@@ -75,7 +75,7 @@ is $v, 0.333333333333333, "Result $v = 0.333333333333333";
 
 $br = $bson._enc_double(Num.new(1/3));
 #say "Br: ", $br;
-is_deeply $br, $b, "Compare bufs {$br.perl}";
+is-deeply $br, $b, "Compare bufs {$br.perl}";
 
 
 # Number -1.34277290539414e+242, Big and negative
@@ -87,7 +87,7 @@ is $v, -1.34277290539414e+242, "Result $v = -1.34277290539414e+242";
 
 $br = $bson._enc_double($v);
 #say "BR: ", $br;
-is_deeply $br, $b, "Compare bufs {$br.perl}";
+is-deeply $br, $b, "Compare bufs {$br.perl}";
 
 
 # Number 40, Small and positive
@@ -99,7 +99,7 @@ is $v, 40, "Result $v = 40";
 
 $br = $bson._enc_double($v);
 #say "BR: ", $br;
-is_deeply $br, $b, "Compare bufs {$br.perl}";
+is-deeply $br, $b, "Compare bufs {$br.perl}";
 
 
 # Number -203.345, Small and negative
@@ -111,7 +111,7 @@ is $v, -203.345, "Result $v = -203.345";
 
 $br = $bson._enc_double($v);
 #say "BR: ", $br;
-is_deeply $br, $b, "Compare bufs {$br.perl}";
+is-deeply $br, $b, "Compare bufs {$br.perl}";
 
 
 # Number 3e-100, Very small and positive
@@ -123,7 +123,7 @@ is $v, 3E-100, "Result $v = 3e-100";
 
 $br = $bson._enc_double($v);
 #say "BR: ", $br;
-is_deeply $br, $b, "Compare bufs {$br.perl}";
+is-deeply $br, $b, "Compare bufs {$br.perl}";
 
 
 #-------------------------------------------------------------------------------

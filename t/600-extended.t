@@ -21,21 +21,21 @@ my %samples = (
 );
 
 for %samples {
-    is_deeply
+    is-deeply
         BSON::ObjectId.new( .value{ 'str' } ).perl,
         BSON::ObjectId.new( Buf.new( .value{ 'buf' }.list ) ).perl,
         .key;
 }
 
-dies_ok
+dies-ok
     { BSON::ObjectId.new( 'ZZZZZZZZZZZZZZZZZZZZZZZZ' )},
     'ObjectId die on not hex values';
 
-dies_ok
+dies-ok
     { BSON::ObjectId.new( '00' )},
     'ObjectId die on too short hex values';
 
-dies_ok
+dies-ok
     { BSON::ObjectId.new( Buf.new( 0x00 ) ) },
     'ObjectId die on too short buf';
 
@@ -47,14 +47,14 @@ my $oid = BSON::ObjectId.new(
     Buf.new( 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B )
 );
 
-is_deeply
+is-deeply
     BSON.encode( { "oid" => $oid } ).list,
     [ 0x16, 0x00, 0x00, 0x00, 0x07, 0x6F, 0x69, 0x64, 0x00, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x00 ],
     'encode ObjectId';
 
 my $bson = BSON.new;
 $bson._init_index;
-is_deeply
+is-deeply
     $bson.decode(
       Buf.new( 0x16, 0x00, 0x00, 0x00,                  # Length
                0x07,                                    # object id code

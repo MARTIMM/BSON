@@ -100,14 +100,20 @@ class BSON:ver<0.9.4> {
         # UTF-8 string
         # "\x02" e_name string
         #
-        return Buf.new( 0x02 ) ~ self._enc_e_name( $p.key ) ~ self._enc_string( $p.value );
+        return [~] Buf.new(0x02),
+                   self._enc_e_name($p.key),
+                   self._enc_string($p.value)
+                   ;
       }
 
       when Hash {
         # Embedded document
         # "\x03" e_name document
         #
-        return Buf.new( 0x03 ) ~  self._enc_e_name( $p.key ) ~ self._enc_document( $_ );
+        return [~] Buf.new(0x03),
+                   self._enc_e_name($p.key),
+                   self._enc_document($_)
+                   ;
       }
 
       when Array {
@@ -122,8 +128,12 @@ class BSON:ver<0.9.4> {
         # The keys must be in ascending numerical order.
         #
         my %h = .kv;
+#say "E H: {%h.perl}\n\$_: {$_.perl}";
 
-        return Buf.new( 0x04 ) ~  self._enc_e_name( $p.key ) ~ self._enc_document( %h );
+        return [~] Buf.new(0x04),
+                   self._enc_e_name($p.key),
+                   self._enc_document(%h)
+                   ;
       }
 
       when BSON::Binary {
@@ -538,9 +548,9 @@ class BSON:ver<0.9.4> {
 
   method _dec_e_list ( Array $a --> Hash ) {
     my Pair @p;
-#    while $a[0] !~~ 0x00 {
     while $a[$!index] !~~ 0x00 {
-      push @p, self._dec_element($a);
+      my $element = self._dec_element($a);
+      push @p, $element;
     }
 
     return hash(@p);
@@ -584,7 +594,16 @@ class BSON:ver<0.9.4> {
         # would be encoded as the document {'0': 'red', '1': 'blue'}.
         # The keys must be in ascending numerical order.
         #
-        return self._dec_e_name($a) => [ self._dec_document($a).values ];
+        # Cannot use a simple $h.values because the hash keys might not be
+        # in an ascending order. Furthermore the sorting method must be forced
+        # into integer comparison otherwise you get series like 0,1,10,11,...2,
+        # etc
+        # 
+        my Str $key = self._dec_e_name($a);
+        my Hash $h = self._dec_document($a);
+        my @values;
+        for $h.keys.sort({$^x <=> $^y}) -> $k {@values.push($h{$k})};
+        return $key => [@values];
       }
 
       when 0x05 {

@@ -38,16 +38,16 @@ is( $v, -16777215, 'int32: dec N = -16777215');
 # int32 encoding
 #
 $b = $bson._enc_int32(-1);
-is_deeply( $b, Buf.new( 0xff, 0xff, 0xff, 0xff), 'int32: enc -1');
+is-deeply( $b, Buf.new( 0xff, 0xff, 0xff, 0xff), 'int32: enc -1');
 
 $b = $bson._enc_int32(-2);
-is_deeply( $b, Buf.new( 0xfe, 0xff, 0xff, 0xff), 'int32: enc -2');
+is-deeply( $b, Buf.new( 0xfe, 0xff, 0xff, 0xff), 'int32: enc -2');
 
 $b = $bson._enc_int32(-16777215);
-is_deeply( $b, Buf.new( 0x01, 0x00, 0x00, 0xff), 'int32: enc -16777215');
+is-deeply( $b, Buf.new( 0x01, 0x00, 0x00, 0xff), 'int32: enc -16777215');
 
 $b = $bson._enc_int32(2147483647);
-is_deeply( $b, Buf.new( 0xff xx 3, 0x7f), 'int32: enc 2147483647');
+is-deeply( $b, Buf.new( 0xff xx 3, 0x7f), 'int32: enc 2147483647');
 
 #-------------------------------------------------------------------------------
 # int64 decoding
@@ -82,24 +82,24 @@ is( $v, $i, "int64: dec N = $i");
 # int64 encoding
 #
 $b = $bson._enc_int64(-1);
-is_deeply( $b, Buf.new( 0xff xx 8 ), 'int64: enc -1');
+is-deeply( $b, Buf.new( 0xff xx 8 ), 'int64: enc -1');
 
 $b = $bson._enc_int64(-2);
-is_deeply( $b, Buf.new( 0xfe, 0xff xx 7), 'int64: enc -2');
+is-deeply( $b, Buf.new( 0xfe, 0xff xx 7), 'int64: enc -2');
 
 $i = 1 + 0xff * 2**56;
 $b = $bson._enc_int64($i);
-is_deeply( $b, Buf.new( 0x01, 0x00 xx 6, 0xff), "int64: enc $i");
+is-deeply( $b, Buf.new( 0x01, 0x00 xx 6, 0xff), "int64: enc $i");
 
 $i = 1 * 2**63 - 1;
 $b = $bson._enc_int64($i);
-is_deeply( $b, Buf.new( 0xff xx 7, 0x7f), "int64: enc $i");
+is-deeply( $b, Buf.new( 0xff xx 7, 0x7f), "int64: enc $i");
 
 #-------------------------------------------------------------------------------
 # Too large encoding
 #
 $b = $bson._enc_int64(0x7fffffff_ffffffff + 1);
-is_deeply( $b, Buf.new( 0x00 xx 7, 0x80 ), 'int64: enc too large becomes negative');
+is-deeply( $b, Buf.new( 0x00 xx 7, 0x80 ), 'int64: enc too large becomes negative');
 
 $bson._init_index;
 $i = 1 * 2**63;
