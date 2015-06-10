@@ -32,7 +32,7 @@ class X::BSON::ImProperUse is Exception {
   }
 }
 
-class BSON:ver<0.9.4> {
+class BSON:ver<0.9.5> {
 
   has Int $.index = 0;
 
