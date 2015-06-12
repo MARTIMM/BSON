@@ -34,6 +34,8 @@ class X::BSON::ImProperUse is Exception {
 
 class BSON:ver<0.9.5> {
 
+  constant $BSON_BOOL = 0x08;
+
   has Int $.index = 0;
 
   #-----------------------------------------------------------------------------
@@ -58,8 +60,16 @@ class BSON:ver<0.9.5> {
   #
   # The int32 is the total number of bytes comprising the document.
   #
-  method _enc_document ( Hash $h --> Buf ) {
+  multi method _enc_document ( Hash $h --> Buf ) {
     my Buf $b = self._enc_e_list($h.pairs);
+    return [~] self._enc_int32($b.elems + 5),
+               $b,
+               Buf.new(0x00)
+               ;
+  }
+
+  multi method _enc_document ( Pair @p --> Buf ) {
+    my Buf $b = self._enc_e_list(@p);
     return [~] self._enc_int32($b.elems + 5),
                $b,
                Buf.new(0x00)
@@ -74,7 +84,7 @@ class BSON:ver<0.9.5> {
     my Buf $b = Buf.new();
 
     for @p -> $p {
-      $b = $b ~ self._enc_element($p);
+      $b ~= self._enc_element($p);
     }
 
     return $b;
@@ -128,8 +138,6 @@ class BSON:ver<0.9.5> {
         # The keys must be in ascending numerical order.
         #
         my %h = .kv;
-#say "E H: {%h.perl}\n\$_: {$_.perl}";
-
         return [~] Buf.new(0x04),
                    self._enc_e_name($p.key),
                    self._enc_document(%h)
@@ -365,7 +373,7 @@ class BSON:ver<0.9.5> {
         my Int $exp-shift = 0;
         my Int $exponent = 1023;
         my Str $bit-string = $r.base(2);
-#say "bs 1: $exp-shift, $exponent, bs: $bit-string, ", $bit-string.chars;
+
         $bit-string ~= '.' unless $bit-string ~~ m/\./;
 
         # Smaller than one
@@ -383,17 +391,14 @@ class BSON:ver<0.9.5> {
             $bit-string = $r.base(2);
           }
 
-#say "bs 2: $exp-shift. $exponent, $first-one, bs: $bit-string";
           $first-one--;
           $exponent -= $first-one;
 
           $r *= 2 ** $first-one;                # 1.***
           $r2 = $r * 2 ** 52;                   # Get max precision
           $bit-string = $r2.base(2);            # Get bits
-#say "bs 3a: $exp-shift. $exponent, $first-one, bs: $bit-string";
           $bit-string ~~ s/\.//;                # Remove dot
           $bit-string ~~ s/^1//;                # Remove first 1
-#say "bs 3b: $exp-shift. $exponent, $first-one, bs: $bit-string";
         }
 
         # Bigger than one
@@ -403,7 +408,6 @@ class BSON:ver<0.9.5> {
           #
           my Int $dot-loc = $bit-string.index('.');
           $exponent += ($dot-loc - 1);
-#say "bs 5: $dot-loc, $exponent, $bit-string";
 
           # If dot is in the string, not at the end, the precision might
           # be not sufficient. Enlarge one time more
@@ -428,10 +432,7 @@ class BSON:ver<0.9.5> {
 
         # And the precision
         #
-#say "bs 6: {$bit-string.substr( 0, 52)}";
         $i +|= :2($bit-string.substr( 0, 52));
-
-#say "I2: {$i.fmt('%016x')}";
 
         $a = self._enc_int64($i);
       }
@@ -489,7 +490,6 @@ class BSON:ver<0.9.5> {
   # The (byte*) is zero or more UTF-8 encoded characters.
   #
   method _enc_string ( Str $s --> Buf ) {
-#say "CF: ", callframe(1).file, ', ', callframe(1).line;
     my $b = $s.encode('UTF-8');
     return [~] self._enc_int32($b.bytes + 1),
                $b,
@@ -532,8 +532,11 @@ class BSON:ver<0.9.5> {
 
   method _dec_document ( Array $a --> Hash ) {
 #    my Int $s = $a.elems;
+#say "DD 0: $!index, $a[$!index], {$a.elems}";
     my Int $i = self._dec_int32($a);
+#say "DD 1: $!index, $i";
     my Hash $h = self._dec_e_list($a);
+#say "DD 2: $!index, {$h.perl}";
 
     die 'Parse error' unless $a[$!index++] ~~ 0x00;
 #    die 'Parse error' unless $a.shift ~~ 0x00;
@@ -549,242 +552,244 @@ class BSON:ver<0.9.5> {
   method _dec_e_list ( Array $a --> Hash ) {
     my Pair @p;
     while $a[$!index] !~~ 0x00 {
-      my $element = self._dec_element($a);
+#say "DL 0: $!index, $a[$!index]";
+      my Pair $element = self._dec_element($a);
+#say "DL 1: $!index, ", $element.defined ?? $element !! 'undefined';
       push @p, $element;
     }
 
     return hash(@p);
   }
 
-  method _dec_element ( Array $a ) {
+  method _dec_element ( Array $a --> Pair ) {
+
+#say "DE 0: $!index, {$a.elems}, $a[$!index], {$a[$!index].perl}";
 
     # Type is given in first byte.
     #
-    given $a[$!index++] {
+    my $bson_code = $a[$!index++];
+    if $bson_code == 0x01 {
+      # Double precision
+      # "\x01" e_name Num
+      #
+      return self._dec_e_name($a) => self._dec_double($a);
+    }
 
-      when 0x01 {
-        # Double precision
-        # "\x01" e_name Num
-        #
-        return self._dec_e_name($a) => self._dec_double($a);
-      }
+    elsif $bson_code == 0x02 {
+      # UTF-8 string
+      # "\x02" e_name string
+      #
+      return self._dec_e_name($a) => self._dec_string($a);
+    }
 
-      when 0x02 {
-        # UTF-8 string
-        # "\x02" e_name string
-        #
-        return self._dec_e_name($a) => self._dec_string($a);
-      }
+    elsif $bson_code == 0x03 {
+      # Embedded document
+      # "\x03" e_name document
+      #
+      return self._dec_e_name($a) => self._dec_document($a);
+    }
 
-      when 0x03 {
-        # Embedded document
-        # "\x03" e_name document
-        #
-        return self._dec_e_name($a) => self._dec_document($a);
-      }
+    elsif $bson_code == 0x04 {
+      # Array
+      # "\x04" e_name document
+      #
+      # The document for an array is a normal BSON document
+      # with integer values for the keys,
+      # starting with 0 and continuing sequentially.
+      # For example, the array ['red', 'blue']
+      # would be encoded as the document {'0': 'red', '1': 'blue'}.
+      # The keys must be in ascending numerical order.
+      #
+      # Cannot use a simple $h.values because the hash keys might not be
+      # in an ascending order. Furthermore the sorting method must be forced
+      # into integer comparison otherwise you get series like 0,1,10,11,...2,
+      # etc
+      # 
+      my Str $key = self._dec_e_name($a);
+      my Hash $h = self._dec_document($a);
+      my @values;
+      for $h.keys.sort({$^x <=> $^y}) -> $k {@values.push($h{$k})};
+      return $key => [@values];
+    }
 
-      when 0x04 {
-        # Array
-        # "\x04" e_name document
-        #
-        # The document for an array is a normal BSON document
-        # with integer values for the keys,
-        # starting with 0 and continuing sequentially.
-        # For example, the array ['red', 'blue']
-        # would be encoded as the document {'0': 'red', '1': 'blue'}.
-        # The keys must be in ascending numerical order.
-        #
-        # Cannot use a simple $h.values because the hash keys might not be
-        # in an ascending order. Furthermore the sorting method must be forced
-        # into integer comparison otherwise you get series like 0,1,10,11,...2,
-        # etc
-        # 
-        my Str $key = self._dec_e_name($a);
-        my Hash $h = self._dec_document($a);
-        my @values;
-        for $h.keys.sort({$^x <=> $^y}) -> $k {@values.push($h{$k})};
-        return $key => [@values];
-      }
+    elsif $bson_code == 0x05 {
+      # Binary
+      # "\x05 e_name int32 subtype byte*
+      # subtype = byte \x00 .. \x05, \x80
+      #
+      my $name = self._dec_e_name($a);
+      my BSON::Binary $bin_obj .= new;
+      $bin_obj._dec_binary( self, $a);
+      return $name => $bin_obj;
+    }
 
-      when 0x05 {
-        # Binary
-        # "\x05 e_name int32 subtype byte*
-        # subtype = byte \x00 .. \x05, \x80
-        #
-        my $name = self._dec_e_name($a);
-        my BSON::Binary $bin_obj .= new;
-        $bin_obj._dec_binary( self, $a);
-        return $name => $bin_obj;
-      }
+    elsif $bson_code == 0x06 {
+      # Undefined and deprecated
+      # "\x06" e_name
+      #
+      # Must drop some bytes from array.
+      #
+      self._dec_e_name($a);
+      die X::BSON::Deprecated.new( :operation('decode'),
+                                   :type('Undefined(0x06)')
+                                 );
+    }
 
-      when 0x06 {
-        # Undefined and deprecated
-        # "\x06" e_name
-        #
-        # Must drop some bytes from array.
-        #
-        self._dec_e_name($a);
-        die X::BSON::Deprecated.new( :operation('decode'),
-                                     :type('Undefined(0x06)')
-                                   );
-      }
-
-      when 0x07 {
-        # ObjectId
-        # "\x07" e_name (byte*12)
-        #
-        my $n = self._dec_e_name($a);
-        my @a = $a[$!index..($!index+11)];
-        $!index += 12;
+    elsif $bson_code == 0x07 {
+      # ObjectId
+      # "\x07" e_name (byte*12)
+      #
+      my $n = self._dec_e_name($a);
+      my @a = $a[$!index..($!index+11)];
+      $!index += 12;
 #        my @a = $a.splice( 0, 12);
 
-        my $o = BSON::ObjectId.new(Buf.new(@a));
-#say "A: ", @a, "\nO: ", $o;
-        return $n => $o;
-      }
+      my Buf $oid = Buf.new(@a);
+      my $o = BSON::ObjectId.new($oid);
+      return $n => $o;
+    }
 
-      when 0x08 {
-        my $n = self._dec_e_name($a);
+    elsif $bson_code == 0x08 {
+      my $n = self._dec_e_name($a);
 
-        given $a[$!index++] {
+      given $a[$!index++] {
 
-          when 0x01 {
-            # Boolean "true"
-            # "\x08" e_name "\x01
-            #
-            return $n => Bool::True;
-          }
+        when 0x01 {
+          # Boolean "true"
+          # "\x08" e_name "\x01
+          #
+          return $n => Bool::True;
+        }
 
-          when 0x00 {
-            # Boolean "false"
-            # "\x08" e_name "\x00
-            #
-            return $n => Bool::False;
-          }
+        when 0x00 {
+          # Boolean "false"
+          # "\x08" e_name "\x00
+          #
+          return $n => Bool::False;
+        }
 
-          default {
-            die 'Parse error';
-          }
+        default {
+          die 'Parse error';
         }
       }
+    }
 
-      when 0x09 {
-        # Datetime
-        # "\x09" e_name int64
-        #
-        return self._dec_e_name($a) => DateTime.new(self._dec_int64($a));
-      }
+    elsif $bson_code == 0x09 {
+      # Datetime
+      # "\x09" e_name int64
+      #
+      return self._dec_e_name($a) => DateTime.new(self._dec_int64($a));
+    }
 
-      when 0x0A {
-        # Null value
-        # "\x0A" e_name
-        #
-        return self._dec_e_name($a) => Any;
-      }
+    elsif $bson_code == 0x0A {
+      # Null value
+      # "\x0A" e_name
+      #
+      return self._dec_e_name($a) => Any;
+    }
 
-      when 0x0B {
-        # Regular expression
-        # "\x0B" e_name cstring cstring
-        #
-        return self._dec_e_name($a) =>
-          BSON::Regex.new( :regex(self._dec_cstring($a)),
-                           :options(self._dec_cstring($a))
-                         );
-      }
+    elsif $bson_code == 0x0B {
+      # Regular expression
+      # "\x0B" e_name cstring cstring
+      #
+      return self._dec_e_name($a) =>
+        BSON::Regex.new( :regex(self._dec_cstring($a)),
+                         :options(self._dec_cstring($a))
+                       );
+    }
 
-      when 0x0C {
-        # DPPointer and deprecated
-        # \0x0C e_name string (byte*12)
-        #
-        # Must drop some bytes from array.
-        #
-        self._dec_e_name($a);
-        self._dec_string($a);
-        $a[0..11];
-        $!index += 12;
-        die X::BSON::Deprecated.new( :operation('decode'),
-                                     :type('DPPointer(0x0C)')
-                                   );
-      }
+    elsif $bson_code == 0x0C {
+      # DPPointer and deprecated
+      # \0x0C e_name string (byte*12)
+      #
+      # Must drop some bytes from array.
+      #
+      self._dec_e_name($a);
+      self._dec_string($a);
+      $a[0..11];
+      $!index += 12;
+      die X::BSON::Deprecated.new( :operation('decode'),
+                                   :type('DPPointer(0x0C)')
+                                 );
+    }
 
-      when 0x0D {
-        # Javascript code
-        # "\x0D" e_name string
-        #
-        return self._dec_e_name($a) =>
-          BSON::Javascript.new( :javascript(self._dec_string($a)));
-      }
+    elsif $bson_code == 0x0D {
+      # Javascript code
+      # "\x0D" e_name string
+      #
+      return self._dec_e_name($a) =>
+        BSON::Javascript.new( :javascript(self._dec_string($a)));
+    }
 
-      when 0x0E {
-        # ? deprecated
-        # "\x0E" e_name string
-        #
-        # Must drop some bytes from array.
-        #
-        self._dec_e_name($a);
-        self._dec_string($a);
-        die X::BSON::Deprecated.new( :operation('decode'), :type('(0x0E)'));
-      }
+    elsif $bson_code == 0x0E {
+      # ? deprecated
+      # "\x0E" e_name string
+      #
+      # Must drop some bytes from array.
+      #
+      self._dec_e_name($a);
+      self._dec_string($a);
+      die X::BSON::Deprecated.new( :operation('decode'), :type('(0x0E)'));
+    }
 
-      when 0x0F {
-        # Javascript code with scope
-        # "\x0F" e_name string document
-        #
-        my $name = self._dec_e_name($a);
-        my $js_scope_size = self._dec_int32($a);
-        return $name =>
-          BSON::Javascript.new( :javascript(self._dec_string($a)),
-                                :scope(self._dec_document($a))
-                              );
-      }
-
-      when 0x10 {
-        # 32-bit Integer
-        # "\x10" e_name int32
-        #
-        return self._dec_e_name($a) => self._dec_int32($a);
-      }
-#`{{
-      when 0x11 {
-        # Timestamp. 
-        # "\x11" e_name int64
-        # Special internal type used by MongoDB replication and
-        # sharding. First 4 bytes are an increment, second 4 are a
-        # timestamp.
-      }
-}}
-
-      when 0x12 {
-        # 64-bit Integer
-        # "\x12" e_name int64
-        #
-        return self._dec_e_name($a) => self._dec_int64($a);
-      }
-#`{{
-      when 0x7F {
-        # Max key.
-        # "\x7F" e_name
-      }
-}}
-
-#`{{
-      when 0xFF {
-        # Min key.
-        # "\xFF" e_name
-      }
-}}
-
-      default {
-        # Number of bytes must be taken from $a otherwise a parse
-        # error will occur later on.
-        #
-
-        die X::BSON::NYS.new( :operation('encode'),
-                              :type('code ' ~ $_.fmt('%02x'))
+    elsif $bson_code == 0x0F {
+      # Javascript code with scope
+      # "\x0F" e_name string document
+      #
+      my $name = self._dec_e_name($a);
+      my $js_scope_size = self._dec_int32($a);
+      return $name =>
+        BSON::Javascript.new( :javascript(self._dec_string($a)),
+                              :scope(self._dec_document($a))
                             );
+    }
+
+    elsif $bson_code == 0x10 {
+      # 32-bit Integer
+      # "\x10" e_name int32
+      #
+      return self._dec_e_name($a) => self._dec_int32($a);
+    }
+#`{{
+    elsif $bson_code == 0x11 {
+      # Timestamp. 
+      # "\x11" e_name int64
+      # Special internal type used by MongoDB replication and
+      # sharding. First 4 bytes are an increment, second 4 are a
+      # timestamp.
+    }
+}}
+
+    elsif $bson_code == 0x12 {
+      # 64-bit Integer
+      # "\x12" e_name int64
+      #
+      return self._dec_e_name($a) => self._dec_int64($a);
+    }
+#`{{
+    elsif $bson_code == 0x7F {
+      # Max key.
+      # "\x7F" e_name
+    }
+}}
+
+#`{{
+    elsif $bson_code == 0xFF {
+      # Min key.
+      # "\xFF" e_name
+    }
+}}
+
+    else {
+      # Number of bytes must be taken from $a otherwise a parse
+      # error will occur later on.
+      #
+
+      die X::BSON::NYS.new( :operation('encode'),
+                            :type('code ' ~ $_.fmt('%02x'))
+                          );
 #              return X::NYI.new(feature => "Type $_");
 #              die 'Sorry, not yet supported type: ' ~ $_;
-      }
     }
   }
 

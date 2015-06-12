@@ -103,7 +103,10 @@ that page: *Major version zero (0.y.z) is for initial development. Anything may
 change at any time. The public API should not be considered stable*.
 
 * 0.9.5
-  * Changed caused by rakudo update
+  * Changed caused by rakudo update.
+  * Hashes work like hashes... mongodb run_command needs command on first key
+    value pair. Because of this a few multi methods are added to process Pair
+    arrays instead of hashes.
 * 0.9.4
   * Tests from 0.9.3 has shown that using an index in arrays is faster than
     shifting the bytes out one by one. This is now modified in BSON.pm6.
