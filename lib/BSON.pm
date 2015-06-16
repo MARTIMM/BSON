@@ -149,7 +149,7 @@ class BSON:ver<0.9.5> {
         # "\x05" e_name int32 subtype byte*
         # subtype is '\x00' for the moment (Generic binary subtype)
         #
-        return [~] Buf.new( 0x05 ),
+        return [~] Buf.new(0x05),
                    self._enc_e_name($p.key),
                    ._enc_binary(self);
       }
@@ -167,7 +167,7 @@ class BSON:ver<0.9.5> {
         # ObjectId
         # "\x07" e_name (byte*12)
         #
-        return Buf.new( 0x07 ) ~ self._enc_e_name( $p.key ) ~ .Buf;
+        return Buf.new(0x07) ~ self._enc_e_name($p.key) ~ .Buf;
       }
 
       when Bool {
@@ -178,13 +178,13 @@ class BSON:ver<0.9.5> {
           # Boolean "true"
           # "\x08" e_name "\x01
           #
-          return Buf.new( 0x08 ) ~ self._enc_e_name( $p.key ) ~ Buf.new( 0x01 );
+          return Buf.new(0x08) ~ self._enc_e_name($p.key) ~ Buf.new(0x01);
         }
         else {
           # Boolean "false"
           # "\x08" e_name "\x00
           #
-          return Buf.new( 0x08 ) ~ self._enc_e_name( $p.key ) ~ Buf.new( 0x00 );
+          return Buf.new(0x08) ~ self._enc_e_name($p.key) ~ Buf.new(0x00);
         }
       }
 
@@ -192,9 +192,9 @@ class BSON:ver<0.9.5> {
         # UTC dateime
         # "\x09" e_name int64
         #
-        return [~] Buf.new( 0x09 ),
-                   self._enc_e_name( $p.key ),
-                   self._enc_int64( $p.value().posix() )
+        return [~] Buf.new(0x09),
+                   self._enc_e_name($p.key),
+                   self._enc_int64($p.value().posix())
                    ;
       }
 
@@ -202,17 +202,17 @@ class BSON:ver<0.9.5> {
         # Null value
         # "\x0A" e_name
         #
-        return Buf.new( 0x0A ) ~ self._enc_e_name( $p.key );
+        return Buf.new(0x0A) ~ self._enc_e_name($p.key);
       }
 
       when BSON::Regex {
         # Regular expression
         # "\x0B" e_name cstring cstring
         #
-        return [~] Buf.new( 0x0B ),
-                   self._enc_e_name( $p.key ),
-                   self._enc_cstring( $p.value.regex ),
-                   self._enc_cstring( $p.value.options )
+        return [~] Buf.new(0x0B),
+                   self._enc_e_name($p.key),
+                   self._enc_cstring($p.value.regex),
+                   self._enc_cstring($p.value.options)
                    ;
       }
 
@@ -236,7 +236,7 @@ class BSON:ver<0.9.5> {
 
           if $p.value.has_scope {
             my Buf $doc = self._enc_document($p.value.scope);
-            return [~] Buf.new( 0x0F ),
+            return [~] Buf.new(0x0F),
                        self._enc_e_name($p.key),
                        self._enc_int32([+] $js.elems, $doc.elems, 4),
                        $js, $doc
@@ -244,7 +244,7 @@ class BSON:ver<0.9.5> {
           }
 
           else {
-            return [~] Buf.new( 0x0D ),
+            return [~] Buf.new(0x0D),
                        self._enc_e_name($p.key),
                        self._enc_string($p.value.javascript)
                        ;
@@ -279,14 +279,14 @@ class BSON:ver<0.9.5> {
         # '\x12' e_name int64
         #
         if -0xffffffff < $p.value < 0xffffffff {
-          return [~] Buf.new( 0x10 ),
+          return [~] Buf.new(0x10),
                      self._enc_e_name($p.key),
                      self._enc_int32($p.value)
                      ;
         }
 
         elsif -0x7fffffff_ffffffff < $p.value < 0x7fffffff_ffffffff {
-          return [~] Buf.new( 0x12 ),
+          return [~] Buf.new(0x12),
                      self._enc_e_name($p.key),
                      self._enc_int64($p.value)
                      ;
@@ -480,7 +480,7 @@ class BSON:ver<0.9.5> {
   # e_name ::= cstring
   #
   method _enc_e_name ( Str $s --> Buf ) {
-    return self._enc_cstring( $s );
+    return self._enc_cstring($s);
   }
 
   # String
@@ -516,13 +516,13 @@ class BSON:ver<0.9.5> {
   method _init_index ( ) {
     $!index = 0;
   }
-  
+
   # Method used by objects to adjust the index
   #
   method adjust_index ( Int $offset ) {
     $!index += $offset;
   }
-  
+
   # Decoding a document given in a binary buffer
   #
   method decode ( Buf $b --> Hash ) {
