@@ -427,19 +427,15 @@ for $samples.keys -> $key {
         my $msg = .message;
         my $type = .can('type') ?? .type !! 'no type()';
         $msg ~~ s:g/\n//;
-# say "M: $msg";
+#say "M: $msg";
 
         when X::BSON::Deprecated {
-            ok .type ~~ ms/Undefined \(0x06\)
-                           || DPPointer \(0x0C\)
-                          /,
+            ok .type ~~ m/'Undefined(0x06)' || 'DPPointer(0x0C)'/,
                $msg;
         }
 
         when X::BSON::ImProperUse {
-            ok .type ~~ ms/integer 0x10\/0x12
-                           || Binary Buf
-                          /,
+            ok .type ~~ m/'integer 0x10/0x12' || 'Binary Buf'/,
                $msg;
         }
 

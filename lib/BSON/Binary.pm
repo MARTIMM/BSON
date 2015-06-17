@@ -1,4 +1,5 @@
 use v6;
+use BSON::EDC-Tools;
 
 class BSON::Binary {
 
@@ -8,6 +9,9 @@ class BSON::Binary {
   constant $UUID-OLD            = 0x03;         # Deprecated
   constant $UUID                = 0x04;
   constant $MD5                 = 0x05;
+
+  state BSON::Encode-Tools $et .= new;
+  state BSON::Decode-Tools $dt .= new;
 
   # User defined codes where code starts from 0x80
   #
@@ -30,25 +34,25 @@ class BSON::Binary {
     return $!binary_data;
   }
 
-  method _enc_binary ( $bson --> Buf ) {
+  method enc_binary ( --> Buf ) {
     if $!has_binary_data {
-      return [~] $bson._enc_int32($!binary_data.elems),
+      return [~] $et.enc_int32($!binary_data.elems),
                  Buf.new( $!binary_type, $!binary_data.list);
     }
 
     else {
-      return [~] $bson._enc_int32(0), Buf.new($!binary_type);
+      return [~] $et.enc_int32(0), Buf.new($!binary_type);
     }
   }
 
-  method _dec_binary ( $bson, Array $a ) {
+  method dec_binary ( Array $a, Int $index is rw ) {
     # Get length
     #
-    my $lng = $bson._dec_int32($a);
+    my Int $lng = $dt.dec_int32( $a, $index);
 
     # Get subtype
     #
-    my $offset = $bson.index;
+    my Int $offset = $index;
     my $sub_type = $a[$offset++];
 
     # Most of the tests are not necessary because of arbitrary sizes.
@@ -92,7 +96,7 @@ class BSON::Binary {
     # Store part of the array.
     #
     $!binary_data = Buf.new($a[$offset..($offset+$lng-1)]);
-    $bson.adjust_index($lng + 1);
+    $index += $lng + 1;
     $!binary_type = $sub_type;
     $!has_binary_data = ?$!binary_data;
   }

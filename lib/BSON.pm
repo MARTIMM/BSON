@@ -3,6 +3,7 @@ use BSON::ObjectId;
 use BSON::Regex;
 use BSON::Javascript;
 use BSON::Binary;
+use BSON::EDC-Tools;
 
 class X::BSON::Deprecated is Exception {
   has $.operation;                      # Operation encode, decode
@@ -32,11 +33,14 @@ class X::BSON::ImProperUse is Exception {
   }
 }
 
-class BSON:ver<0.9.5> {
+class BSON:ver<0.9.6> {
 
   constant $BSON_BOOL = 0x08;
 
-  has Int $.index = 0;
+  has Int $.index is rw = 0;
+
+  state BSON::Encode-Tools $et .= new;
+  state BSON::Decode-Tools $dt .= new;
 
   #-----------------------------------------------------------------------------
   # Test elements see http://bsonspec.org/spec.html
@@ -62,18 +66,12 @@ class BSON:ver<0.9.5> {
   #
   multi method _enc_document ( Hash $h --> Buf ) {
     my Buf $b = self._enc_e_list($h.pairs);
-    return [~] self._enc_int32($b.elems + 5),
-               $b,
-               Buf.new(0x00)
-               ;
+    return [~] $et.enc_int32($b.elems + 5), $b, Buf.new(0x00);
   }
 
   multi method _enc_document ( Pair @p --> Buf ) {
     my Buf $b = self._enc_e_list(@p);
-    return [~] self._enc_int32($b.elems + 5),
-               $b,
-               Buf.new(0x00)
-               ;
+    return [~] $et.enc_int32($b.elems + 5), $b, Buf.new(0x00);
   }
 
   # Sequence of elements
@@ -102,7 +100,7 @@ class BSON:ver<0.9.5> {
         # "\x01" e_name Num
         #
         return [~] Buf.new(0x01),
-                   self._enc_e_name($p.key),
+                   $et.enc_e_name($p.key),
                    self._enc_double($p.value);
       }
 
@@ -111,8 +109,8 @@ class BSON:ver<0.9.5> {
         # "\x02" e_name string
         #
         return [~] Buf.new(0x02),
-                   self._enc_e_name($p.key),
-                   self._enc_string($p.value)
+                   $et.enc_e_name($p.key),
+                   $et.enc_string($p.value)
                    ;
       }
 
@@ -121,7 +119,7 @@ class BSON:ver<0.9.5> {
         # "\x03" e_name document
         #
         return [~] Buf.new(0x03),
-                   self._enc_e_name($p.key),
+                   $et.enc_e_name($p.key),
                    self._enc_document($_)
                    ;
       }
@@ -139,7 +137,7 @@ class BSON:ver<0.9.5> {
         #
         my %h = .kv;
         return [~] Buf.new(0x04),
-                   self._enc_e_name($p.key),
+                   $et.enc_e_name($p.key),
                    self._enc_document(%h)
                    ;
       }
@@ -149,25 +147,26 @@ class BSON:ver<0.9.5> {
         # "\x05" e_name int32 subtype byte*
         # subtype is '\x00' for the moment (Generic binary subtype)
         #
-        return [~] Buf.new(0x05),
-                   self._enc_e_name($p.key),
-                   ._enc_binary(self);
+        return [~] Buf.new(0x05), $et.enc_e_name($p.key), .enc_binary();
       }
 
 #`{{
-      when ... {
+      # Do not know what type to test. Any?
+      when Any {
         # Undefined deprecated 
         # "\x06" e_name
-
-        # Do not know what type to test. Mu?
+        #
+        die X::BSON::Deprecated.new(
+          operation => 'encode',
+          type => 'Undefined(0x06)'
+        );
       }
 }}
-
       when BSON::ObjectId {
         # ObjectId
         # "\x07" e_name (byte*12)
         #
-        return Buf.new(0x07) ~ self._enc_e_name($p.key) ~ .Buf;
+        return Buf.new(0x07) ~ $et.enc_e_name($p.key) ~ .Buf;
       }
 
       when Bool {
@@ -178,13 +177,13 @@ class BSON:ver<0.9.5> {
           # Boolean "true"
           # "\x08" e_name "\x01
           #
-          return Buf.new(0x08) ~ self._enc_e_name($p.key) ~ Buf.new(0x01);
+          return Buf.new(0x08) ~ $et.enc_e_name($p.key) ~ Buf.new(0x01);
         }
         else {
           # Boolean "false"
           # "\x08" e_name "\x00
           #
-          return Buf.new(0x08) ~ self._enc_e_name($p.key) ~ Buf.new(0x00);
+          return Buf.new(0x08) ~ $et.enc_e_name($p.key) ~ Buf.new(0x00);
         }
       }
 
@@ -193,8 +192,8 @@ class BSON:ver<0.9.5> {
         # "\x09" e_name int64
         #
         return [~] Buf.new(0x09),
-                   self._enc_e_name($p.key),
-                   self._enc_int64($p.value().posix())
+                   $et.enc_e_name($p.key),
+                   $et.enc_int64($p.value().posix())
                    ;
       }
 
@@ -202,7 +201,7 @@ class BSON:ver<0.9.5> {
         # Null value
         # "\x0A" e_name
         #
-        return Buf.new(0x0A) ~ self._enc_e_name($p.key);
+        return Buf.new(0x0A) ~ $et.enc_e_name($p.key);
       }
 
       when BSON::Regex {
@@ -210,16 +209,21 @@ class BSON:ver<0.9.5> {
         # "\x0B" e_name cstring cstring
         #
         return [~] Buf.new(0x0B),
-                   self._enc_e_name($p.key),
-                   self._enc_cstring($p.value.regex),
-                   self._enc_cstring($p.value.options)
+                   $et.enc_e_name($p.key),
+                   $et.enc_cstring($p.value.regex),
+                   $et.enc_cstring($p.value.options)
                    ;
       }
 
 #`{{
       when ... {
-          # DBPointer - deprecated
-          # "\x0C" e_name string (byte*12)
+        # DBPointer - deprecated
+        # "\x0C" e_name string (byte*12)
+        #
+        die X::BSON::Deprecated(
+          operation => 'encoding DBPointer',
+          type => '0x0C'
+        );
       }
 }}
 
@@ -232,21 +236,21 @@ class BSON:ver<0.9.5> {
         # "\x0F" e_name int32 string document
         #
         if $p.value.has_javascript {
-          my Buf $js = self._enc_string($p.value.javascript);
+          my Buf $js = $et.enc_string($p.value.javascript);
 
           if $p.value.has_scope {
             my Buf $doc = self._enc_document($p.value.scope);
             return [~] Buf.new(0x0F),
-                       self._enc_e_name($p.key),
-                       self._enc_int32([+] $js.elems, $doc.elems, 4),
+                       $et.enc_e_name($p.key),
+                       $et.enc_int32([+] $js.elems, $doc.elems, 4),
                        $js, $doc
                        ;
           }
 
           else {
             return [~] Buf.new(0x0D),
-                       self._enc_e_name($p.key),
-                       self._enc_string($p.value.javascript)
+                       $et.enc_e_name($p.key),
+                       $et.enc_string($p.value.javascript)
                        ;
           }
         }
@@ -263,10 +267,13 @@ class BSON:ver<0.9.5> {
       when ... {
         # ? - deprecated
         # "\x0E" e_name string (byte*12)
+        #
+        die X::BSON::Deprecated(
+          operation => 'encoding ?',
+          type => '0x0E'
+        );
       }
-}}
 
-#`{{
       when ... {
         # Javascript code with scope. Handled above.
         # "\x0F" e_name string document
@@ -280,15 +287,15 @@ class BSON:ver<0.9.5> {
         #
         if -0xffffffff < $p.value < 0xffffffff {
           return [~] Buf.new(0x10),
-                     self._enc_e_name($p.key),
-                     self._enc_int32($p.value)
+                     $et.enc_e_name($p.key),
+                     $et.enc_int32($p.value)
                      ;
         }
 
         elsif -0x7fffffff_ffffffff < $p.value < 0x7fffffff_ffffffff {
           return [~] Buf.new(0x12),
-                     self._enc_e_name($p.key),
-                     self._enc_int64($p.value)
+                     $et.enc_e_name($p.key),
+                     $et.enc_int64($p.value)
                      ;
         }
 
@@ -306,6 +313,7 @@ class BSON:ver<0.9.5> {
       when ... {
           # Timestamp. 
           # "\x11" e_name int64
+          #
           # Special internal type used by MongoDB replication and
           # sharding. First 4 bytes are an increment, second 4 are a
           # timestamp.
@@ -321,20 +329,22 @@ class BSON:ver<0.9.5> {
       }
 
       default {
-        die X::BSON::NYS.new( :operation('encode'), :type($_));
-#              die "Sorry, not yet supported type: $_"; # ~ .WHAT;
+        if .can('encode') {
+          my $code = 1; # which bson code
+
+          return [~] Buf.new($code),
+                     $et.enc_e_name($p.key),
+                     .encode;
+                     ;
+        }
+
+        else {
+          die X::BSON::NYS.new( :operation('encode'), :type($_));
+#             die "Sorry, not yet supported type: $_"; # ~ .WHAT;
+        }
       }
     }
   }
-
-#`{{
-  # Binary buffer
-  #
-  method _enc_binary ( Int $sub_type, Buf $b ) {
-
-       return [~] self._enc_int32($b.elems), Buf.new( $sub_type, $b.list);
-  }
-}}
 
   # 8 bytes double (64-bit floating point number)
   #
@@ -434,79 +444,13 @@ class BSON:ver<0.9.5> {
         #
         $i +|= :2($bit-string.substr( 0, 52));
 
-        $a = self._enc_int64($i);
+        $a = $et.enc_int64($i);
       }
     }
 
     return $a;
   }
 
-  # 4 bytes (32-bit signed integer)
-  #
-  method _enc_int32 ( Int $i #`{{is copy}} --> Buf ) {
-    my int $ni = $i;      
-    return Buf.new( $ni +& 0xFF, ($ni +> 0x08) +& 0xFF,
-                    ($ni +> 0x10) +& 0xFF, ($ni +> 0x18) +& 0xFF
-                  );
-    # Original method goes wrong on negative numbers. Also modulo operations are
-    # slower than the bit operations.
-    # return Buf.new( $i % 0x100, $i +> 0x08 % 0x100, $i +> 0x10 % 0x100, $i +> 0x18 % 0x100 );
-  }
-
-  # 8 bytes (64-bit int)
-  #
-  method _enc_int64 ( Int $i --> Buf ) {
-    # No tests for too large/small numbers because it is called from
-    # _enc_element normally where it is checked
-    #
-    my int $ni = $i;
-    return Buf.new( $ni +& 0xFF, ($ni +> 0x08) +& 0xFF,
-                    ($ni +> 0x10) +& 0xFF, ($ni +> 0x18) +& 0xFF,
-                    ($ni +> 0x20) +& 0xFF, ($ni +> 0x28) +& 0xFF,
-                    ($ni +> 0x30) +& 0xFF, ($ni +> 0x38) +& 0xFF
-                  );
-
-    # Original method goes wrong on negative numbers. Also modulo operations are
-    # slower than the bit operations.
-    #
-    #return Buf.new( $i % 0x100, $i +> 0x08 % 0x100, $i +> 0x10 % 0x100,
-    #                $i +> 0x18 % 0x100, $i +> 0x20 % 0x100,
-    #                $i +> 0x28 % 0x100, $i +> 0x30 % 0x100,
-    #                $i +> 0x38 % 0x100
-    #              );
-  }
-
-  # Key name
-  # e_name ::= cstring
-  #
-  method _enc_e_name ( Str $s --> Buf ) {
-    return self._enc_cstring($s);
-  }
-
-  # String
-  # string ::= int32 (byte*) "\x00"
-  #
-  # The int32 is the number bytes in the (byte*) + 1 (for the trailing '\x00').
-  # The (byte*) is zero or more UTF-8 encoded characters.
-  #
-  method _enc_string ( Str $s --> Buf ) {
-    my $b = $s.encode('UTF-8');
-    return [~] self._enc_int32($b.bytes + 1),
-               $b,
-               Buf.new(0x00);
-  }
-
-  # CString
-  # cstring ::= (byte*) "\x00"
-  #
-  # Zero or more modified UTF-8 encoded characters followed by '\x00'.
-  # The (byte*) MUST NOT contain '\x00', hence it is not full UTF-8.
-  #
-  method _enc_cstring ( Str $s --> Buf ) {
-      die "Forbidden 0x00 sequence in $s" if $s ~~ /\x00/;
-
-      return $s.encode() ~ Buf.new(0x00);
-  }
 
 
   #-----------------------------------------------------------------------------
@@ -515,12 +459,6 @@ class BSON:ver<0.9.5> {
   #
   method _init_index ( ) {
     $!index = 0;
-  }
-
-  # Method used by objects to adjust the index
-  #
-  method adjust_index ( Int $offset ) {
-    $!index += $offset;
   }
 
   # Decoding a document given in a binary buffer
@@ -533,7 +471,7 @@ class BSON:ver<0.9.5> {
   method _dec_document ( Array $a --> Hash ) {
 #    my Int $s = $a.elems;
 #say "DD 0: $!index, $a[$!index], {$a.elems}";
-    my Int $i = self._dec_int32($a);
+    my Int $i = $dt.dec_int32( $a, $!index);
 #say "DD 1: $!index, $i";
     my Hash $h = self._dec_e_list($a);
 #say "DD 2: $!index, {$h.perl}";
@@ -572,21 +510,21 @@ class BSON:ver<0.9.5> {
       # Double precision
       # "\x01" e_name Num
       #
-      return self._dec_e_name($a) => self._dec_double($a);
+      return $dt.dec_e_name( $a, $!index) => self._dec_double($a);
     }
 
     elsif $bson_code == 0x02 {
       # UTF-8 string
       # "\x02" e_name string
       #
-      return self._dec_e_name($a) => self._dec_string($a);
+      return $dt.dec_e_name( $a, $!index) => $dt.dec_string( $a, $!index);
     }
 
     elsif $bson_code == 0x03 {
       # Embedded document
       # "\x03" e_name document
       #
-      return self._dec_e_name($a) => self._dec_document($a);
+      return $dt.dec_e_name( $a, $!index) => self._dec_document($a);
     }
 
     elsif $bson_code == 0x04 {
@@ -605,7 +543,7 @@ class BSON:ver<0.9.5> {
       # into integer comparison otherwise you get series like 0,1,10,11,...2,
       # etc
       # 
-      my Str $key = self._dec_e_name($a);
+      my Str $key = $dt.dec_e_name( $a, $!index);
       my Hash $h = self._dec_document($a);
       my @values;
       for $h.keys.sort({$^x <=> $^y}) -> $k {@values.push($h{$k})};
@@ -617,9 +555,9 @@ class BSON:ver<0.9.5> {
       # "\x05 e_name int32 subtype byte*
       # subtype = byte \x00 .. \x05, \x80
       #
-      my $name = self._dec_e_name($a);
+      my $name = $dt.dec_e_name( $a, $!index);
       my BSON::Binary $bin_obj .= new;
-      $bin_obj._dec_binary( self, $a);
+      $bin_obj.dec_binary( $a, $!index);
       return $name => $bin_obj;
     }
 
@@ -629,7 +567,7 @@ class BSON:ver<0.9.5> {
       #
       # Must drop some bytes from array.
       #
-      self._dec_e_name($a);
+      $dt.dec_e_name( $a, $!index);
       die X::BSON::Deprecated.new( :operation('decode'),
                                    :type('Undefined(0x06)')
                                  );
@@ -639,7 +577,7 @@ class BSON:ver<0.9.5> {
       # ObjectId
       # "\x07" e_name (byte*12)
       #
-      my $n = self._dec_e_name($a);
+      my $n = $dt.dec_e_name( $a, $!index);
       my @a = $a[$!index..($!index+11)];
       $!index += 12;
 #        my @a = $a.splice( 0, 12);
@@ -650,7 +588,7 @@ class BSON:ver<0.9.5> {
     }
 
     elsif $bson_code == 0x08 {
-      my $n = self._dec_e_name($a);
+      my $n = $dt.dec_e_name( $a, $!index);
 
       given $a[$!index++] {
 
@@ -678,23 +616,23 @@ class BSON:ver<0.9.5> {
       # Datetime
       # "\x09" e_name int64
       #
-      return self._dec_e_name($a) => DateTime.new(self._dec_int64($a));
+      return $dt.dec_e_name( $a, $!index) => DateTime.new($dt.dec_int64( $a, $!index));
     }
 
     elsif $bson_code == 0x0A {
       # Null value
       # "\x0A" e_name
       #
-      return self._dec_e_name($a) => Any;
+      return $dt.dec_e_name( $a, $!index) => Any;
     }
 
     elsif $bson_code == 0x0B {
       # Regular expression
       # "\x0B" e_name cstring cstring
       #
-      return self._dec_e_name($a) =>
-        BSON::Regex.new( :regex(self._dec_cstring($a)),
-                         :options(self._dec_cstring($a))
+      return $dt.dec_e_name( $a, $!index) =>
+        BSON::Regex.new( :regex($dt.dec_cstring( $a, $!index)),
+                         :options($dt.dec_cstring( $a, $!index))
                        );
     }
 
@@ -704,8 +642,8 @@ class BSON:ver<0.9.5> {
       #
       # Must drop some bytes from array.
       #
-      self._dec_e_name($a);
-      self._dec_string($a);
+      $dt.dec_e_name( $a, $!index);
+      $dt.dec_string( $a, $!index);
       $a[0..11];
       $!index += 12;
       die X::BSON::Deprecated.new( :operation('decode'),
@@ -717,8 +655,8 @@ class BSON:ver<0.9.5> {
       # Javascript code
       # "\x0D" e_name string
       #
-      return self._dec_e_name($a) =>
-        BSON::Javascript.new( :javascript(self._dec_string($a)));
+      return $dt.dec_e_name( $a, $!index) =>
+        BSON::Javascript.new( :javascript($dt.dec_string( $a, $!index)));
     }
 
     elsif $bson_code == 0x0E {
@@ -727,8 +665,8 @@ class BSON:ver<0.9.5> {
       #
       # Must drop some bytes from array.
       #
-      self._dec_e_name($a);
-      self._dec_string($a);
+      $dt.dec_e_name( $a, $!index);
+      $dt.dec_string( $a, $!index);
       die X::BSON::Deprecated.new( :operation('decode'), :type('(0x0E)'));
     }
 
@@ -736,10 +674,10 @@ class BSON:ver<0.9.5> {
       # Javascript code with scope
       # "\x0F" e_name string document
       #
-      my $name = self._dec_e_name($a);
-      my $js_scope_size = self._dec_int32($a);
+      my $name = $dt.dec_e_name( $a, $!index);
+      my $js_scope_size = $dt.dec_int32( $a, $!index);
       return $name =>
-        BSON::Javascript.new( :javascript(self._dec_string($a)),
+        BSON::Javascript.new( :javascript($dt.dec_string( $a, $!index)),
                               :scope(self._dec_document($a))
                             );
     }
@@ -748,7 +686,7 @@ class BSON:ver<0.9.5> {
       # 32-bit Integer
       # "\x10" e_name int32
       #
-      return self._dec_e_name($a) => self._dec_int32($a);
+      return $dt.dec_e_name( $a, $!index) => $dt.dec_int32( $a, $!index);
     }
 #`{{
     elsif $bson_code == 0x11 {
@@ -764,7 +702,7 @@ class BSON:ver<0.9.5> {
       # 64-bit Integer
       # "\x12" e_name int64
       #
-      return self._dec_e_name($a) => self._dec_int64($a);
+      return $dt.dec_e_name( $a, $!index) => $dt.dec_int64( $a, $!index);
     }
 #`{{
     elsif $bson_code == 0x7F {
@@ -793,59 +731,6 @@ class BSON:ver<0.9.5> {
     }
   }
 
-#`{{
-  #-----------------------------------------------------------------------------
-
-  method _dec_binary ( Array $a ) {
-
-      # Get length
-      my $lng = self._dec_int32( $a );
-
-      # Get subtype
-      my $sub_type = $a.shift;
-
-      # Most of the tests are not necessary because of arbitrary sizes.
-      # UUID and MD5 can be tested.
-      #
-      given $sub_type {
-          when 0x00 {
-              # Generic binary subtype
-          }
-
-          when 0x01 {
-              # Function
-          }
-
-          when 0x02 {
-              # Binary (Old - deprecated)
-              die 'Code (0x02) Deprecated binary data';
-          }
-
-          when 0x03 {
-              # UUID (Old - deprecated)
-              die 'UUID(0x03) Deprecated binary data';
-          }
-
-          when 0x04 {
-              # UUID. According to http://en.wikipedia.org/wiki/Universally_unique_identifier
-              # the universally unique identifier is a 128-bit (16 byte) value.
-              die 'UUID(0x04) Binary string parse error' unless $lng ~~ 16;
-          }
-
-          when 0x05 {
-              # MD5. This is a 16 byte number (32 character hex string)
-              die 'UUID(0x04) Binary string parse error' unless $lng ~~ 16;
-          }
-
-          when 0x80 {
-              # User defined. That is, all other codes 0x80 .. 0xFF
-          }
-      }
-
-      # Just return part of the array.
-      return Buf.new( $a.splice( 0, $lng));
-  }
-}}
 
 
   #-----------------------------------------------------------------------------
@@ -903,7 +788,7 @@ class BSON:ver<0.9.5> {
     # If value is not set by the special cases above, calculate it here
     #
     else {
-      my Int $i = self._dec_int64( $a );
+      my Int $i = $dt.dec_int64( $a, $!index);
       my Int $sign = $i +& 0x8000_0000_0000_0000 ?? -1 !! 1;
 
       # Significand + implicit bit
@@ -918,93 +803,6 @@ class BSON:ver<0.9.5> {
     }
 
     return $value; #X::NYI.new(feature => "Type Double");
-  }
-
-  #-----------------------------------------------------------------------------
-
-  method _dec_int32 ( Array $a --> Int ) {
-#    my int $ni = $a.shift +| $a.shift +< 0x08 +|
-#                 $a.shift +< 0x10 +| $a.shift +< 0x18
-#                 ;
-    my int $ni = $a[$!index]             +| $a[$!index + 1] +< 0x08 +|
-                 $a[$!index + 2] +< 0x10 +| $a[$!index + 3] +< 0x18
-                 ;
-    $!index += 4;
-
-    # Test if most significant bit is set. If so, calculate two's complement
-    # negative number.
-    # Prefix +^: Coerces the argument to Int and does a bitwise negation on
-    # the result, assuming two's complement. (See
-    # http://doc.perl6.org/language/operators^)
-    # Infix +^ :Coerces both arguments to Int and does a bitwise XOR
-    # (exclusive OR) operation.
-    #
-    $ni = (0xffffffff +& (0xffffffff+^$ni) +1) * -1  if $ni +& 0x80000000;
-
-    return $ni;
-
-    # Original method goes wrong on negative numbers. Also adding might be slower
-    # than the bit operations. 
-    # return [+] $a.shift, $a.shift +< 0x08, $a.shift +< 0x10, $a.shift +< 0x18;
-  }
-
-  #-----------------------------------------------------------------------------
-
-  method _dec_int64 ( Array $a ) {
-#    my int $ni = $a.shift +| $a.shift +< 0x08 +|
-#                 $a.shift +< 0x10 +| $a.shift +< 0x18 +|
-#                 $a.shift +< 0x20 +| $a.shift +< 0x28 +|
-#                 $a.shift +< 0x30 +| $a.shift +< 0x38
-#                 ;
-
-    my int $ni = $a[$!index]             +| $a[$!index + 1] +< 0x08 +|
-                 $a[$!index + 2] +< 0x10 +| $a[$!index + 3] +< 0x18 +|
-                 $a[$!index + 4] +< 0x20 +| $a[$!index + 5] +< 0x28 +|
-                 $a[$!index + 6] +< 0x30 +| $a[$!index + 7] +< 0x38
-                 ;
-    $!index += 8;
-    return $ni;
-
-    # Original method goes wrong on negative numbers. Also adding might be slower
-    # than the bit operations. 
-    #return [+] $a.shift, $a.shift +< 0x08, $a.shift +< 0x10, $a.shift +< 0x18
-    #         , $a.shift +< 0x20, $a.shift +< 0x28, $a.shift +< 0x30
-    #         , $a.shift +< 0x38
-    #         ;
-  }
-
-
-  #-----------------------------------------------------------------------------
-  method _dec_e_name ( Array $a ) {
-    return self._dec_cstring($a);
-  }
-
-  #-----------------------------------------------------------------------------
-  method _dec_cstring ( Array $a ) {
-    my @a;
-    while $a[$!index] !~~ 0x00 { @a.push($a[$!index++]); }
-    die 'Parse error' unless $a[$!index++] ~~ 0x00;
-
-#    while $a[ 0 ] !~~ 0x00 {
-#        @a.push( $a.shift );
-#    }
-
-#    die 'Parse error' unless $a.shift ~~ 0x00;
-    return Buf.new(@a).decode();
-  }
-
-  #-----------------------------------------------------------------------------
-  method _dec_string ( Array $a ) {
-    my $i = self._dec_int32($a);
-
-    my @a;
-    @a.push($a[$!index++]) for ^ ( $i - 1 );
-    die 'Parse error' unless $a[$!index++] ~~ 0x00;
-
-#    @a.push( $a.shift ) for ^ ( $i - 1 );
-#    die 'Parse error' unless $a.shift ~~ 0x00;
-
-    return Buf.new(@a).decode();
   }
 }
 

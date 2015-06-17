@@ -45,10 +45,15 @@ This is perl6 version 2015.04-5-g59f57a8 built on MoarVM version 2015.04-3-gbb50
     [x] Int              => 32-bit Integer if -2147483646 < n < 2147483647
                          => 64-bit Integer if -9,22337203685e+18 < n < 9,22337203685e+18
                             Fails if larger/smaller with X::BSON::ImProperUse
-        Int             <=  32/64 bit integers.
+    [x] Int             <=  32/64 bit integers.
     [x] Bool            <=> Boolean "true" / "false"
-    [x] BSON::Binary    <=> All kind of binary
-                            0x00 Generic type.
+    [x] BSON::Binary    <=> All kinds of binary data
+    [x]                     0x00 Generic type
+    [ ]                     0x01 Function
+    [ ]                     0x02 Binary old, deprecated
+    [ ]                     0x03 UUID old, deprecated
+    [ ]                     0x04 UUID
+    [ ]                     0x05 MD5
     [x] Array           <=> Array
     [x] Hash            <=> Embedded document
     [x] BSON::ObjectId  <=> ObjectId
@@ -58,10 +63,8 @@ This is perl6 version 2015.04-5-g59f57a8 built on MoarVM version 2015.04-3-gbb50
                             be implemented differently later.
     [ ] FatRat
     [ ] Rat
-    [ ] UUID
-    [ ] MD5
     [x] DateTime        <=> int64 UTC datetime, seconds since January 1st 1970
-    [x] BSON::Regex     <=> Regular expression serverside searches
+    [x] BSON::Regex     <=> Regular expression for serverside searches
     [x] BSON::Javascript<=> Javascript code transport with or whithout scope
 
         And quite a few more perl6 types. Now binary types are possible it
@@ -94,7 +97,7 @@ Method ```.perl``` is available for easy debug.
 * Perl 6 Int variables are integral numbers of arbitrary size. This means that
   any integer can be stored as large or small as you like. Int can be coded as
   described in version 0.8.4 and when larger or smaller then maybe it is
-  possible the Int can be coded as a binary array with some type.
+  possible the Int can be coded as a binary array of some type.
 
 ## CHANGELOG
 
@@ -102,6 +105,8 @@ See [semantic versioning](http://semver.org/). Please note point 4. on
 that page: *Major version zero (0.y.z) is for initial development. Anything may
 change at any time. The public API should not be considered stable*.
 
+* 0.9.6
+  * Factoring out methods from BSON into EDC-Tools.
 * 0.9.5
   * Changed caused by rakudo update.
   * Hashes work like hashes... mongodb run_command needs command on first key

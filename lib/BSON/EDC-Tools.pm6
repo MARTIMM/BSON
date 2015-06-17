@@ -1,18 +1,19 @@
 use v6;
 
+# Basic BSON encoding and decoding tools. These are to process strings and
+# integers.
+
 package BSON {
 
-  class Encodable-Tools {
-  
+  class Encode-Tools {
+
     #--------------------------------------------------------------------------
     # Encoding tools
     #
-    # Is bypassed by calling enc_cstring directly
-    #
-    # method enc_e_name ( Str $s --> Buf ) {
-    #
-    #   return self.enc_cstring($s);
-    # }
+    method enc_e_name ( Str $s --> Buf ) {
+
+      return self.enc_cstring($s);
+    }
 
     method enc_cstring ( Str $s --> Buf ) {
 
@@ -63,17 +64,16 @@ package BSON {
       #                $i +> 0x38 % 0x100
       #              );
     }
-    
+  }
 
+  class Decode-Tools {
     #--------------------------------------------------------------------------
     # Decoding tools
     #
-    # Is bypassed by calling dec_cstring directly
-    #
-    # method dec_e_name ( Array $b ) {
-    #
-    #   return self.dec_cstring( $b );
-    # }
+    method dec_e_name ( Array $b, Int $index is rw --> Str ) {
+
+      return self.dec_cstring( $b, $index);
+    }
 
     method dec_cstring ( Array $a, Int $index is rw --> Str ) {
       my @a;
@@ -90,7 +90,7 @@ package BSON {
       my $i = self.dec_int32( $a, $index);
 
       my @a;
-      @a.push( $a[$index++] ) for ^ ( $i - 1 );
+      @a.push($a[$index++]) for ^ ($i - 1);
 
       die 'Parse error' unless $a[$index++] ~~ 0x00;
 
@@ -123,7 +123,7 @@ package BSON {
     # 8 bytes (64-bit int)
     #
     method dec_int64 ( Array $a, Int $index is rw --> Int ) {
-      my Int $ni = $a[$index]             +| $a[$index + 1] +< 0x08 +|
+      my int $ni = $a[$index]             +| $a[$index + 1] +< 0x08 +|
                    $a[$index + 2] +< 0x10 +| $a[$index + 3] +< 0x18 +|
                    $a[$index + 4] +< 0x20 +| $a[$index + 5] +< 0x28 +|
                    $a[$index + 6] +< 0x30 +| $a[$index + 7] +< 0x38
