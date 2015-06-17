@@ -9,7 +9,7 @@ use BSON;
 # Test cases borrowed from
 # https://github.com/mongodb/mongo-python-driver/blob/master/test/test_bson.py
 
-my BSON $b .= new();
+my BSON::Bson $b .= new();
 my Str $script = 'function(x){return x;}';
 my Hash $scope = { n => 10 };
 

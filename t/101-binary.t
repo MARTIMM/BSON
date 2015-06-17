@@ -30,7 +30,7 @@ is( $index, $bin-test.elems, 'Index is shifted');
 #
 #$bin-obj.raw(Buf.new(^5));
 
-my BSON $bson .= new;
+my BSON::Bson $bson .= new;
 
 my %test = 
     %( decoded => { b => BSON::Binary.new().raw(Buf.new(^5)) },

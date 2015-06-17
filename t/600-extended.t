@@ -49,8 +49,9 @@ my $oid = BSON::ObjectId.new(
            )
 );
 
+my BSON::Bson $bson .= new;
 is-deeply
-    BSON.encode( { "oid" => $oid } ).list,
+    $bson.encode( { "oid" => $oid } ).list,
     [ 0x16, 0x00, 0x00, 0x00,
       0x07,
       0x6F, 0x69, 0x64, 0x00,
@@ -60,7 +61,6 @@ is-deeply
     ],
     'encode ObjectId';
 
-my $bson = BSON.new;
 $bson._init_index;
 is-deeply
     $bson.decode(

@@ -10,7 +10,7 @@ use BSON;
 
 #-------------------------------------------------------------------------------
 # 
-my $bson = BSON.new;
+my BSON::Bson $bson .= new;
 my Buf $b;
 my Buf $br;
 my Num $v;

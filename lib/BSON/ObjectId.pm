@@ -1,6 +1,6 @@
 use v6;
 
-package BSON {
+package BSON:ver<0.9.6> {
 
   class ObjectId {
 

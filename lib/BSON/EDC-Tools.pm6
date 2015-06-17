@@ -3,7 +3,7 @@ use v6;
 # Basic BSON encoding and decoding tools. These are to process strings and
 # integers.
 
-package BSON {
+package BSON:ver<0.9.6> {
 
   class Encode-Tools {
 

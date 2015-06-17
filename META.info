@@ -1,15 +1,17 @@
 {
-    "author": "Pawel Pabian (2011-2015), Marcel Timmerman (2015-present)",
-    "depends": [
-    ],
-    "description": "BSON encoding/decoding, used in MongoDB drivers",
-    "name": "BSON",
-    "provides": {
-        "BSON": "lib/BSON.pm",
-        "BSON::ObjectId": "lib/BSON/ObjectId.pm",
-        "BSON::Regex": "lib/BSON/Regex.pm",
-        "BSON::Javascript": "lib/BSON/Javascript.pm"
-    },
-    "source-url": "git://github.com/MARTIMM/BSON.git",
-    "version": "0.9.6"
+  "author": "Pawel Pabian (2011-2015), Marcel Timmerman (2015-present)",
+  "depends": [
+  ],
+  "description": "BSON encoding/decoding, used in MongoDB drivers",
+  "name": "BSON",
+  "provides": {
+    "BSON":                 "lib/BSON.pm",
+    "BSON::Binary":         "lib/BSON/Binary.pm",
+    "BSON::EDC-Tools":      "lib/BSON/EDC-Tools.pm",
+    "BSON::Javascript":     "lib/BSON/Javascript.pm",
+    "BSON::ObjectId":       "lib/BSON/ObjectId.pm",
+    "BSON::Regex":          "lib/BSON/Regex.pm"
+  },
+  "source-url": "git://github.com/MARTIMM/BSON.git",
+  "version": "0.9.6"
 }
