@@ -3,22 +3,14 @@ use v6;
 package BSON:ver<0.9.6> {
   use BSON::EDC-Tools;
 
+  constant $GENERIC             = 0x00;
+  constant $FUNCTION            = 0x01;
+  constant $BINARY-OLD          = 0x02;         # Deprecated
+  constant $UUID-OLD            = 0x03;         # Deprecated
+  constant $UUID                = 0x04;
+  constant $MD5                 = 0x05;
+
   class Binary {
-
-    constant $GENERIC             = 0x00;
-    constant $FUNCTION            = 0x01;
-    constant $BINARY-OLD          = 0x02;         # Deprecated
-    constant $UUID-OLD            = 0x03;         # Deprecated
-    constant $UUID                = 0x04;
-    constant $MD5                 = 0x05;
-
-    state BSON::Encode-Tools $et = BSON::Encode-Tools.new;
-    state BSON::Decode-Tools $dt = BSON::Decode-Tools.new;
-
-    # User defined codes where code starts from 0x80
-    #
-    #constant
-    #constant 
 
     has Buf $.binary_data;
     has Bool $.has_binary_data = False;
@@ -38,19 +30,19 @@ package BSON:ver<0.9.6> {
 
     method enc_binary ( --> Buf ) {
       if $!has_binary_data {
-        return [~] $et.enc_int32($!binary_data.elems),
+        return [~] encode_int32($!binary_data.elems),
                    Buf.new( $!binary_type, $!binary_data.list);
       }
 
       else {
-        return [~] $et.enc_int32(0), Buf.new($!binary_type);
+        return [~] encode_int32(0), Buf.new($!binary_type);
       }
     }
 
     method dec_binary ( Array $a, Int $index is rw ) {
       # Get length
       #
-      my Int $lng = $dt.dec_int32( $a, $index);
+      my Int $lng = decode_int32( $a, $index);
 
       # Get subtype
       #

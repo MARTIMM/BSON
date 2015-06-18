@@ -107,6 +107,7 @@ change at any time. The public API should not be considered stable*.
 
 * 0.9.6
   * Factoring out methods from BSON into EDC-Tools.
+  * Methods in EDC-Tools converted into exported subs.
 * 0.9.5
   * Changed caused by rakudo update.
   * Hashes work like hashes... mongodb run_command needs command on first key
