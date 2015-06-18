@@ -1,6 +1,6 @@
 use v6;
 
-package BSON:ver<0.9.6> {
+package BSON {
 
   class Javascript {
 

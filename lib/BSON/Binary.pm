@@ -1,6 +1,6 @@
 use v6;
 
-package BSON:ver<0.9.6> {
+package BSON {
   use BSON::EDC-Tools;
 
   constant $GENERIC             = 0x00;

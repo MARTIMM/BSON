@@ -1,6 +1,6 @@
 use v6;
 
-package BSON:ver<0.9.6> {
+package BSON {
   use BSON::ObjectId;
   use BSON::Regex;
   use BSON::Javascript;
@@ -35,8 +35,8 @@ package BSON:ver<0.9.6> {
     }
   }
 
-  #class BSON:ver<0.9.6> {
-  class Bson {
+  class Bson:ver<0.9.6> {
+#  class Bson {
 
     constant $BSON_BOOL = 0x08;
 
@@ -468,7 +468,7 @@ package BSON:ver<0.9.6> {
       return self._dec_document($b.list);
     }
 
-    method _dec_document ( Array $a --> Hash ) {
+    multi method _dec_document ( Array $a --> Hash ) {
   #    my Int $s = $a.elems;
   #say "DD 0: $!index, $a[$!index], {$a.elems}";
       my Int $i = decode_int32( $a, $!index);
@@ -484,6 +484,13 @@ package BSON:ver<0.9.6> {
       #die "Parse error: $!index != \$a elems({$a.elems})"
       #  unless $!index == $a.elems;
 
+      return $h;
+    }
+
+    multi method _dec_document ( Array $a, Int $index is rw --> Hash ) {
+      $!index = $index;
+      my Hash $h = self._dec_document($a);
+      $index = $!index;
       return $h;
     }
 

@@ -3,7 +3,7 @@ use v6;
 # Basic BSON encoding and decoding tools. These exported subs process
 # strings and integers.
 
-package BSON:ver<0.9.6> {
+package BSON {
 
   #--------------------------------------------------------------------------
   # Encoding tools
