@@ -56,7 +56,7 @@ package BSON {
     # Encoding a document given in a hash variable
     #
     method encode ( Hash $h --> Buf ) {
-      return self._enc_document($h);
+      return self.encode_document($h);
     }
 
     # BSON Document
@@ -64,12 +64,12 @@ package BSON {
     #
     # The int32 is the total number of bytes comprising the document.
     #
-    multi method _enc_document ( Hash $h --> Buf ) {
+    multi method encode_document ( Hash $h --> Buf ) {
       my Buf $b = self._enc_e_list($h.pairs);
       return [~] encode_int32($b.elems + 5), $b, Buf.new(0x00);
     }
 
-    multi method _enc_document ( Pair @p --> Buf ) {
+    multi method encode_document ( Pair @p --> Buf ) {
       my Buf $b = self._enc_e_list(@p);
       return [~] encode_int32($b.elems + 5), $b, Buf.new(0x00);
     }
@@ -120,7 +120,7 @@ package BSON {
           #
           return [~] Buf.new(0x03),
                      encode_e_name($p.key),
-                     self._enc_document($_)
+                     self.encode_document($_)
                      ;
         }
 
@@ -138,7 +138,7 @@ package BSON {
           my %h = .kv;
           return [~] Buf.new(0x04),
                      encode_e_name($p.key),
-                     self._enc_document(%h)
+                     self.encode_document(%h)
                      ;
         }
 
@@ -239,7 +239,7 @@ package BSON {
             my Buf $js = encode_string($p.value.javascript);
 
             if $p.value.has_scope {
-              my Buf $doc = self._enc_document($p.value.scope);
+              my Buf $doc = self.encode_document($p.value.scope);
               return [~] Buf.new(0x0F),
                          encode_e_name($p.key),
                          encode_int32([+] $js.elems, $doc.elems, 4),
@@ -465,10 +465,10 @@ package BSON {
     #
     method decode ( Buf $b --> Hash ) {
       $!index = 0;
-      return self._dec_document($b.list);
+      return self.decode_document($b.list);
     }
 
-    multi method _dec_document ( Array $a --> Hash ) {
+    multi method decode_document ( Array $a --> Hash ) {
   #    my Int $s = $a.elems;
   #say "DD 0: $!index, $a[$!index], {$a.elems}";
       my Int $i = decode_int32( $a, $!index);
@@ -487,9 +487,9 @@ package BSON {
       return $h;
     }
 
-    multi method _dec_document ( Array $a, Int $index is rw --> Hash ) {
+    multi method decode_document ( Array $a, Int $index is rw --> Hash ) {
       $!index = $index;
-      my Hash $h = self._dec_document($a);
+      my Hash $h = self.decode_document($a);
       $index = $!index;
       return $h;
     }
@@ -531,7 +531,7 @@ package BSON {
         # Embedded document
         # "\x03" e_name document
         #
-        return decode_e_name( $a, $!index) => self._dec_document($a);
+        return decode_e_name( $a, $!index) => self.decode_document($a);
       }
 
       elsif $bson_code == 0x04 {
@@ -551,7 +551,7 @@ package BSON {
         # etc
         # 
         my Str $key = decode_e_name( $a, $!index);
-        my Hash $h = self._dec_document($a);
+        my Hash $h = self.decode_document($a);
         my @values;
         for $h.keys.sort({$^x <=> $^y}) -> $k {@values.push($h{$k})};
         return $key => [@values];
@@ -685,7 +685,7 @@ package BSON {
         my $js_scope_size = decode_int32( $a, $!index);
         return $name =>
           BSON::Javascript.new( :javascript(decode_string( $a, $!index)),
-                                :scope(self._dec_document($a))
+                                :scope(self.decode_document($a))
                               );
       }
 
