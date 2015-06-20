@@ -65,12 +65,12 @@ package BSON {
     # The int32 is the total number of bytes comprising the document.
     #
     multi method encode_document ( Hash $h --> Buf ) {
-      my Buf $b = self._enc_e_list($h.pairs);
+      my Buf $b = self.encode_e_list($h.pairs);
       return [~] encode_int32($b.elems + 5), $b, Buf.new(0x00);
     }
 
     multi method encode_document ( Pair @p --> Buf ) {
-      my Buf $b = self._enc_e_list(@p);
+      my Buf $b = self.encode_e_list(@p);
       return [~] encode_int32($b.elems + 5), $b, Buf.new(0x00);
     }
 
@@ -78,11 +78,11 @@ package BSON {
     # e_list ::= element e_list
     # | ""
     #
-    method _enc_e_list ( *@p --> Buf ) {
+    method encode_e_list ( *@p --> Buf ) {
       my Buf $b = Buf.new();
 
       for @p -> $p {
-        $b ~= self._enc_element($p);
+        $b ~= self.encode_element($p);
       }
 
       return $b;
@@ -91,7 +91,7 @@ package BSON {
     # Encode a key value pair
     # element ::= type-code e_name some-encoding
     #
-    method _enc_element ( Pair $p --> Buf ) {
+    method encode_element ( Pair $p --> Buf ) {
 
       given $p.value {
 
@@ -473,7 +473,7 @@ package BSON {
   #say "DD 0: $!index, $a[$!index], {$a.elems}";
       my Int $i = decode_int32( $a, $!index);
   #say "DD 1: $!index, $i";
-      my Hash $h = self._dec_e_list($a);
+      my Hash $h = self.decode_e_list($a);
   #say "DD 2: $!index, {$h.perl}";
 
       die 'Parse error' unless $a[$!index++] ~~ 0x00;
@@ -494,11 +494,11 @@ package BSON {
       return $h;
     }
 
-    method _dec_e_list ( Array $a --> Hash ) {
+    method decode_e_list ( Array $a --> Hash ) {
       my Pair @p;
       while $a[$!index] !~~ 0x00 {
   #say "DL 0: $!index, $a[$!index]";
-        my Pair $element = self._dec_element($a);
+        my Pair $element = self.decode_element($a);
   #say "DL 1: $!index, ", $element.defined ?? $element !! 'undefined';
         push @p, $element;
       }
@@ -506,7 +506,7 @@ package BSON {
       return hash(@p);
     }
 
-    method _dec_element ( Array $a --> Pair ) {
+    method decode_element ( Array $a --> Pair ) {
 
   #say "DE 0: $!index, {$a.elems}, $a[$!index], {$a[$!index].perl}";
 
