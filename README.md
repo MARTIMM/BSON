@@ -98,6 +98,15 @@ Method ```.perl``` is available for easy debug.
   any integer can be stored as large or small as you like. Int can be coded as
   described in version 0.8.4 and when larger or smaller then maybe it is
   possible the Int can be coded as a binary array of some type.
+* Rakudobug fails me to test modules. 
+  Missing or wrong version of dependency 'Buf' (from 'lib/BSON.pm')
+  later it even was...
+  Missing or wrong version of dependency '019EB242D62F53CB7A394AD587E4741030B0AB71' (from 'lib/BSON.pm')
+  Found later that setting @*INC explicetly it vanished.
+  BEGIN {
+    @*INC.unshift('/home/marcel/Languages/Perl6/Projects/BSON/lib');
+  }
+
 
 ## CHANGELOG
 
