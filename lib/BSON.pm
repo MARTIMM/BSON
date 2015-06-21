@@ -455,7 +455,7 @@ package BSON {
 
     #-----------------------------------------------------------------------------
     # Method used to initialize the index for testing purposes when the decode
-    # functions such as _dec_double() are tested directly.
+    # functions such as decode_double() are tested directly.
     #
     method _init_index ( ) {
       $!index = 0;
@@ -517,7 +517,7 @@ package BSON {
         # Double precision
         # "\x01" e_name Num
         #
-        return decode_e_name( $a, $!index) => self._dec_double($a);
+        return decode_e_name( $a, $!index) => self.decode_double($a);
       }
 
       elsif $bson_code == 0x02 {
@@ -746,7 +746,7 @@ package BSON {
     # http://en.wikipedia.org/wiki/Double-precision_floating-point_format#Endianness
     # until better times come.
     #
-    method _dec_double ( Array $a ) {
+    method decode_double ( Array $a ) {
 
       # Test special cases
       #

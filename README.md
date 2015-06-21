@@ -102,7 +102,7 @@ Method ```.perl``` is available for easy debug.
   Missing or wrong version of dependency 'Buf' (from 'lib/BSON.pm')
   later it even was...
   Missing or wrong version of dependency '019EB242D62F53CB7A394AD587E4741030B0AB71' (from 'lib/BSON.pm')
-  Found later that setting @*INC explicetly it vanished.
+  Found later that setting @*INC explicitly it vanished.
   BEGIN {
     @*INC.unshift('/home/marcel/Languages/Perl6/Projects/BSON/lib');
   }
