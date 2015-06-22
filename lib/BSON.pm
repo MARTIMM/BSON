@@ -6,38 +6,9 @@ package BSON {
   use BSON::Javascript;
   use BSON::Binary;
   use BSON::EDC-Tools;
-
-  class X::BSON::Deprecated is Exception {
-    has $.operation;                      # Operation encode, decode
-    has $.type;                           # Type to encode/decode
-
-    method message () {
-      return "\n$!operation\() error: BSON type $!type is deprecated\n";
-    }
-  }
-
-  class X::BSON::NYS is Exception {
-    has $.operation;                      # Operation encode, decode
-    has $.type;                           # Type to encode/decode
-
-    method message () {
-      return "\n$!operation\() error: BSON type '$!type' is not (yet) supported\n";
-    }
-  }
-
-  class X::BSON::ImProperUse is Exception {
-    has $.operation;                      # Operation encode, decode
-    has $.type;                           # Type to encode/decode
-    has $.emsg;                           # Extra message
-
-    method message () {
-      return "\n$!operation\() on $!type error: $!emsg";
-    }
-  }
+  use BSON::Exception;
 
   class Bson:ver<0.9.7> {
-#  class Bson {
-
     constant $BSON_BOOL = 0x08;
 
     has Int $.index is rw = 0;
@@ -469,17 +440,14 @@ package BSON {
     }
 
     multi method decode_document ( Array $a --> Hash ) {
-  #    my Int $s = $a.elems;
-  #say "DD 0: $!index, $a[$!index], {$a.elems}";
       my Int $i = decode_int32( $a, $!index);
-  #say "DD 1: $!index, $i";
       my Hash $h = self.decode_e_list($a);
-  #say "DD 2: $!index, {$h.perl}";
 
-      die 'Parse error' unless $a[$!index++] ~~ 0x00;
-  #    die 'Parse error' unless $a.shift ~~ 0x00;
+      die X::BSON::Parse.new(
+        :operation('decode_document'),
+        :error('Missing trailing 0x00')
+      ) unless $a[$!index++] ~~ 0x00;
 
-  #    die 'Parse error' unless $s ~~ $a.elems + $i;
       # Test doesn't work anymore because of sub documents
       #die "Parse error: $!index != \$a elems({$a.elems})"
       #  unless $!index == $a.elems;
@@ -614,7 +582,10 @@ package BSON {
           }
 
           default {
-            die 'Parse error';
+            die X::BSON::Parse.new(
+              :operation('decode_element'),
+              :error('Faulty boolean code')
+            );
           }
         }
       }
