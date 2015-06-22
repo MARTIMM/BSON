@@ -4,8 +4,9 @@ use v6;
 # strings and integers.
 
 package BSON {
+  use BSON::Exception;
 
-  #--------------------------------------------------------------------------
+  #-----------------------------------------------------------------------------
   # Encoding tools
   #
   sub encode_e_name ( Str $s --> Buf ) is export {
@@ -13,7 +14,11 @@ package BSON {
   }
 
   sub encode_cstring ( Str $s --> Buf ) is export {
-    die "Forbidden 0x00 sequence in $s" if $s ~~ /\x00/;
+    die X::BSON::Parse.new(
+      :operation('encode_cstring'),
+      :error('Forbidden 0x00 sequence in $s')
+    ) if $s ~~ /\x00/;
+
     return $s.encode() ~ Buf.new(0x00);
   }
 
@@ -21,7 +26,7 @@ package BSON {
   #
   sub encode_string ( Str $s --> Buf ) is export {
     my utf8 $b = $s.encode('UTF-8');
-    return encode_int32($b.bytes + 1) ~ $b ~ Buf.new(0x00);
+    return [~] encode_int32($b.bytes + 1), $b, Buf.new(0x00);
   }
 
   # 4 bytes (32-bit signed integer)
@@ -61,7 +66,7 @@ package BSON {
   }
 
 
-  #--------------------------------------------------------------------------
+  #-----------------------------------------------------------------------------
   # Decoding tools
   #
   sub decode_e_name ( Array $b, Int $index is rw --> Str ) is export {
@@ -70,9 +75,13 @@ package BSON {
 
   sub decode_cstring ( Array $a, Int $index is rw --> Str ) is export {
     my @a;
-    while $a[$index] !~~ 0x00 { @a.push($a[$index++]); }
+    my $l = $a.elems;
+    while $index < $l and $a[$index] !~~ 0x00 { @a.push($a[$index++]); }
 
-    die 'Parse error' unless $a[$index++] ~~ 0x00;
+    die X::BSON::Parse.new(
+      :operation('decode_cstring'),
+      :error('Missing trailing 0x00')
+    ) unless $index < $l and $a[$index++] ~~ 0x00;
     return Buf.new(@a).decode();
   }
 
@@ -81,10 +90,23 @@ package BSON {
   sub decode_string ( Array $a, Int $index is rw --> Str ) is export {
     my $i = decode_int32( $a, $index);
 
+    # Check if there are enaugh letters left
+    #
+    my $l = $a.elems - $index;
+
+    die X::BSON::Parse.new(
+      :operation('decode_string'),
+      :error('Not enaugh characters left')
+    ) if $l < $i;
+    
+
     my @a;
     @a.push($a[$index++]) for ^ ($i - 1);
 
-    die 'Parse error' unless $a[$index++] ~~ 0x00;
+    die X::BSON::Parse.new(
+      :operation('decode_string'),
+      :error('Missing trailing 0x00')
+    ) unless $a[$index++] ~~ 0x00;
 
     return Buf.new(@a).decode();
   }

@@ -114,6 +114,8 @@ See [semantic versioning](http://semver.org/). Please note point 4. on
 that page: *Major version zero (0.y.z) is for initial development. Anything may
 change at any time. The public API should not be considered stable*.
 
+* 0.9.7
+  * Factoring out Exception classes from BSON and EDC-Tools into BSON/Exception.pm6
 * 0.9.6
   * Factoring out methods from BSON into EDC-Tools.
   * Methods in EDC-Tools converted into exported subs.

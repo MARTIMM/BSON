@@ -35,7 +35,7 @@ package BSON {
     }
   }
 
-  class Bson:ver<0.9.6> {
+  class Bson:ver<0.9.7> {
 #  class Bson {
 
     constant $BSON_BOOL = 0x08;
