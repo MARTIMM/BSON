@@ -27,17 +27,44 @@ for %samples {
         .key;
 }
 
-dies-ok
-    { BSON::ObjectId.new( 'ZZZZZZZZZZZZZZZZZZZZZZZZ' )},
-    'ObjectId die on not hex values';
+# Buffer encode to oid, string not hexadecimal ('g' below)
+#
+if 1 {
+  BSON::ObjectId.encode('adeffg03263a');
+  CATCH {
+    my $msg = .message;
+    $msg ~~ s:g/\n//;
+    when X::BSON::Parse {
+      ok .message ~~ m:s/'String is not a hexadecimal number'/, $msg;
+    }
+  }
+}
 
-dies-ok
-    { BSON::ObjectId.new( '00' )},
-    'ObjectId die on too short hex values';
+# Buffer encode to oid, string too short
+#
+if 1 {
+  BSON::ObjectId.encode('00');
+  CATCH {
+    my $msg = .message;
+    $msg ~~ s:g/\n//;
+    when X::BSON::Parse {
+      ok .message ~~ m:s/'String has' \d+ 'characters'/, $msg;
+    }
+  }
+}
 
-dies-ok
-    { BSON::ObjectId.new( Buf.new( 0x00 ) ) },
-    'ObjectId die on too short buf';
+# Buffer decode to oid, buffer too short
+#
+if 1 {
+  BSON::ObjectId.decode(Buf.new(0x00));
+  CATCH {
+    my $msg = .message;
+    $msg ~~ s:g/\n//;
+    when X::BSON::Parse {
+      ok .message ~~ m:s/'Buffer doesn\'t have 12 bytes'/, $msg;
+    }
+  }
+}
 
 
 # Test cases borrowed from
