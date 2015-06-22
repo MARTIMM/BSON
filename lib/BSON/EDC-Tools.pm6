@@ -112,6 +112,13 @@ package BSON {
   }
 
   sub decode_int32 ( Array $a, Int $index is rw --> Int ) is export {
+    # Check if there are enaugh letters left
+    #
+    die X::BSON::Parse.new(
+      :operation('decode_int32'),
+      :error('Not enaugh characters left')
+    ) if $a.elems - $index < 4;
+
     my int $ni = $a[$index]             +| $a[$index + 1] +< 0x08 +|
                  $a[$index + 2] +< 0x10 +| $a[$index + 3] +< 0x18
                  ;
@@ -137,6 +144,13 @@ package BSON {
   # 8 bytes (64-bit int)
   #
   sub decode_int64 ( Array $a, Int $index is rw --> Int ) is export {
+    # Check if there are enaugh letters left
+    #
+    die X::BSON::Parse.new(
+      :operation('decode_int64'),
+      :error('Not enaugh characters left')
+    ) if $a.elems - $index < 8;
+
     my int $ni = $a[$index]             +| $a[$index + 1] +< 0x08 +|
                  $a[$index + 2] +< 0x10 +| $a[$index + 3] +< 0x18 +|
                  $a[$index + 4] +< 0x20 +| $a[$index + 5] +< 0x28 +|

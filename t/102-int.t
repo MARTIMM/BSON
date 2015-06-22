@@ -35,6 +35,23 @@ $v = decode_int32( $b.list, $index);
 is( $v, -16777215, 'int32: dec N = -16777215');
 
 #-------------------------------------------------------------------------------
+# int32 decoding too short length
+#
+if 1 {
+  $index = 0;
+  $b = Buf.new(0x00 xx 3);
+  $v = decode_int32( $b.list, $index);
+  
+  CATCH {
+    my $msg = .message;
+    $msg ~~ s:g/\n//;
+    when X::BSON::Parse {
+      ok .message ~~ m/'Not enaugh characters left'/, $msg;
+    }
+  }
+}
+
+#-------------------------------------------------------------------------------
 # int32 encoding
 #
 $b = encode_int32(-1);
@@ -79,6 +96,23 @@ my int $i = 1 + 0xff * 2**56;
 is( $v, $i, "int64: dec N = $i");
 
 #-------------------------------------------------------------------------------
+# int64 decoding too short length
+#
+if 1 {
+  $index = 0;
+  $b = Buf.new(0x00 xx 3);
+  $v = decode_int64( $b.list, $index);
+  
+  CATCH {
+    my $msg = .message;
+    $msg ~~ s:g/\n//;
+    when X::BSON::Parse {
+      ok .message ~~ m/'Not enaugh characters left'/, $msg;
+    }
+  }
+}
+
+#-------------------------------------------------------------------------------
 # int64 encoding
 #
 $b = encode_int64(-1);
@@ -96,7 +130,7 @@ $b = encode_int64($i);
 is-deeply( $b, Buf.new( 0xff xx 7, 0x7f), "int64: enc $i");
 
 #-------------------------------------------------------------------------------
-# Too large encoding
+# Number too large encoding
 #
 $b = encode_int64(0x7fffffff_ffffffff + 1);
 is-deeply( $b, Buf.new( 0x00 xx 7, 0x80 ), 'int64: enc too large becomes negative');
