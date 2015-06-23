@@ -11,19 +11,6 @@ package BSON {
     has Buf $.oid;
 
 
-    multi method new ( Buf $b ) {
-      die 'ObjectId must be exactly 12 bytes' unless $b.elems ~~ 12;
-      self.bless( *, oid => $b);
-    }
-
-    multi method new ( Str $s ) {
-      my @a = map {:16($_) }, $s.comb(/../);
-      my Buf $b = Buf.new(@a);
-      die 'ObjectId must be exactly 12 bytes' unless $b.elems ~~ 12;
-      self.bless( *, oid => $b);
-    }
-
-
     method decode ( Buf $b --> BSON::ObjectId ) {
       die X::BSON::Parse.new(
         :operation('BSON::ObjectId::decode'),
@@ -39,8 +26,8 @@ package BSON {
       my $l = $s.chars;
       die X::BSON::Parse.new(
         :operation('BSON::ObjectId::encode'),
-        :error("String has $l characters, must be 12")
-      ) unless $l == 12;
+        :error("String has $l characters, must be 24")
+      ) unless $l == 24;
 
       # Check if all characters are hex characters.
       #

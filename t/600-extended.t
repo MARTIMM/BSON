@@ -5,32 +5,29 @@ use Test;
 use BSON;
 use BSON::ObjectId;
 
-plan( 7 );
-
 my %samples = (
+  'ObjectId minimum' => {
+    'str' => '000000000000000000000000',
+    'buf' => [ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ],
+  },
 
-    'ObjectId minimum' => {
-        'str' => '000000000000000000000000',
-        'buf' => [ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ],
-    },
-
-    'ObjectId maximum' => {
-        'str' => 'ffffffffffffffffffffffff',
-        'buf' => [ 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff ],
-    }
+  'ObjectId maximum' => {
+    'str' => 'ffffffffffffffffffffffff',
+    'buf' => [ 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff ],
+  }
 );
 
 for %samples {
     is-deeply
-        BSON::ObjectId.new( .value{ 'str' } ).perl,
-        BSON::ObjectId.new( Buf.new( .value{ 'buf' }.list ) ).perl,
+        BSON::ObjectId.encode(.value{'str'}).perl,
+        BSON::ObjectId.decode(Buf.new(.value{'buf'}.list)).perl,
         .key;
 }
 
-# Buffer encode to oid, string not hexadecimal ('g' below)
+# Buffer encode to oid, string not hexadecimal ('g's are not right)
 #
 if 1 {
-  BSON::ObjectId.encode('adeffg03263a');
+  BSON::ObjectId.encode('adeffg0326ffg033aade263a');
   CATCH {
     my $msg = .message;
     $msg ~~ s:g/\n//;
@@ -70,7 +67,7 @@ if 1 {
 # Test cases borrowed from
 # https://github.com/mongodb/mongo-python-driver/blob/master/test/test_bson.py
 
-my $oid = BSON::ObjectId.new(
+my $oid = BSON::ObjectId.decode(
     Buf.new( 0x00, 0x01, 0x02, 0x03, 0x04, 0x05,
              0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B
            )
@@ -103,3 +100,10 @@ is-deeply
       0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B
     ],
     'decode ObjectId';
+
+
+#-------------------------------------------------------------------------------
+# Cleanup
+#
+done();
+exit(0);

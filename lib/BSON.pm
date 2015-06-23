@@ -558,7 +558,7 @@ package BSON {
   #        my @a = $a.splice( 0, 12);
 
         my Buf $oid = Buf.new(@a);
-        my $o = BSON::ObjectId.new($oid);
+        my BSON::ObjectId $o = BSON::ObjectId.decode($oid);
         return $n => $o;
       }
 
