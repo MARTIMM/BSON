@@ -1,0 +1,54 @@
+#!/usr/bin/env perl6
+#
+use v6;
+
+# Running the pod file will create a pdf using wkhtmltopdf
+#
+my Str $pod = "$*PROGRAM";
+my Str $pdf = $pod;
+$pdf ~~ s/\. <-[.]>+ $/.pdf/;
+shell( "perl6 --doc=HTML '$pod' | wkhtmltopdf - '$pdf'");
+
+#-------------------------------------------------------------------------------
+
+=begin pod
+
+=head1 NAME BSON::Bson - Encoding and decoding of Hash documents to or from byte buffer
+
+=head1 SYNOPSIS
+
+=begin nested
+=begin code
+
+use BSON;
+
+my BSON::Bson $b .= new;
+my Buf $encoded = $b.encode(hash( mike => 100));
+my Hash $decoded = $b.decode(
+  Buf.new(
+    0x0F, 0x00, 0x00, 0x00,                     # 15 bytes
+    0x10,                                       # 3BSon code: 2 bits integer
+    0x6D, 0x69, 0x6B, 0x65, 0x00,               # 'mike' + 0
+    0x64, 0x00, 0x00, 0x00,                     # Integer number 100
+    0x00                                        # + 0
+  )
+);
+
+=end code
+=end nested
+
+=head1 DESCRIPTION
+
+This class is used to encode documents into a format called BSON which is a
+binary form of JSON. This BSON encoded data is stored in a Buf. The opposite
+can be done by decoding the BSON data back to a document. Here a document is
+a hash of key value pairs.
+
+=head1 METHODS
+
+
+=for head2
+method database ( Str $name --> MongoDB::Database ) {...}
+
+
+=end pod
