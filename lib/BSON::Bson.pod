@@ -44,11 +44,38 @@ binary form of JSON. This BSON encoded data is stored in a Buf. The opposite
 can be done by decoding the BSON data back to a document. Here a document is
 a hash of key value pairs.
 
+See L<http://bsonspec.org|BSON spec> for details.
+
 =head1 METHODS
 
+=for head2
+method encode ( Hash $h --> Buf ) {...}
+
+Encode document to BSON.
 
 =for head2
-method database ( Str $name --> MongoDB::Database ) {...}
+multi method encode_document ( Hash $h --> Buf ) {...}
+multi method encode_document ( Pair @p --> Buf ) {...}
 
+Encode as above. The second method is used to keep order in the keys.
+
+=for head2
+method _init_index ( ) {...}
+
+To decode the BSON buffer an index is kept as the current location in the array.
+This is added to have parallel processing possebility of the buffer when the
+length of the first item is known. This will reset the index to 0.
+
+=for head2
+method decode ( Buf $b --> Hash ) {...}
+
+Decode BSON buffer.
+
+=for head2
+multi method decode_document ( Array $a --> Hash ) {...}
+multi method decode_document ( Array $a, Int $index is rw --> Hash ) {...}
+
+Same as above but the first method takes an array and the second needs an
+external index. Index will be modified to point past the end of the document.
 
 =end pod
