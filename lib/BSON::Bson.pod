@@ -41,12 +41,16 @@ my Hash $decoded = $b.decode(
 
 This class is used to encode documents into a format called BSON which is a
 binary form of JSON. This BSON encoded data is stored in a Buf. The opposite
-can be done by decoding the BSON data back to a document. Here a document is
-a hash of key value pairs.
+can be done by decoding the BSON data back to a document. Here a document is a
+hash of key value pairs. The encoded document is sent to a MongoDB server after
+which it may respond with a BSON buffer. This must be decoded to get the usable
+data.
 
 See L<http://bsonspec.org|BSON spec> for details.
 
 =head1 METHODS
+
+Below are the most interesting methods for users of this class.
 
 =for head2
 method encode ( Hash $h --> Buf ) {...}
