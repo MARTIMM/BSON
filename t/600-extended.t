@@ -45,7 +45,7 @@ if 1 {
     my $msg = .message;
     $msg ~~ s:g/\n//;
     when X::BSON::Parse {
-      ok .message ~~ m:s/'String has' \d+ 'characters'/, $msg;
+      ok .message ~~ m/'String must have 24 hexadecimal characters'/, $msg;
     }
   }
 }
@@ -101,6 +101,13 @@ is-deeply
     ],
     'decode ObjectId';
 
+# Encode without hex string.
+#
+my $time = time;
+$oid = BSON::ObjectId.encode;
+say "T: $time, ", $oid.get-seconds;
+say "M: ", $oid.get-machine-id, ', ', $oid.value-of;
+ok $oid.get-seconds >= $time, 'time of object is equal or later';
 
 #-------------------------------------------------------------------------------
 # Cleanup
