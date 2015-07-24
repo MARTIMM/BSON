@@ -1,12 +1,12 @@
 use v6;
+use BSON::ObjectId;
+use BSON::Regex;
+use BSON::Javascript;
+use BSON::Binary;
+use BSON::EDC-Tools;
+use BSON::Exception;
 
 package BSON {
-  use BSON::ObjectId;
-  use BSON::Regex;
-  use BSON::Javascript;
-  use BSON::Binary;
-  use BSON::EDC-Tools;
-  use BSON::Exception;
 
   class Bson:ver<0.9.7> {
     constant $BSON_BOOL = 0x08;

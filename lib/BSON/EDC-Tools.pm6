@@ -1,10 +1,10 @@
 use v6;
+use BSON::Exception;
 
 # Basic BSON encoding and decoding tools. These exported subs process
 # strings and integers.
 
 package BSON {
-  use BSON::Exception;
 
   #-----------------------------------------------------------------------------
   # Encoding tools
