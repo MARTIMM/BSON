@@ -103,11 +103,11 @@ is-deeply
 
 # Encode without hex string.
 #
-my $time = time;
-$oid = BSON::ObjectId.encode;
-say "T: $time, ", $oid.get-seconds;
-say "M: ", $oid.get-machine-id, ', ', $oid.value-of;
-ok $oid.get-seconds >= $time, 'time of object is equal or later';
+#my $time = time;
+#$oid = BSON::ObjectId.encode;
+#say "T: $time, ", $oid.get-seconds;
+#say "M: ", $oid.get-machine-id, ', ', $oid.value-of;
+#ok $oid.get-seconds >= $time, 'time of object is equal or later';
 
 #-------------------------------------------------------------------------------
 # Cleanup
