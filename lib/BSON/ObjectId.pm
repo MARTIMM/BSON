@@ -5,7 +5,7 @@
 use v6;
 use Digest::MD5;
 use BSON::Exception;
-#use BSON::EDC-Tools;
+#use BSON::EDCTools;
 
 package BSON {
 
@@ -53,7 +53,7 @@ package BSON {
           # If count is not defined then start with 2 byte random number
           # otherwise increment with one
           #
-note "D: ", ?self;
+#note "D: ", ?self;
 
           # Check if this is an object or a type object
           #
@@ -88,7 +88,7 @@ note "B: ", $b.elems;
 
           my @a = map {:16($_) }, $s.comb(/../);
           $b = Buf.new(@a);
-note "B: ", $b.elems;
+#note "B: ", $b.elems;
           return self.bless( *, oid => $b);
         }
 

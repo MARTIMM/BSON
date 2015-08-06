@@ -3,7 +3,7 @@ use BSON::ObjectId;
 use BSON::Regex;
 use BSON::Javascript;
 use BSON::Binary;
-use BSON::EDC-Tools;
+use BSON::EDCTools;
 use BSON::Exception;
 
 package BSON {

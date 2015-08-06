@@ -6,7 +6,9 @@
   "description": "BSON encoding/decoding, used in MongoDB drivers",
   "name": "BSON",
   "provides": {
-    "BSON::EDC-Tools":      "lib/BSON/EDC-Tools.pm6",
+    "BSON::Bson":           "lib/BSON.pm",
+    "BSON::Binary":         "lib/BSON/Binary.pm",
+    "BSON::EDCTools":       "lib/BSON/EDCTools.pm6",
     "BSON::Exception":      "lib/BSON/Exception.pm6",
     "BSON::Javascript":     "lib/BSON/Javascript.pm",
     "BSON::ObjectId":       "lib/BSON/ObjectId.pm",
