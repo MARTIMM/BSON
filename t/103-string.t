@@ -1,7 +1,7 @@
 use v6;
 use Test;
 
-use BSON::EDC-Tools;
+use BSON::EDCTools;
 
 #-------------------------------------------------------------------------------
 my $index;

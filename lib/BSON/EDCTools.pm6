@@ -4,7 +4,7 @@ use BSON::Exception;
 # Basic BSON encoding and decoding tools. These exported subs process
 # strings and integers.
 
-package BSON {
+module BSON::EDCTools {
 
   #-----------------------------------------------------------------------------
   # Encoding tools
