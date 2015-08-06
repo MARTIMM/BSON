@@ -1,5 +1,6 @@
 use v6;
-use BSON::EDC-Tools;
+
+use BSON::EDCTools;
 
 package BSON {
 
