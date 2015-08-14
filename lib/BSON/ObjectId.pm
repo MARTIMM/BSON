@@ -29,7 +29,7 @@ package BSON {
       my Buf $b;
       given $s.chars {
         when 0 {
-          my int $ni = my Int $seconds = time;      
+          my int $ni = my Int $seconds = time;
           $b = Buf.new(
                  $ni +& 0xFF, ($ni +> 0x08) +& 0xFF,
                  ($ni +> 0x10) +& 0xFF, ($ni +> 0x18) +& 0xFF
@@ -49,12 +49,10 @@ package BSON {
 
           $ni = $*PID;
           $b ~= Buf.new( $ni +& 0xFF, ($ni +> 0x08) +& 0xFF);
-          
+
           # If count is not defined then start with 2 byte random number
           # otherwise increment with one
           #
-#note "D: ", ?self;
-
           # Check if this is an object or a type object
           #
           my Int $count;
@@ -71,10 +69,9 @@ package BSON {
             ($ni +> 0x10) +& 0xFF
           );
 
-          # Make buffer
+          # Make object
           #
-#          $b = [~] $seconds, $machine-id, $pid, $count;
-note "B: ", $b.elems;
+#note "B: ", $b.elems;
           return self.bless( :oid($b), :$seconds, :$machine-id, :$count);
         }
 
