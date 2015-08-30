@@ -22,7 +22,7 @@ This is perl6 version 2015.04-5-g59f57a8 built on MoarVM version 2015.04-3-gbb50
 
 ## SYNOPSIS
 
-    my $b = BSON.new;
+    my $b = BSON::Bson.new;
 
     my Buf $encoded = $b.encode( {
         "_id" => BSON::ObjectId.new( "4e4987edfed4c16f8a56ed1d" ),
@@ -40,7 +40,7 @@ This is perl6 version 2015.04-5-g59f57a8 built on MoarVM version 2015.04-3-gbb50
 ### SUPPORTED TYPES
 
         Perl6           <=> BSON
-    
+
     [x] Str             <=> UTF-8 string
     [x] Int              => 32-bit Integer if -2147483646 < n < 2147483647
                          => 64-bit Integer if -9,22337203685e+18 < n < 9,22337203685e+18
@@ -98,14 +98,6 @@ Method ```.perl``` is available for easy debug.
   any integer can be stored as large or small as you like. Int can be coded as
   described in version 0.8.4 and when larger or smaller then maybe it is
   possible the Int can be coded as a binary array of some type.
-* Rakudobug fails me to test modules. 
-  Missing or wrong version of dependency 'Buf' (from 'lib/BSON.pm')
-  later it even was...
-  Missing or wrong version of dependency '019EB242D62F53CB7A394AD587E4741030B0AB71' (from 'lib/BSON.pm')
-  Found later that setting @*INC explicitly it vanished.
-  BEGIN {
-    @*INC.unshift('/home/marcel/Languages/Perl6/Projects/BSON/lib');
-  }
 
 
 ## CHANGELOG
