@@ -68,33 +68,16 @@ subtest {
 # Binary object. MD5 binary
 #
 subtest {
-  class my-md5 {
-    has utf8 $.enc-md5;
-    has Str $.md5;
-    submethod BUILD ( Str :$text ) {
-      $!md5 = Digest::MD5.md5_hex($text);
-      $!enc-md5 = $!md5.encode;
-    }
 
-    method Buf ( --> Buf ) {
-      my Int @m;
-      my Buf $b = $!enc-md5 ~ Buf.new();
-      for @$b -> $h, $l {
-        @m.push($h +< 4 +| $l);
-      }
+  my Digest::MD5 $md5 .= new;
+  my Buf $md5-b = $md5.md5_buf('Something I like to be md5-ed');
+  my BSON::Binary $bin-obj .= new( data => $md5-b, type => $BSON::MD5);
 
-      return Buf.new(@m);
-    }
-  }
-
-  my my-md5 $md5 .= new( text => 'Something I like to be md5-ed');
-  my BSON::Binary $bin-obj .= new( data => $md5.Buf, type => $BSON::MD5);
-
-  is-deeply( $bin-obj.Buf, $md5.Buf, 'compare md5 binary data');
+  is-deeply( $bin-obj.Buf, $md5-b, 'compare md5 binary data');
 
   my Array $bin-test = [ 0x10, 0x00, 0x00, 0x00,          # Size of buf
                          $BSON::MD5,                      # MD5 binary type
-                         $md5.Buf.list,                   # Raw Buf
+                         $md5-b.list,                     # Raw Buf
                        ];
   my Buf $enc-bin = $bin-obj.enc_binary;
   is-deeply( $enc-bin.list, $bin-test, 'encode md5 test');
@@ -103,7 +86,7 @@ subtest {
   $bin-obj .= new;
   $bin-obj.dec_binary( $enc-bin.list, $index);
   is-deeply( $bin-obj.Buf.list,
-             $md5.Buf.list,
+             $md5-b.list,
              'compare md5 data after decoding'
            );
   is( $index, $bin-test.elems, "Index is shifted $index bytes");
