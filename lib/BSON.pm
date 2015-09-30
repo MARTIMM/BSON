@@ -96,9 +96,10 @@ package BSON {
           # "\x03" e_name document
           #
 #say "Pair: {$p.value.perl}";
+          my Pair @pairs = $p.value;
           return [~] Buf.new(0x03),
                      encode_e_name($p.key),
-                     self.encode_document($p.value)
+                     self.encode_document(@pairs)
                      ;
         }
 
