@@ -8,7 +8,7 @@ use BSON::Exception;
 
 package BSON {
 
-  class Bson:ver<0.9.8> {
+  class Bson:ver<0.9.9> {
     constant $BSON_BOOL = 0x08;
 
     has Int $.index is rw = 0;
