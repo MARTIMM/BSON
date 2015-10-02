@@ -1,6 +1,6 @@
 # BSON support
 
-![Face](http://modules.perl6.org/logos/BSON.png)
+![Face](http://modules.perl6.org/logos/BSON.png) [![Build Status](https://travis-ci.org/MARTIMM/BSON.svg?branch=master)](https://travis-ci.org/MARTIMM/BSON)
 
 Implements [BSON specification](http://bsonspec.org/).
 
@@ -53,7 +53,8 @@ When installing MongoDB, BSON will be installed automatically as a dependency.
     [-]                     0x03 UUID old, deprecated
     [x]                     0x04 UUID
     [x]                     0x05 MD5
-    [x] Array           <=> Array
+    [x] Array           <=> Array as Embedded document
+    [x] Pair             => Embedded document
     [x] Hash            <=> Embedded document
     [x] BSON::ObjectId  <=> ObjectId
 
