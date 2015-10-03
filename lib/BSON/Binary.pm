@@ -51,7 +51,7 @@ package BSON {
 
     #-----------------------------------------------------------------------------
     #
-    method dec_binary ( Array $a, Int $index is rw ) {
+    method dec_binary ( Array:D $a, Int:D $index is rw ) {
 
       # Get length of binary data
       #

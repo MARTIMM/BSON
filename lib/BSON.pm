@@ -26,7 +26,7 @@ package BSON {
     #-----------------------------------------------------------------------------
     # Encoding a document given in a hash variable
     #
-    method encode ( Hash $h --> Buf ) {
+    method encode ( Hash:D $h --> Buf ) {
       return self.encode_document($h);
     }
 
@@ -35,12 +35,12 @@ package BSON {
     #
     # The int32 is the total number of bytes comprising the document.
     #
-    multi method encode_document ( Hash $h --> Buf ) {
+    multi method encode_document ( Hash:D $h --> Buf ) {
       my Buf $b = self.encode_e_list($h.pairs);
       return [~] encode_int32($b.elems + 5), $b, Buf.new(0x00);
     }
 
-    multi method encode_document ( Pair @p --> Buf ) {
+    multi method encode_document ( Pair:D @p --> Buf ) {
 #say "EE: ", @p.perl;
       my Buf $b = self.encode_e_list(@p);
       return [~] encode_int32($b.elems + 5), $b, Buf.new(0x00);
@@ -50,7 +50,8 @@ package BSON {
     # e_list ::= element e_list
     # | ""
     #
-    method encode_e_list ( *@p --> Buf ) {
+    method encode_e_list ( @p --> Buf ) {
+#say "P: ", @p.WHAT;
       my Buf $b = Buf.new();
 
       for @p -> $p {
@@ -64,7 +65,7 @@ package BSON {
     # Encode a key value pair
     # element ::= type-code e_name some-encoding
     #
-    method encode_element ( Pair $p --> Buf ) {
+    method encode_element ( Pair:D $p --> Buf ) {
 
 #say "EELe: '", $p.key, "' <=> '", $p.value, "' === ", $p.value.WHAT;
 
@@ -348,7 +349,7 @@ package BSON {
 
     # 8 bytes double (64-bit floating point number)
     #
-    method _enc_double ( Num $r is copy --> Buf ) {
+    method _enc_double ( Num:D $r is copy --> Buf ) {
 
       my Buf $a;
       my Num $r2;
@@ -463,12 +464,12 @@ package BSON {
 
     # Decoding a document given in a binary buffer
     #
-    method decode ( Buf $b --> Hash ) {
+    method decode ( Buf:D $b --> Hash ) {
       $!index = 0;
       return self.decode_document($b.list);
     }
 
-    multi method decode_document ( Array $a --> Hash ) {
+    multi method decode_document ( Array:D $a --> Hash ) {
       my Int $i = decode_int32( $a, $!index);
       my Hash $h = self.decode_e_list($a);
 
@@ -484,14 +485,14 @@ package BSON {
       return $h;
     }
 
-    multi method decode_document ( Array $a, Int $index is rw --> Hash ) {
+    multi method decode_document ( Array:D $a, Int $index is rw --> Hash ) {
       $!index = $index;
       my Hash $h = self.decode_document($a);
       $index = $!index;
       return $h;
     }
 
-    method decode_e_list ( Array $a --> Hash ) {
+    method decode_e_list ( Array:D $a --> Hash ) {
       my Pair @p;
       while $a[$!index] !~~ 0x00 {
   #say "DL 0: $!index, $a[$!index]";
@@ -503,7 +504,7 @@ package BSON {
       return hash(@p);
     }
 
-    method decode_element ( Array $a --> Pair ) {
+    method decode_element ( Array:D $a --> Pair ) {
 
   #say "DE 0: $!index, {$a.elems}, $a[$!index], {$a[$!index].perl}";
 
@@ -746,7 +747,7 @@ package BSON {
     # http://en.wikipedia.org/wiki/Double-precision_floating-point_format#Endianness
     # until better times come.
     #
-    method decode_double ( Array $a ) {
+    method decode_double ( Array:D $a ) {
 
       # Test special cases
       #
