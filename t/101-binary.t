@@ -22,7 +22,6 @@ subtest {
                            0x55 xx 3,                     # Raw Buf
                          ).flat
                        ];
-say $bin-test.perl;
 
   my Buf $enc-bin = $bin-obj.enc_binary;
   is-deeply( $enc-bin.list, $bin-test, 'encode general binary test');
