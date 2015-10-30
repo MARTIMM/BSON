@@ -70,11 +70,20 @@ package BSON {
   #-----------------------------------------------------------------------------
   # Decoding tools
   #
-  sub decode_e_name ( Array:D $b, Int:D $index is rw --> Str ) is export {
+  multi sub decode_e_name ( List:D $b, Int:D $index is rw --> Str ) is export {
+    return decode_cstring( $b.Array, $index);
+  }
+
+  multi sub decode_e_name ( Array:D $b, Int:D $index is rw --> Str ) is export {
     return decode_cstring( $b, $index);
   }
 
-  sub decode_cstring ( Array:D $a, Int:D $index is rw --> Str ) is export {
+
+  multi sub decode_cstring ( List:D $a, Int:D $index is rw --> Str ) is export {
+    return decode_cstring( $a.Array, $index);
+  }
+
+  multi sub decode_cstring ( Array:D $a, Int:D $index is rw --> Str ) is export {
     my @a;
     my $l = $a.elems;
     while $index < $l and $a[$index] !~~ 0x00 { @a.push($a[$index++]); }
@@ -86,9 +95,14 @@ package BSON {
     return Buf.new(@a).decode();
   }
 
+
   # string ::= int32 (byte*) "\x00"
   #
-  sub decode_string ( Array:D $a, Int:D $index is rw --> Str ) is export {
+  multi sub decode_string ( List:D $a, Int:D $index is rw --> Str ) is export {
+    decode_string( $a.Array, $index);
+  }
+  
+  multi sub decode_string ( Array:D $a, Int:D $index is rw --> Str ) is export {
     my $i = decode_int32( $a, $index);
 
     # Check if there are enaugh letters left
@@ -112,7 +126,12 @@ package BSON {
     return Buf.new(@a).decode();
   }
 
-  sub decode_int32 ( Array:D $a, Int:D $index is rw --> Int ) is export {
+
+  multi sub decode_int32 ( List:D $a, Int:D $index is rw --> Int ) is export {
+    decode_int32( $a.Array, $index);
+  }
+  
+  multi sub decode_int32 ( Array:D $a, Int:D $index is rw --> Int ) is export {
     # Check if there are enaugh letters left
     #
     die X::BSON::Parse.new(
@@ -142,9 +161,14 @@ package BSON {
     # return [+] $a.shift, $a.shift +< 0x08, $a.shift +< 0x10, $a.shift +< 0x18;
   }
 
+
   # 8 bytes (64-bit int)
   #
-  sub decode_int64 ( Array:D $a, Int:D $index is rw --> Int ) is export {
+  multi sub decode_int64 ( List:D $a, Int:D $index is rw --> Int ) is export {
+    decode_int64( $a.Array, $index);
+  }
+  
+  multi sub decode_int64 ( Array:D $a, Int:D $index is rw --> Int ) is export {
     # Check if there are enaugh letters left
     #
     die X::BSON::Parse.new(

@@ -469,6 +469,12 @@ package BSON {
       return self.decode_document($b.list);
     }
 
+
+    #-----------------------------------------------------------------------------
+    multi method decode_document ( List:D $a --> Hash ) {
+      return self.decode_document($a.Array);
+    }
+
     multi method decode_document ( Array:D $a --> Hash ) {
       my Int $i = decode_int32( $a, $!index);
       my Hash $h = self.decode_e_list($a);
@@ -492,21 +498,28 @@ package BSON {
       return $h;
     }
 
-    method decode_e_list ( Array:D $a --> Hash ) {
+
+    #-----------------------------------------------------------------------------
+    multi method decode_e_list ( List:D $a --> Hash ) {
+      return self.decode_e_list($a.Array);
+    }
+    
+    multi method decode_e_list ( Array:D $a --> Hash ) {
       my Pair @p;
       while $a[$!index] !~~ 0x00 {
-  #say "DL 0: $!index, $a[$!index]";
         my Pair $element = self.decode_element($a);
-  #say "DL 1: $!index, ", $element.defined ?? $element !! 'undefined';
         push @p, $element;
       }
 
       return hash(@p);
     }
 
-    method decode_element ( Array:D $a --> Pair ) {
 
-  #say "DE 0: $!index, {$a.elems}, $a[$!index], {$a[$!index].perl}";
+    multi method decode_element ( List:D $a --> Pair ) {
+      self.decode_element($a.Array);
+    }
+
+    multi method decode_element ( Array:D $a --> Pair ) {
 
       # Type is given in first byte.
       #
@@ -585,7 +598,6 @@ package BSON {
         my $n = decode_e_name( $a, $!index);
         my @a = $a[$!index..($!index+11)];
         $!index += 12;
-  #        my @a = $a.splice( 0, 12);
 
         my Buf $oid = Buf.new(@a);
         my BSON::ObjectId $o = BSON::ObjectId.decode($oid);
@@ -741,13 +753,16 @@ package BSON {
 
 
 
-    #-----------------------------------------------------------------------------
-
+    #---------------------------------------------------------------------------
     # We have to do some simulation using the information on
     # http://en.wikipedia.org/wiki/Double-precision_floating-point_format#Endianness
     # until better times come.
     #
-    method decode_double ( Array:D $a ) {
+    multi method decode_double ( List:D $a ) {
+      return self.decode_double($a.Array);
+    }
+
+    multi method decode_double ( Array:D $a ) {
 
       # Test special cases
       #
@@ -810,7 +825,7 @@ package BSON {
         $value = Num.new((2 ** $exponent) * $significand * $sign);
       }
 
-      return $value; #X::NYI.new(feature => "Type Double");
+      return $value;
     }
   }
 }
