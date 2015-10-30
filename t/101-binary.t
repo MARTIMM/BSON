@@ -24,7 +24,7 @@ subtest {
                        ];
 
   my Buf $enc-bin = $bin-obj.enc_binary;
-  is-deeply( $enc-bin.list, $bin-test, 'encode general binary test');
+  is-deeply( $enc-bin.Array, $bin-test, 'encode general binary test');
 
   my $index = 0;
   $bin-obj .= new;
@@ -53,7 +53,7 @@ subtest {
                          ).flat
                        ];
   my Buf $enc-bin = $bin-obj.enc_binary;
-  is-deeply( $enc-bin.list, $bin-test, 'encode uuid test');
+  is-deeply( $enc-bin.Array, $bin-test, 'encode uuid test');
 
   my $index = 0;
   $bin-obj .= new;
@@ -84,7 +84,7 @@ subtest {
                          ).flat
                        ];
   my Buf $enc-bin = $bin-obj.enc_binary;
-  is-deeply( $enc-bin.list, $bin-test, 'encode md5 test');
+  is-deeply( $enc-bin.Array, $bin-test, 'encode md5 test');
 
   my $index = 0;
   $bin-obj .= new;
@@ -118,7 +118,7 @@ subtest {
        );
 
   is-deeply
-      $bson.encode(%test<decoded>).list,
+      $bson.encode(%test<decoded>).Array,
       %test<encoded>,
       "encode type {%test<type>}";
 
