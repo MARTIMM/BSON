@@ -126,11 +126,19 @@ package BSON {
     # http://en.wikipedia.org/wiki/Double-precision_floating-point_format#Endianness
     # until better times come.
     #
-    multi method decode_double ( List:D $a, Int:D $index is rw ) {
-      return self.decode_double( $a.Array, $index);
+    multi method decode_double ( List:D $a, Int:D $index is rw ) is DEPRECATED('decode-double') {
+      return self.decode-double( $a.Array, $index);
     }
 
-    multi method decode_double ( Array:D $a, Int:D $index is rw ) {
+    multi method decode-double ( List:D $a, Int:D $index is rw ) {
+      return self.decode-double( $a.Array, $index);
+    }
+
+    multi method decode_double ( Array:D $a, Int:D $index is rw ) is DEPRECATED('decode-double') {
+      return self.decode-double( $a, $index);
+    }
+
+    multi method decode-double ( Array:D $a, Int:D $index is rw ) {
 
       # Test special cases
       #

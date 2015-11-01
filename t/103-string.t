@@ -10,7 +10,7 @@ my $index;
 # Cstring encoding
 #
 my Str $s = "abc def";
-my Buf $b = encode_cstring($s);
+my Buf $b = encode-cstring($s);
 is-deeply $b,
           Buf.new( 0x61, 0x62, 0x63, 0x20, 0x64, 0x65, 0x66, 0x00),
           "C string encode";
@@ -20,7 +20,7 @@ is-deeply $b,
 #
 if 1 {
   $s = "abc\0def";
-  $b = encode_cstring($s);
+  $b = encode-cstring($s);
 
   CATCH {
     my $msg = .message;

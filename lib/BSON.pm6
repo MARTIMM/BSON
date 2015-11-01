@@ -9,7 +9,7 @@ use BSON::Exception;
 
 package BSON {
 
-  class Bson:ver<0.9.10> {
+  class Bson:ver<0.9.11> {
     constant $BSON_BOOL = 0x08;
 
     has Int $!index = 0;
@@ -100,8 +100,8 @@ package BSON {
           # "\x01" e_name Num
           #
           return [~] Buf.new(0x01),
-                     encode_e_name($p.key),
-                     BSON::Double.encode_double($p.value);
+                     encode-e-name($p.key),
+                     BSON::Double.encode-double($p.value);
         }
 
         when Str {
@@ -109,7 +109,7 @@ package BSON {
           # "\x02" e_name string
           #
           return [~] Buf.new(0x02),
-                     encode_e_name($p.key),
+                     encode-e-name($p.key),
                      encode_string($p.value)
                      ;
         }
@@ -123,7 +123,7 @@ package BSON {
 #say "Pair: {$p.value.perl}";
           my Pair @pairs = $p.value;
           return [~] Buf.new(0x03),
-                     encode_e_name($p.key),
+                     encode-e-name($p.key),
                      self.encode-document(@pairs)
                      ;
         }
@@ -134,7 +134,7 @@ package BSON {
           #
 #say "Hash: {$p.value.perl}";
           return [~] Buf.new(0x03),
-                     encode_e_name($p.key),
+                     encode-e-name($p.key),
                      self.encode-document($p.value)
                      ;
         }
@@ -162,7 +162,7 @@ package BSON {
           }
 
           return [~] Buf.new(0x04),
-                     encode_e_name($p.key),
+                     encode-e-name($p.key),
                      self.encode-document(@pairs)
                      ;
         }
@@ -172,11 +172,11 @@ package BSON {
           # "\x05" e_name int32 subtype byte*
           # subtype is '\x00' for the moment (Generic binary subtype)
           #
-          return [~] Buf.new(0x05), encode_e_name($p.key), .enc_binary();
+          return [~] Buf.new(0x05), encode-e-name($p.key), .encode-binary();
         }
 
   #`{{
-        # Do not know what type to test. Any?
+        # Do not know what type to test. Any, Nil?
         when Any {
           # Undefined deprecated 
           # "\x06" e_name
@@ -191,7 +191,7 @@ package BSON {
           # ObjectId
           # "\x07" e_name (byte*12)
           #
-          return Buf.new(0x07) ~ encode_e_name($p.key) ~ .Buf;
+          return Buf.new(0x07) ~ encode-e-name($p.key) ~ .Buf;
         }
 
         when Bool {
@@ -202,13 +202,13 @@ package BSON {
             # Boolean "true"
             # "\x08" e_name "\x01
             #
-            return Buf.new(0x08) ~ encode_e_name($p.key) ~ Buf.new(0x01);
+            return Buf.new(0x08) ~ encode-e-name($p.key) ~ Buf.new(0x01);
           }
           else {
             # Boolean "false"
             # "\x08" e_name "\x00
             #
-            return Buf.new(0x08) ~ encode_e_name($p.key) ~ Buf.new(0x00);
+            return Buf.new(0x08) ~ encode-e-name($p.key) ~ Buf.new(0x00);
           }
         }
 
@@ -217,7 +217,7 @@ package BSON {
           # "\x09" e_name int64
           #
           return [~] Buf.new(0x09),
-                     encode_e_name($p.key),
+                     encode-e-name($p.key),
                      encode_int64($p.value().posix())
                      ;
         }
@@ -226,7 +226,7 @@ package BSON {
           # Null value
           # "\x0A" e_name
           #
-          return Buf.new(0x0A) ~ encode_e_name($p.key);
+          return Buf.new(0x0A) ~ encode-e-name($p.key);
         }
 
         when BSON::Regex {
@@ -234,9 +234,9 @@ package BSON {
           # "\x0B" e_name cstring cstring
           #
           return [~] Buf.new(0x0B),
-                     encode_e_name($p.key),
-                     encode_cstring($p.value.regex),
-                     encode_cstring($p.value.options)
+                     encode-e-name($p.key),
+                     encode-cstring($p.value.regex),
+                     encode-cstring($p.value.options)
                      ;
         }
 
@@ -266,7 +266,7 @@ package BSON {
             if $p.value.has_scope {
               my Buf $doc = self.encode-document($p.value.scope);
               return [~] Buf.new(0x0F),
-                         encode_e_name($p.key),
+                         encode-e-name($p.key),
                          encode_int32([+] $js.elems, $doc.elems, 4),
                          $js, $doc
                          ;
@@ -274,7 +274,7 @@ package BSON {
 
             else {
               return [~] Buf.new(0x0D),
-                         encode_e_name($p.key),
+                         encode-e-name($p.key),
                          encode_string($p.value.javascript)
                          ;
             }
@@ -312,14 +312,14 @@ package BSON {
           #
           if -0xffffffff < $p.value < 0xffffffff {
             return [~] Buf.new(0x10),
-                       encode_e_name($p.key),
+                       encode-e-name($p.key),
                        encode_int32($p.value)
                        ;
           }
 
           elsif -0x7fffffff_ffffffff < $p.value < 0x7fffffff_ffffffff {
             return [~] Buf.new(0x12),
-                       encode_e_name($p.key),
+                       encode-e-name($p.key),
                        encode_int64($p.value)
                        ;
           }
@@ -358,7 +358,7 @@ package BSON {
             my $code = 1; # which bson code
 
             return [~] Buf.new($code),
-                       encode_e_name($p.key),
+                       encode-e-name($p.key),
                        .encode;
                        ;
           }
@@ -375,29 +375,42 @@ package BSON {
     # Method used to initialize the index for testing purposes when the decode
     # functions such as decode_double() are tested directly.
     #
-    method _init_index ( ) {
+    method _init_index ( ) is DEPRECATED('init-index') {
       $!index = 0;
     }
 
+    method init-index ( ) {
+      $!index = 0;
+    }
+
+    #---------------------------------------------------------------------------
     # Decoding a document given in a binary buffer
     #
     method decode ( Buf:D $b --> Hash ) {
       $!index = 0;
-      return self.decode_document($b.list);
+      return self.decode-document($b.list);
     }
-
 
     #---------------------------------------------------------------------------
-    multi method decode_document ( List:D $a --> Hash ) {
-      return self.decode_document($a.Array);
+    #
+    multi method decode_document ( List:D $a --> Hash ) is DEPRECATED('decode-document') {
+      return self.decode-document($a.Array);
     }
 
-    multi method decode_document ( Array:D $a --> Hash ) {
+    multi method decode-document ( List:D $a --> Hash ) {
+      return self.decode-document($a.Array);
+    }
+
+    multi method decode_document ( Array:D $a --> Hash ) is DEPRECATED('decode-document') {
+      return self.decode-document($a);
+    }
+
+    multi method decode-document ( Array:D $a --> Hash ) {
       my Int $i = decode_int32( $a, $!index);
-      my Hash $h = self.decode_e_list($a);
+      my Hash $h = self.decode-e-list($a);
 
       die X::BSON::Parse.new(
-        :operation('decode_document'),
+        :operation('decode-document'),
         :error('Missing trailing 0x00')
       ) unless $a[$!index++] ~~ 0x00;
 
@@ -408,23 +421,35 @@ package BSON {
       return $h;
     }
 
-    multi method decode_document ( Array:D $a, Int $index is rw --> Hash ) {
+    multi method decode_document ( Array:D $a, Int:D $index is rw --> Hash ) is DEPRECATED('decode-document') {
+      return self.decode-document( $a, $index);
+    }
+
+    multi method decode-document ( Array:D $a, Int:D $index is rw --> Hash ) {
       $!index = $index;
-      my Hash $h = self.decode_document($a);
+      my Hash $h = self.decode-document($a);
       $index = $!index;
       return $h;
     }
 
 
     #---------------------------------------------------------------------------
-    multi method decode_e_list ( List:D $a --> Hash ) {
-      return self.decode_e_list($a.Array);
+    multi method decode_e_list ( List:D $a --> Hash ) is DEPRECATED('decode-e-list') {
+      return self.decode-e-list($a.Array);
     }
 
-    multi method decode_e_list ( Array:D $a --> Hash ) {
+    multi method decode_e_list ( List:D $a --> Hash ) {
+      return self.decode-e-list($a.Array);
+    }
+
+    multi method decode_e_list ( Array:D $a --> Hash ) is DEPRECATED('decode-e-list') {
+      return self.decode-e-list($a);
+    }
+
+    multi method decode-e-list ( Array:D $a --> Hash ) {
       my Pair @p;
       while $a[$!index] !~~ 0x00 {
-        my Pair $element = self.decode_element($a);
+        my Pair $element = self.decode-element($a);
         push @p, $element;
       }
 
@@ -433,11 +458,19 @@ package BSON {
 
 
     #---------------------------------------------------------------------------
-    multi method decode_element ( List:D $a --> Pair ) {
-      self.decode_element($a.Array);
+    multi method decode_element ( List:D $a --> Pair ) is DEPRECATED('decode-element') {
+      self.decode-element($a.Array);
     }
 
-    multi method decode_element ( Array:D $a --> Pair ) {
+    multi method decode-element ( List:D $a --> Pair ) {
+      self.decode-element($a.Array);
+    }
+
+    multi method decode_element ( Array:D $a --> Pair ) is DEPRECATED('decode-element') {
+      self.decode-element($a);
+    }
+
+    multi method decode-element ( Array:D $a --> Pair ) {
 
       # Type is given in first byte.
       #
@@ -447,7 +480,7 @@ package BSON {
         # "\x01" e_name Num
         #
         return decode_e_name( $a, $!index) =>
-               BSON::Double.decode_double( $a, $!index);
+               BSON::Double.decode-double( $a, $!index);
       }
 
       elsif $bson_code == 0x02 {
@@ -461,7 +494,7 @@ package BSON {
         # Embedded document
         # "\x03" e_name document
         #
-        return decode_e_name( $a, $!index) => self.decode_document($a);
+        return decode_e_name( $a, $!index) => self.decode-document($a);
       }
 
       elsif $bson_code == 0x04 {
@@ -481,7 +514,7 @@ package BSON {
         # etc
         # 
         my Str $key = decode_e_name( $a, $!index);
-        my Hash $h = self.decode_document($a);
+        my Hash $h = self.decode-document($a);
         my @values;
         for $h.keys.sort({$^x <=> $^y}) -> $k {@values.push($h{$k})};
         return $key => [@values];
@@ -494,7 +527,7 @@ package BSON {
         #
         my $name = decode_e_name( $a, $!index);
         my BSON::Binary $bin_obj .= new;
-        $bin_obj.dec_binary( $a, $!index);
+        $bin_obj.decode-binary( $a, $!index);
         return $name => $bin_obj;
       }
 
@@ -617,7 +650,7 @@ package BSON {
         my $js_scope_size = decode_int32( $a, $!index);
         return $name =>
           BSON::Javascript.new( :javascript(decode_string( $a, $!index)),
-                                :scope(self.decode_document($a))
+                                :scope(self.decode-document($a))
                               );
       }
 

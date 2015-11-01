@@ -107,16 +107,16 @@ that page: *Major version zero (0.y.z) is for initial development. Anything may
 change at any time. The public API should not be considered stable*.
 
 * 0.9.11
+  * Factored out code from BSON::Bson to BSON::Double.
   * Deprecate underscore methods modified in favor of dashed ones:
-      BSON::Bson: 
-  * 
+      BSON::Bson, BSON::Double, BSON::Binary
 * 0.9.10
   * Change module filenames
   * quick fix using multi methods/subs caused by new version of perl6. Its now
     more logical while before automtic coercion took place it must modified
     explicitly now. Later proper types must be used like byte arrays to handle
     Buf's or maybe read from the Buf directly. Saves a translation step.
-  
+
 * 0.9.9
   * Changes because of updates in perl6
 * 0.9.8

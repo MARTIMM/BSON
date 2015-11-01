@@ -9,11 +9,20 @@ package BSON {
   #-----------------------------------------------------------------------------
   # Encoding tools
   #
-  sub encode_e_name ( Str:D $s --> Buf ) is export {
-    return encode_cstring($s);
+  sub encode_e_name ( Str:D $s --> Buf ) is export is DEPRECATED('encode-e-name') {
+    return encode-cstring($s);
   }
 
-  sub encode_cstring ( Str:D $s --> Buf ) is export {
+  sub encode-e-name ( Str:D $s --> Buf ) is export {
+    return encode-cstring($s);
+  }
+
+  #-----------------------------------------------------------------------------
+  sub encode_cstring ( Str:D $s --> Buf ) is export is DEPRECATED('encode-cstring') {
+    return encode-cstring($s);
+  }
+
+  sub encode-cstring ( Str:D $s --> Buf ) is export {
     die X::BSON::Parse.new(
       :operation('encode_cstring'),
       :error('Forbidden 0x00 sequence in $s')
@@ -22,6 +31,7 @@ package BSON {
     return $s.encode() ~ Buf.new(0x00);
   }
 
+  #-----------------------------------------------------------------------------
   # string ::= int32 (byte*) "\x00"
   #
   sub encode_string ( Str:D $s --> Buf ) is export {
@@ -30,6 +40,7 @@ package BSON {
     return [~] encode_int32($b.bytes + 1), $b, Buf.new(0x00);
   }
 
+  #-----------------------------------------------------------------------------
   # 4 bytes (32-bit signed integer)
   #
   sub encode_int32 ( Int:D $i ) is export {
@@ -43,6 +54,7 @@ package BSON {
     # return Buf.new( $i % 0x100, $i +> 0x08 % 0x100, $i +> 0x10 % 0x100, $i +> 0x18 % 0x100 );
   }
 
+  #-----------------------------------------------------------------------------
   # 8 bytes (64-bit int)
   #
   sub encode_int64 ( Int:D $i ) is export {
@@ -79,6 +91,7 @@ package BSON {
   }
 
 
+  #-----------------------------------------------------------------------------
   multi sub decode_cstring ( List:D $a, Int:D $index is rw --> Str ) is export {
     return decode_cstring( $a.Array, $index);
   }
@@ -96,6 +109,7 @@ package BSON {
   }
 
 
+  #-----------------------------------------------------------------------------
   # string ::= int32 (byte*) "\x00"
   #
   multi sub decode_string ( List:D $a, Int:D $index is rw --> Str ) is export {
@@ -127,6 +141,7 @@ package BSON {
   }
 
 
+  #-----------------------------------------------------------------------------
   multi sub decode_int32 ( List:D $a, Int:D $index is rw --> Int ) is export {
     decode_int32( $a.Array, $index);
   }
@@ -162,6 +177,7 @@ package BSON {
   }
 
 
+  #-----------------------------------------------------------------------------
   # 8 bytes (64-bit int)
   #
   multi sub decode_int64 ( List:D $a, Int:D $index is rw --> Int ) is export {
