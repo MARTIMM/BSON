@@ -109,7 +109,7 @@ change at any time. The public API should not be considered stable*.
 * 0.9.11
   * Factored out code from BSON::Bson to BSON::Double.
   * Deprecate underscore methods modified in favor of dashed ones:
-      BSON::Bson, BSON::Double, BSON::Binary
+      BSON::Bson, BSON::Double, BSON::Binary, BSON::EDCTools
 * 0.9.10
   * Change module filenames
   * quick fix using multi methods/subs caused by new version of perl6. Its now

@@ -256,6 +256,9 @@ package BSON {
         # there is a scope document defined in the object
         #
         when BSON::Javascript {
+
+          return .encode-javascript( $p.key, self);
+#`{{
           # Javascript code
           # "\x0D" e_name string
           # "\x0F" e_name int32 string document
@@ -273,10 +276,7 @@ package BSON {
             }
 
             else {
-              return [~] Buf.new(0x0D),
-                         encode-e-name($p.key),
-                         encode-string($p.value.javascript)
-                         ;
+              return [~] Buf.new(0x0D), encode-e-name($p.key), $js;
             }
           }
 
@@ -286,6 +286,7 @@ package BSON {
                                           :emsg('cannot send empty code')
                                         );
           }
+}}
         }
 
   #`{{
