@@ -94,9 +94,12 @@ package BSON {
           # Double precision
           # "\x01" e_name Num
           #
+          return BSON::Double.encode-double($p);
+#`{{
           return [~] Buf.new(0x01),
                      encode-e-name($p.key),
                      BSON::Double.encode-double($p.value);
+}}
         }
 
         when Str {
@@ -471,8 +474,11 @@ package BSON {
         # Double precision
         # "\x01" e_name Num
         #
+        return BSON::Double.decode-double( $a, $!index);
+#`{{
         return decode-e-name( $a, $!index) =>
                BSON::Double.decode-double( $a, $!index);
+}}
       }
 
       elsif $bson_code == 0x02 {

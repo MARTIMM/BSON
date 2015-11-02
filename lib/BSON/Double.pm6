@@ -14,13 +14,20 @@ package BSON {
     #---------------------------------------------------------------------------
     # 8 bytes double (64-bit floating point number)
     #
-    method encode_double ( Num:D $r is copy --> Buf ) is DEPRECATED('encode-double') {
+#`{{
+    method encode_double ( Num:D $r is copy --> Buf
+    ) is DEPRECATED('encode-double') {
       BSON::Double.encode-double($r);
     }
+}}
 
-    method encode-double ( Num:D $r is copy --> Buf ) {
+    method encode-double ( Pair:D $p --> Buf ) {
 
-      my Buf $a;
+      my Str $key-name = $p.key;
+      my Num $r = $p.value;
+
+      # Make array starting with bson code 0x01 and the key name
+      my Buf $a = Buf.new(0x01) ~ encode-e-name($key-name);
       my Num $r2;
 
       # Test special cases
@@ -32,15 +39,15 @@ package BSON {
       #
       given $r {
         when 0.0 {
-          $a = Buf.new(0 xx 8);
+          $a ~= Buf.new(0 xx 8);
         }
 
         when -Inf {
-          $a = Buf.new( 0 xx 6, 0xF0, 0xFF);
+          $a ~= Buf.new( 0 xx 6, 0xF0, 0xFF);
         }
 
         when Inf {
-          $a = Buf.new( 0 xx 6, 0xF0, 0x7F);
+          $a ~= Buf.new( 0 xx 6, 0xF0, 0x7F);
         }
 
         default {
@@ -114,7 +121,7 @@ package BSON {
           #
           $i +|= :2($bit-string.substr( 0, 52));
 
-          $a = encode-int64($i);
+          $a ~= encode-int64($i);
         }
       }
 
@@ -126,6 +133,7 @@ package BSON {
     # http://en.wikipedia.org/wiki/Double-precision_floating-point_format#Endianness
     # until better times come.
     #
+#`{{
     multi method decode_double ( List:D $a, Int:D $index is rw ) is DEPRECATED('decode-double') {
       return self.decode-double( $a.Array, $index);
     }
@@ -139,6 +147,11 @@ package BSON {
     }
 
     multi method decode-double ( Array:D $a, Int:D $index is rw ) {
+}}
+
+    multi method decode-double ( Array:D $a, Int:D $index is rw --> Pair ) {
+
+      my Str $key-name = decode-e-name( $a, $index);
 
       # Test special cases
       #
@@ -201,7 +214,7 @@ package BSON {
         $value = Num.new((2 ** $exponent) * $significand * $sign);
       }
 
-      return $value;
+      return $key-name => $value;
     }
   }
 }
