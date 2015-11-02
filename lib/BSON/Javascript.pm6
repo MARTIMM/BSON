@@ -11,7 +11,8 @@ package BSON {
     has Bool $.has_javascript = False;
     has Bool $.has_scope = False;
 
-
+    #---------------------------------------------------------------------------
+    #
     submethod BUILD ( Str :$javascript, Hash :$scope) {
       # Store the attribute values. ? sets True if defined and filled.
       #
@@ -22,6 +23,8 @@ package BSON {
       $!has_scope = ?$!scope;
     }
 
+    #---------------------------------------------------------------------------
+    #
     method encode-javascript ( Str $key-name, $bson-obj --> Buf ) {
       if $!has_javascript {
         my Buf $js = encode-string($!javascript);
@@ -44,8 +47,14 @@ package BSON {
                                     );
       }
     }
-#`{{
-}}
+
+    #---------------------------------------------------------------------------
+    #
+    method decode-javascript ( Array $a, $index is rw --> Pair ) {
+
+      return decode-e-name( $a, $index) =>
+        BSON::Javascript.new( :javascript(decode-string( $a, $index)));
+    }
   }
 }
 

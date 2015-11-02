@@ -48,13 +48,11 @@ package BSON {
     }
 
     multi method encode_document ( Pair:D @p --> Buf ) is DEPRECATED('encode-document') {
-#say "EE: ", @p.perl;
       my Buf $b = self.encode-e-list(@p);
       return [~] encode-int32($b.elems + 5), $b, Buf.new(0x00);
     }
 
     multi method encode-document ( Pair:D @p --> Buf ) {
-#say "EE: ", @p.perl;
       my Buf $b = self.encode-e-list(@p);
       return [~] encode-int32($b.elems + 5), $b, Buf.new(0x00);
     }
@@ -65,7 +63,6 @@ package BSON {
     # | ""
     #
     method encode_e_list ( @p --> Buf ) is DEPRECATED('encode-e-list') {
-
       my Buf $b = Buf.new();
       for @p -> $p { $b ~= self.encode-element($p); }
       return $b;
@@ -90,8 +87,6 @@ package BSON {
     }
 
     method encode-element ( Pair:D $p --> Buf ) {
-
-#say "EELe: '", $p.key, "' <=> '", $p.value, "' === ", $p.value.WHAT;
 
       given $p.value {
 
@@ -120,7 +115,6 @@ package BSON {
           # Embedded document
           # "\x03" e_name document
           #
-#say "Pair: {$p.value.perl}";
           my Pair @pairs = $p.value;
           return [~] Buf.new(0x03),
                      encode-e-name($p.key),
@@ -132,7 +126,6 @@ package BSON {
           # Embedded document
           # "\x03" e_name document
           #
-#say "Hash: {$p.value.perl}";
           return [~] Buf.new(0x03),
                      encode-e-name($p.key),
                      self.encode-document($p.value)
@@ -155,7 +148,6 @@ package BSON {
           # { 1 => 'abc', 0 => 'def' } was encoded instead of
           # { 0 => 'def', 1 => 'abc' }.
           #
-#say "Array: {$p.value.perl}";
            my Pair @pairs;
           for .kv -> $k, $v {
             @pairs.push: ("$k" => $v);
@@ -366,7 +358,6 @@ package BSON {
 
           else {
             die X::BSON::NYS.new( :operation('encode'), :type($_));
-  #             die "Sorry, not yet supported type: $_"; # ~ .WHAT;
           }
         }
       }
@@ -628,8 +619,11 @@ package BSON {
         # Javascript code
         # "\x0D" e_name string
         #
+        return BSON::Javascript.decode-javascript( $a, $!index);
+#`{{
         return decode-e-name( $a, $!index) =>
           BSON::Javascript.new( :javascript(decode-string( $a, $!index)));
+}}
       }
 
       elsif $bson_code == 0x0E {
