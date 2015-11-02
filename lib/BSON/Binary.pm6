@@ -48,12 +48,12 @@ package BSON {
 
     method encode-binary ( --> Buf ) {
       if $!has-binary-data {
-        return [~] encode_int32($!binary-data.elems),
+        return [~] encode-int32($!binary-data.elems),
                    Buf.new( $!binary-type, $!binary-data.list);
       }
 
       else {
-        return [~] encode_int32(0), Buf.new($!binary-type);
+        return [~] encode-int32(0), Buf.new($!binary-type);
       }
     }
 
@@ -75,7 +75,7 @@ package BSON {
 
       # Get length of binary data
       #
-      my Int $lng = decode_int32( $a, $index);
+      my Int $lng = decode-int32( $a, $index);
 
       # Get subtype
       #

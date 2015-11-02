@@ -39,24 +39,24 @@ package BSON {
     #
     multi method encode_document ( Hash:D $h --> Buf ) is DEPRECATED('encode-document') {
       my Buf $b = self.encode-e-list($h.pairs);
-      return [~] encode_int32($b.elems + 5), $b, Buf.new(0x00);
+      return [~] encode-int32($b.elems + 5), $b, Buf.new(0x00);
     }
 
     multi method encode-document ( Hash:D $h --> Buf ) {
       my Buf $b = self.encode-e-list($h.pairs);
-      return [~] encode_int32($b.elems + 5), $b, Buf.new(0x00);
+      return [~] encode-int32($b.elems + 5), $b, Buf.new(0x00);
     }
 
     multi method encode_document ( Pair:D @p --> Buf ) is DEPRECATED('encode-document') {
 #say "EE: ", @p.perl;
       my Buf $b = self.encode-e-list(@p);
-      return [~] encode_int32($b.elems + 5), $b, Buf.new(0x00);
+      return [~] encode-int32($b.elems + 5), $b, Buf.new(0x00);
     }
 
     multi method encode-document ( Pair:D @p --> Buf ) {
 #say "EE: ", @p.perl;
       my Buf $b = self.encode-e-list(@p);
-      return [~] encode_int32($b.elems + 5), $b, Buf.new(0x00);
+      return [~] encode-int32($b.elems + 5), $b, Buf.new(0x00);
     }
 
     #---------------------------------------------------------------------------
@@ -110,7 +110,7 @@ package BSON {
           #
           return [~] Buf.new(0x02),
                      encode-e-name($p.key),
-                     encode_string($p.value)
+                     encode-string($p.value)
                      ;
         }
 
@@ -218,7 +218,7 @@ package BSON {
           #
           return [~] Buf.new(0x09),
                      encode-e-name($p.key),
-                     encode_int64($p.value().posix())
+                     encode-int64($p.value().posix())
                      ;
         }
 
@@ -261,13 +261,13 @@ package BSON {
           # "\x0F" e_name int32 string document
           #
           if $p.value.has_javascript {
-            my Buf $js = encode_string($p.value.javascript);
+            my Buf $js = encode-string($p.value.javascript);
 
             if $p.value.has_scope {
               my Buf $doc = self.encode-document($p.value.scope);
               return [~] Buf.new(0x0F),
                          encode-e-name($p.key),
-                         encode_int32([+] $js.elems, $doc.elems, 4),
+                         encode-int32([+] $js.elems, $doc.elems, 4),
                          $js, $doc
                          ;
             }
@@ -275,7 +275,7 @@ package BSON {
             else {
               return [~] Buf.new(0x0D),
                          encode-e-name($p.key),
-                         encode_string($p.value.javascript)
+                         encode-string($p.value.javascript)
                          ;
             }
           }
@@ -313,14 +313,14 @@ package BSON {
           if -0xffffffff < $p.value < 0xffffffff {
             return [~] Buf.new(0x10),
                        encode-e-name($p.key),
-                       encode_int32($p.value)
+                       encode-int32($p.value)
                        ;
           }
 
           elsif -0x7fffffff_ffffffff < $p.value < 0x7fffffff_ffffffff {
             return [~] Buf.new(0x12),
                        encode-e-name($p.key),
-                       encode_int64($p.value)
+                       encode-int64($p.value)
                        ;
           }
 
@@ -406,7 +406,7 @@ package BSON {
     }
 
     multi method decode-document ( Array:D $a --> Hash ) {
-      my Int $i = decode_int32( $a, $!index);
+      my Int $i = decode-int32( $a, $!index);
       my Hash $h = self.decode-e-list($a);
 
       die X::BSON::Parse.new(
@@ -479,7 +479,7 @@ package BSON {
         # Double precision
         # "\x01" e_name Num
         #
-        return decode_e_name( $a, $!index) =>
+        return decode-e-name( $a, $!index) =>
                BSON::Double.decode-double( $a, $!index);
       }
 
@@ -487,14 +487,14 @@ package BSON {
         # UTF-8 string
         # "\x02" e_name string
         #
-        return decode_e_name( $a, $!index) => decode_string( $a, $!index);
+        return decode-e-name( $a, $!index) => decode-string( $a, $!index);
       }
 
       elsif $bson_code == 0x03 {
         # Embedded document
         # "\x03" e_name document
         #
-        return decode_e_name( $a, $!index) => self.decode-document($a);
+        return decode-e-name( $a, $!index) => self.decode-document($a);
       }
 
       elsif $bson_code == 0x04 {
@@ -513,7 +513,7 @@ package BSON {
         # into integer comparison otherwise you get series like 0,1,10,11,...2,
         # etc
         # 
-        my Str $key = decode_e_name( $a, $!index);
+        my Str $key = decode-e-name( $a, $!index);
         my Hash $h = self.decode-document($a);
         my @values;
         for $h.keys.sort({$^x <=> $^y}) -> $k {@values.push($h{$k})};
@@ -525,7 +525,7 @@ package BSON {
         # "\x05 e_name int32 subtype byte*
         # subtype = byte \x00 .. \x05, \x80
         #
-        my $name = decode_e_name( $a, $!index);
+        my $name = decode-e-name( $a, $!index);
         my BSON::Binary $bin_obj .= new;
         $bin_obj.decode-binary( $a, $!index);
         return $name => $bin_obj;
@@ -537,7 +537,7 @@ package BSON {
         #
         # Must drop some bytes from array.
         #
-        decode_e_name( $a, $!index);
+        decode-e-name( $a, $!index);
         die X::BSON::Deprecated.new( :operation('decode'),
                                      :type('Undefined(0x06)')
                                    );
@@ -547,7 +547,7 @@ package BSON {
         # ObjectId
         # "\x07" e_name (byte*12)
         #
-        my $n = decode_e_name( $a, $!index);
+        my $n = decode-e-name( $a, $!index);
         my @a = $a[$!index..($!index+11)];
         $!index += 12;
 
@@ -557,7 +557,7 @@ package BSON {
       }
 
       elsif $bson_code == 0x08 {
-        my $n = decode_e_name( $a, $!index);
+        my $n = decode-e-name( $a, $!index);
 
         given $a[$!index++] {
 
@@ -588,23 +588,23 @@ package BSON {
         # Datetime
         # "\x09" e_name int64
         #
-        return decode_e_name( $a, $!index) => DateTime.new(decode_int64( $a, $!index));
+        return decode-e-name( $a, $!index) => DateTime.new(decode-int64( $a, $!index));
       }
 
       elsif $bson_code == 0x0A {
         # Null value
         # "\x0A" e_name
         #
-        return decode_e_name( $a, $!index) => Any;
+        return decode-e-name( $a, $!index) => Any;
       }
 
       elsif $bson_code == 0x0B {
         # Regular expression
         # "\x0B" e_name cstring cstring
         #
-        return decode_e_name( $a, $!index) =>
-          BSON::Regex.new( :regex(decode_cstring( $a, $!index)),
-                           :options(decode_cstring( $a, $!index))
+        return decode-e-name( $a, $!index) =>
+          BSON::Regex.new( :regex(decode-cstring( $a, $!index)),
+                           :options(decode-cstring( $a, $!index))
                          );
       }
 
@@ -614,8 +614,8 @@ package BSON {
         #
         # Must drop some bytes from array.
         #
-        decode_e_name( $a, $!index);
-        decode_string( $a, $!index);
+        decode-e-name( $a, $!index);
+        decode-string( $a, $!index);
         $a[0..11];
         $!index += 12;
         die X::BSON::Deprecated.new( :operation('decode'),
@@ -627,8 +627,8 @@ package BSON {
         # Javascript code
         # "\x0D" e_name string
         #
-        return decode_e_name( $a, $!index) =>
-          BSON::Javascript.new( :javascript(decode_string( $a, $!index)));
+        return decode-e-name( $a, $!index) =>
+          BSON::Javascript.new( :javascript(decode-string( $a, $!index)));
       }
 
       elsif $bson_code == 0x0E {
@@ -637,8 +637,8 @@ package BSON {
         #
         # Must drop some bytes from array.
         #
-        decode_e_name( $a, $!index);
-        decode_string( $a, $!index);
+        decode-e-name( $a, $!index);
+        decode-string( $a, $!index);
         die X::BSON::Deprecated.new( :operation('decode'), :type('(0x0E)'));
       }
 
@@ -646,10 +646,10 @@ package BSON {
         # Javascript code with scope
         # "\x0F" e_name string document
         #
-        my $name = decode_e_name( $a, $!index);
-        my $js_scope_size = decode_int32( $a, $!index);
+        my $name = decode-e-name( $a, $!index);
+        my $js_scope_size = decode-int32( $a, $!index);
         return $name =>
-          BSON::Javascript.new( :javascript(decode_string( $a, $!index)),
+          BSON::Javascript.new( :javascript(decode-string( $a, $!index)),
                                 :scope(self.decode-document($a))
                               );
       }
@@ -658,7 +658,7 @@ package BSON {
         # 32-bit Integer
         # "\x10" e_name int32
         #
-        return decode_e_name( $a, $!index) => decode_int32( $a, $!index);
+        return decode-e-name( $a, $!index) => decode-int32( $a, $!index);
       }
   #`{{
       elsif $bson_code == 0x11 {
@@ -674,7 +674,7 @@ package BSON {
         # 64-bit Integer
         # "\x12" e_name int64
         #
-        return decode_e_name( $a, $!index) => decode_int64( $a, $!index);
+        return decode-e-name( $a, $!index) => decode-int64( $a, $!index);
       }
   #`{{
       elsif $bson_code == 0x7F {

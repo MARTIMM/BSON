@@ -114,7 +114,7 @@ package BSON {
           #
           $i +|= :2($bit-string.substr( 0, 52));
 
-          $a = encode_int64($i);
+          $a = encode-int64($i);
         }
       }
 
@@ -187,7 +187,7 @@ package BSON {
       # If value is not set by the special cases above, calculate it here
       #
       else {
-        my Int $i = decode_int64( $a, $index);
+        my Int $i = decode-int64( $a, $index);
         my Int $sign = $i +& 0x8000_0000_0000_0000 ?? -1 !! 1;
 
         # Significand + implicit bit
