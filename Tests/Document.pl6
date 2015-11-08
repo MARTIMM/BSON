@@ -12,6 +12,7 @@ for 'a' ... 'z' -> $c {
 
 for $h.kv -> $k, $v {
   say "$k => $v";
+  last if $k eq 'h';
 }
 
 
@@ -23,12 +24,13 @@ for 'a' ... 'z' -> $c {
 
 for $m.kv -> $k, $v {
   say "$k => $v";
+  last if $k eq 'h';
 }
 
 
-
-#class Document does Associative {
-class Document does Associative {
+#===============================================================================
+#
+class Document1 does Associative {
   has Array $!keys .= new;
   has Array $!values .= new;
 
@@ -94,6 +96,7 @@ say "DELETE-KEY: $key";
 #  multi method ASSIGN-KEY ( $key, $value --> )
 }
 
+#===============================================================================
 # Solution with @ instead of Array
 #
 class Document2 does Associative {
@@ -162,47 +165,132 @@ say "DELETE-KEY: $key";
 #  multi method ASSIGN-KEY ( $key, $value --> )
 }
 
-say "\nDocument order...";
+#===============================================================================
+# Solution with @ instead of Array
+#
+class Document3 does Associative {
+  has @!keys;
+  has Hash $!data;
 
-my Document $d .= new;
+  #-----------------------------------------------------------------------------
+  multi method AT-KEY ( Str $key --> Mu ) is rw {
+
+    my $value;
+    if ! ($!data{$key}:exists) {
+      $!data{$key} = '';
+      @!keys.push($key);
+    }
+
+    $value := $!data{$key};
+  }
+
+  #-----------------------------------------------------------------------------
+  multi method EXISTS-KEY ( Str $key --> Bool ) {
+
+say "EXISTS-KEY: $key";
+    return $!data{$key}:exists;
+  }
+
+  #-----------------------------------------------------------------------------
+  multi method DELETE-KEY ( Str $key --> Bool ) {
+
+say "DELETE-KEY: $key";
+    loop ( my $i = 0; $i < @!keys.elems; $i++ ) {
+      if @!keys[$i] ~~ $key {
+        @!keys.splice( $i, 1);
+        $!data{$key}:delete;
+        last;
+      }
+    }
+  }
+
+  #-----------------------------------------------------------------------------
+  multi method kv ( --> List ) {
+
+    my @l;
+    for @!keys -> $k {
+      @l.push( $k, $!data{$k});
+    }
+
+    @l;
+  }
+
+  #-----------------------------------------------------------------------------
+  multi method keys ( --> List ) {
+
+    @!keys.list;
+  }
+
+#  multi method ASSIGN-KEY ( $key, $value --> )
+}
+
+#===============================================================================
+
+say "\nDocument1 order...";
+my Document1 $d1 .= new;
 for 'a' ... 'z' -> $c {
-  $d{$c} = rand * time;
+  $d1{$c} = rand * time;
 }
 
-say "";
-say "Keys a, b: ", $d<a b>, ', ', $d{'g'};
-
-for $d.kv -> $k, $v {
+for $d1.kv -> $k, $v {
   say "$k => $v";
-}
-
-say "";
-
-for $d.keys -> $k {
-  say "$k => $d{$k}";
-  last if $k eq 'k';
+  last if $k eq 'h';
 }
 
 
+say "\nDocument2 order...";
+my Document2 $d2 .= new;
+for 'a' ... 'z' -> $c {
+  $d2{$c} = rand * time;
+}
 
+for $d2.kv -> $k, $v {
+  say "$k => $v";
+  last if $k eq 'h';
+}
+
+
+say "\nDocument3 order...";
+my Document3 $d3 .= new;
+for 'a' ... 'z' -> $c {
+  $d3{$c} = rand * time;
+}
+
+for $d3.kv -> $k, $v {
+  say "$k => $v";
+  last if $k eq 'h';
+}
+
+
+
+#===============================================================================
+# Bench marking
+#
 my $b = Bench.new;
 $b.timethese(
   200, {
-    filling1_200x2x26 => sub {
-      my Document $d .= new;
+    document1_200x2x26 => sub {
+      my Document1 $d .= new;
       for 'aa' ... 'bz' -> $c {
         $d{$c} = 1;
       }
     },
-    
-    filling2_200x2x26 => sub {
+
+    document2_200x2x26 => sub {
       my Document2 $d .= new;
       for 'aa' ... 'bz' -> $c {
         $d{$c} = 1;
       }
     },
-    
-    filling3_200x2x26 => sub {
+
+    document3_200x2x26 => sub {
+      my Document3 $d .= new;
+      for 'aa' ... 'bz' -> $c {
+        $d{$c} = 1;
+      }
+    },
+
+    hash_200x2x26 => sub {
       my Hash $d .= new;
       for 'aa' ... 'bz' -> $c {
         $d{$c} = 1;
