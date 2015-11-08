@@ -1,13 +1,13 @@
+use v6;
+use Test;
+use BSON;
+use BSON::Double;
+
 #-------------------------------------------------------------------------------
 # Double precision floating point tests. See also the wikipedia at
 # http://en.wikipedia.org/wiki/Double-precision_floating-point_format
 # All binary arrays are little endian.
 #-------------------------------------------------------------------------------
-
-use v6;
-use Test;
-use BSON;
-use BSON::Double;
 
 #-------------------------------------------------------------------------------
 # 
