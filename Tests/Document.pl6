@@ -195,13 +195,18 @@ say "EXISTS-KEY: $key";
   multi method DELETE-KEY ( Str $key --> Bool ) {
 
 say "DELETE-KEY: $key";
-    loop ( my $i = 0; $i < @!keys.elems; $i++ ) {
-      if @!keys[$i] ~~ $key {
-        @!keys.splice( $i, 1);
-        $!data{$key}:delete;
-        last;
+    my $value;
+    if $!data{$key}:exists {
+      loop ( my $i = 0; $i < @!keys.elems; $i++ ) {
+        if @!keys[$i] ~~ $key {
+          @!keys.splice( $i, 1);
+          $value = $!data{$key}:delete;
+          last;
+        }
       }
     }
+
+    $value;
   }
 
   #-----------------------------------------------------------------------------
