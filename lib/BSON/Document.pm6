@@ -5,58 +5,50 @@ package BSON {
   class Document does Associative {
 
     has @!keys;
-    has @!values;
+    has Hash $!data;
 
     #-----------------------------------------------------------------------------
     multi method AT-KEY ( Str $key --> Mu ) is rw {
 
       my $value;
-      loop ( my $i = 0; $i < @!keys.elems; $i++ ) {
-        if @!keys[$i] ~~ $key {
-          $value := @!values[$i];
-          last;
-        }
+      if ! ($!data{$key}:exists) {
+        $!data{$key} = '';
+        @!keys.push($key);
       }
 
-      if $i == @!keys.elems {
-        @!keys[$i] = $key;
-        @!values[$i] = '';
-        $value := @!values[$i];
+      $value := $!data{$key};
+    }
+
+    #-----------------------------------------------------------------------------
+    multi method EXISTS-KEY ( Str $key --> Bool ) {
+
+      return $!data{$key}:exists;
+    }
+
+    #-----------------------------------------------------------------------------
+    multi method DELETE-KEY ( Str $key --> Any ) {
+
+      my $value;
+      if $!data{$key}:exists {
+        loop ( my $i = 0; $i < @!keys.elems; $i++ ) {
+          if @!keys[$i] ~~ $key {
+            @!keys.splice( $i, 1);
+            $value = $!data{$key}:delete;
+            last;
+          }
+        }
       }
 
       $value;
     }
 
     #-----------------------------------------------------------------------------
-    multi method EXISTS-KEY ( Str $key --> Bool ) {
+    multi method BIND-KEY ( Str $key, \new) {
 
-      my Bool $v = False;
-      loop ( my $i = 0; $i < @!keys.elems; $i++ ) {
-        if @!keys[$i] ~~ $key {
-          $v = True;
-          last;
-        }
-      }
+      say "BIND-KEY $key {new}";
 
-      $v;
+      $!data{$key} := new;
     }
-
-    #-----------------------------------------------------------------------------
-    multi method DELETE-KEY ( Str $key --> Any ) {
-
-      my $v = Nil;
-      loop ( my $i = 0; $i < @!keys.elems; $i++ ) {
-        if @!keys[$i] ~~ $key {
-          @!keys.splice( $i, 1);
-          $v = @!values.splice( $i, 1);
-          last;
-        }
-      }
-      
-      $v;
-    }
-
-  #  multi method ASSIGN-KEY ( $key, $value --> )
 
     #-----------------------------------------------------------------------------
     multi method elems ( --> Int ) {
@@ -67,7 +59,12 @@ package BSON {
     #-----------------------------------------------------------------------------
     multi method kv ( --> List ) {
 
-      (@!keys Z @!values).flat.list;
+      my @l;
+      for @!keys -> $k {
+        @l.push( $k, $!data{$k});
+      }
+
+      @l;
     }
 
     #-----------------------------------------------------------------------------

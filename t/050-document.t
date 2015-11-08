@@ -24,7 +24,27 @@ subtest {
   is $d<d>:delete, 3, 'Deleted value is 3';
   is $d.elems, 25, "25 pairs left";
 
+  my $x = 10;
+  $d<e> := $x;
+  is $d<e>, 10, "\$d<e> = $d<e> == $x";
+  $x = 11;
+  is $d<e>, 11, "\$d<e> = $d<e> == $x";
+
 }, "Test document";
+
+#-------------------------------------------------------------------------------
+subtest {
+
+  my BSON::Document $d .= new;
+  $d<a> = 10;
+  $d<b> = 11;
+  $d<c> = BSON::Document.new;
+  $d<c><a> = 100;
+  $d<c><b> = 110;
+
+  is $d<c><b>, 110, "\$d<c><b> = $d<c><b>";
+
+}, "Document nesting";
 
 #-------------------------------------------------------------------------------
 # Cleanup
