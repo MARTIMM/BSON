@@ -16,15 +16,23 @@ for $h.kv -> $k, $v {
 }
 
 
-say "\nMap order...";
+
+say "\nMap order ...";
 my Map $m;
 for 'a' ... 'z' -> $c {
   $m{$c} = rand * time;
 }
 
+say "\nAs hash ...";
 for $m.kv -> $k, $v {
   say "$k => $v";
   last if $k eq 'h';
+}
+
+say "\nAs hash ...";
+for @$m -> $e {
+  say $e.key, ' => ', $e.value;
+  last if $e.key eq 'h';
 }
 
 
@@ -187,8 +195,16 @@ class Document3 does Associative {
   #-----------------------------------------------------------------------------
   multi method EXISTS-KEY ( Str $key --> Bool ) {
 
-say "EXISTS-KEY: $key";
+#say "EXISTS-KEY: $key";
     return $!data{$key}:exists;
+  }
+
+  #-----------------------------------------------------------------------------
+  multi method ASSIGN-KEY (::?CLASS:D: $key, $new) {
+
+#say "ASSIGN-KEY: $key => $new";
+    @!keys.push($key) unless $!data{$key}:exists;
+    $!data{$key} = $new;
   }
 
   #-----------------------------------------------------------------------------
