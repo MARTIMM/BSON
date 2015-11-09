@@ -11,7 +11,20 @@ package BSON {
 
     has Buf $!encoded-document;
     has Buf @!encoded-entries;
+
+    # Encoded turns
+    # 1) False on init
+    # 2) False on insert, delete or modify an entry
+    # 3) True on encode() and decode()
+    #
     has Bool $!encoded;
+
+    # Decoded turns
+    # 1) False on init
+    # 2) False on loading into $!encoded-document
+    # 3) True on encode() and decode()
+    #
+    has Bool $!decoded;
 
     has Promise %promises;
 
@@ -23,7 +36,7 @@ package BSON {
 
     submethod BUILD (:@pairs) {
 
-      $!encoded = False;
+      $!encoded = $!decoded = False;
 
       # self{x} = y will end up at ASSIGN-KEY
       #
@@ -209,6 +222,21 @@ location is changed. This is nessesary to encode the key, value pair.
       [~] encode-int32($!encoded-document.elems + 5),
           $!encoded-document,
           Buf.new(0x00);
+    }
+
+    #---------------------------------------------------------------------------
+    method decode ( ) {
+
+    }
+
+    #---------------------------------------------------------------------------
+    method load ( Buf :$data ) {
+
+      $!encoded-document = $data;
+      $!encoded = $!decoded = False;
+
+      @!keys = ();
+      $!data .= new;
     }
   }
 }
