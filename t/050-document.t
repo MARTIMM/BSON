@@ -31,15 +31,21 @@ subtest {
   is $d<d>:delete, 3, 'Deleted value is 3';
   is $d.elems, 25, "25 pairs left";
 
-#`{{
-  is $d<e>, 4, "Pre binding: \$d<e> = $d<e>";
-  my $x = 10;
-  $d<e> := $x;
-  is $d<e>, 10, "Bound: \$d<e> = $d<e> == \$x = $x";
-  $x = 11;
-  is $d<e>, 11, "Bound: \$d<e> = $d<e> == \$x = $x";
-}}
+  try {
+    is $d<e>, 4, "Pre binding: \$d<e> = $d<e>";
+    my $x = 10;
+    $d<e> := $x;
+    is $d<e>, 10, "Bound: \$d<e> = $d<e> == \$x = $x";
+    $x = 11;
+    is $d<e>, 11, "Bound: \$d<e> = $d<e> == \$x = $x";
 
+    CATCH {
+      default {
+        is ~$_, "Can not use binding", $_;
+      }
+    }
+  }
+  
 }, "Test document, associative";
 
 #-------------------------------------------------------------------------------
@@ -67,15 +73,21 @@ subtest {
   is $d[25], 'text', "\$d[25] = '$d[25]'";
   ok ! ($d[26]:exists), '$d[26] does not exist anymore';
 
-#`{{
-  is $d[4], 124, "Pre binding: \$d[4] = $d[4]";
-  my $x = 10;
-  $d[4] := $x;
-  is $d[4], 10, "Bound: \$d[4] = $d[4] == \$x = $x";
-  $x = 11;
-  is $d[4], 11, "Bound: \$d[4] = $d[4] == \$x = $x";
-}}
+  try {
+    is $d[4], 124, "Pre binding: \$d[4] = $d[4]";
+    my $x = 10;
+    $d[4] := $x;
+    is $d[4], 10, "Bound: \$d[4] = $d[4] == \$x = $x";
+    $x = 11;
+    is $d[4], 11, "Bound: \$d[4] = $d[4] == \$x = $x";
 
+    CATCH {
+      default {
+        is ~$_, "Can not use binding", $_;
+      }
+    }
+  }
+  
 }, "Test document, positional";
 
 #-------------------------------------------------------------------------------

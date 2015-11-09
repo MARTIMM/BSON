@@ -66,16 +66,17 @@ package BSON {
       $!data{$key} = $new;
     }
 
-#`{{
     #---------------------------------------------------------------------------
+#`{{
 Cannot use binding because when value changes the object cannot know that the
 location is changed. This is nessesary to encode the key, value pair.
-
+}}
     multi method BIND-KEY ( Str $key, \new ) {
 
+      die "Can not use binding";
       $!data{$key} := new;
     }
-}}
+
 
     #---------------------------------------------------------------------------
     # Positional role methods
@@ -120,16 +121,17 @@ location is changed. This is nessesary to encode the key, value pair.
       $!data{$key} = $new;
     }
 
-#`{{
     #---------------------------------------------------------------------------
-    multi method BIND-POS ( Index $idx, \new ) {
+#`{{
 Cannot use binding because when value changes the object cannot know that the
 location is changed. This is nessesary to encode the key, value pair.
+}}
+    multi method BIND-POS ( Index $idx, \new ) {
 
+      die "Can not use binding";
       my $key = $idx >= @!keys.elems ?? 'key' ~ @!keys.elems !! @!keys[$idx];
       $!data{$key} := new;
     }
-}}
 
     #---------------------------------------------------------------------------
     # Must be defined because of Positional and Associative
