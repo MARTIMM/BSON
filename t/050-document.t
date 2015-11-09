@@ -31,12 +31,14 @@ subtest {
   is $d<d>:delete, 3, 'Deleted value is 3';
   is $d.elems, 25, "25 pairs left";
 
+#`{{
   is $d<e>, 4, "Pre binding: \$d<e> = $d<e>";
   my $x = 10;
   $d<e> := $x;
   is $d<e>, 10, "Bound: \$d<e> = $d<e> == \$x = $x";
   $x = 11;
   is $d<e>, 11, "Bound: \$d<e> = $d<e> == \$x = $x";
+}}
 
 }, "Test document, associative";
 
@@ -65,12 +67,14 @@ subtest {
   is $d[25], 'text', "\$d[25] = '$d[25]'";
   ok ! ($d[26]:exists), '$d[26] does not exist anymore';
 
+#`{{
   is $d[4], 124, "Pre binding: \$d[4] = $d[4]";
   my $x = 10;
   $d[4] := $x;
   is $d[4], 10, "Bound: \$d[4] = $d[4] == \$x = $x";
   $x = 11;
   is $d[4], 11, "Bound: \$d[4] = $d[4] == \$x = $x";
+}}
 
 }, "Test document, positional";
 
@@ -100,10 +104,10 @@ subtest {
   is $d<c><b>, 110, "\$d<c><b> = $d<c><b>";
   is $d<c><p>, 1, "\$d<c><p> = $d<c><p>";
 
-  is $d<c>[0], 1, "\$d<c>[0] = $d<c>[0]";
+  is $d<c>[1], 2, "\$d<c>[1] = $d<c>[1]";
   is $d<c>[3], 110, "\$d<c>[3] = $d<c>[3]";
 
-  is $d[2][0], 1, "\$d[2][0] = $d[2][0]";
+  is $d[2][2], 100, "\$d[2][2] = $d[2][2]";
   is $d[2][3], 110, "\$d[2][3] = $d[2][3]";
 
   is $d[1][0], 11, "\$d[1][0] = $d[1][0]";
@@ -113,7 +117,20 @@ subtest {
     say $d[1][2];
     CATCH {
       default {
-        is ~$_, 'Index out of range. Is: 2, should be in 0..0', ~$_;
+        is ~$_,
+           'Index out of range. Is: 2, should be in 0..0',
+           '$d[1][2]: ' ~ $_;
+      }
+    }
+  }
+
+  try {
+    is $d[2][5], Any, '$d[2][5]: not out of range but not defined';
+    CATCH {
+      default {
+        is ~$_,
+           'Index out of range. Is: 2, should be in 0..0',
+           '$d[2][5]: ' ~ $_;
       }
     }
   }

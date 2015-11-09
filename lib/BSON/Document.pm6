@@ -1,4 +1,5 @@
 use v6;
+use BSON::EDCTools;
 
 package BSON {
 
@@ -20,6 +21,8 @@ package BSON {
     submethod BUILD (:@pairs) {
       $!encoded = False;
 
+      # self{x} = y will end up at ASSIGN-KEY
+      #
       for @pairs -> $pair {
         self{$pair.key} = $pair.value;
       }
@@ -63,11 +66,16 @@ package BSON {
       $!data{$key} = $new;
     }
 
+#`{{
     #---------------------------------------------------------------------------
+Cannot use binding because when value changes the object cannot know that the
+location is changed. This is nessesary to encode the key, value pair.
+
     multi method BIND-KEY ( Str $key, \new ) {
 
       $!data{$key} := new;
     }
+}}
 
     #---------------------------------------------------------------------------
     # Positional role methods
@@ -112,12 +120,16 @@ package BSON {
       $!data{$key} = $new;
     }
 
+#`{{
     #---------------------------------------------------------------------------
     multi method BIND-POS ( Index $idx, \new ) {
+Cannot use binding because when value changes the object cannot know that the
+location is changed. This is nessesary to encode the key, value pair.
 
       my $key = $idx >= @!keys.elems ?? 'key' ~ @!keys.elems !! @!keys[$idx];
       $!data{$key} := new;
     }
+}}
 
     #---------------------------------------------------------------------------
     # Must be defined because of Positional and Associative
