@@ -1,4 +1,5 @@
 use v6;
+use BSON;
 use BSON::EDCTools;
 
 package BSON {
@@ -12,6 +13,8 @@ package BSON {
     has Buf @!encoded-entries;
     has Bool $!encoded;
 
+    has Promise %promises;
+
     #---------------------------------------------------------------------------
     #
     method new ( *@ps ) {
@@ -19,6 +22,7 @@ package BSON {
     }
 
     submethod BUILD (:@pairs) {
+
       $!encoded = False;
 
       # self{x} = y will end up at ASSIGN-KEY
@@ -50,6 +54,7 @@ package BSON {
         loop ( my $i = 0; $i < @!keys.elems; $i++ ) {
           if @!keys[$i] ~~ $key {
             @!keys.splice( $i, 1);
+            @!encoded-entries.splice( $i, 1);   # $!encoded kept to True!
             $value = $!data{$key}:delete;
             last;
           }
@@ -64,6 +69,15 @@ package BSON {
 
       @!keys.push($key) unless $!data{$key}:exists;
       $!data{$key} = $new;
+
+      %promises{$key}:delete if %promises{$key}:exists;
+      %promises{$key} = Promise.start( {
+          my BSON::Bson $bson .= new;
+          $bson.encode-element: ($key => $!data{$key});
+        }
+      );
+
+      $!encoded = False;
     }
 
     #---------------------------------------------------------------------------
@@ -74,7 +88,7 @@ location is changed. This is nessesary to encode the key, value pair.
     multi method BIND-KEY ( Str $key, \new ) {
 
       die "Can not use binding";
-      $!data{$key} := new;
+#      $!data{$key} := new;
     }
 
 
@@ -115,10 +129,19 @@ location is changed. This is nessesary to encode the key, value pair.
       # 21st location. Furthermore when a key like key21 has been used before
       # the array is not extended but the key location is used instead.
       #
-      my $key = $idx >= @!keys.elems ?? 'key' ~ @!keys.elems !! @!keys[$idx];
+      my $key = $idx >= @!keys.elems ?? 'key' ~ $idx !! @!keys[$idx];
 
       @!keys.push($key) unless $!data{$key}:exists;
       $!data{$key} = $new;
+
+      %promises{$key}:delete if %promises{$key}:exists;
+      %promises{$key} = Promise.start( {
+          my BSON::Bson $bson .= new;
+          $bson.encode-element: ($key => $!data{$key});
+        }
+      );
+
+      $!encoded = False;
     }
 
     #---------------------------------------------------------------------------
@@ -129,14 +152,14 @@ location is changed. This is nessesary to encode the key, value pair.
     multi method BIND-POS ( Index $idx, \new ) {
 
       die "Can not use binding";
-      my $key = $idx >= @!keys.elems ?? 'key' ~ @!keys.elems !! @!keys[$idx];
-      $!data{$key} := new;
+#      my $key = $idx >= @!keys.elems ?? 'key' ~ $idx !! @!keys[$idx];
+#      $!data{$key} := new;
     }
 
     #---------------------------------------------------------------------------
     # Must be defined because of Positional and Associative
     #---------------------------------------------------------------------------
-    method of (  ) {
+    method of ( ) {
       Mu;
     }
 
@@ -163,6 +186,29 @@ location is changed. This is nessesary to encode the key, value pair.
     multi method values ( --> List ) {
 
       $!data{@!keys[*]}.list;
+    }
+
+    #---------------------------------------------------------------------------
+    # Encoding and decoding
+    #---------------------------------------------------------------------------
+    method encode ( --> Buf ) {
+
+      if !$!encoded {
+        loop ( my $idx = 0; $idx < @!keys.elems; $idx++) {
+          my $key = @!keys[$idx];
+          @!encoded-entries[$idx] = await %promises{$key}
+            if %promises{$key}:exists;
+        }
+
+        $!encoded = True;
+        %promises = ();
+      }
+
+      $!encoded-document = [~] @!encoded-entries;
+
+      [~] encode-int32($!encoded-document.elems + 5),
+          $!encoded-document,
+          Buf.new(0x00);
     }
   }
 }
