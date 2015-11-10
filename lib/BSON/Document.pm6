@@ -13,11 +13,12 @@ package BSON {
     has Buf @!encoded-entries;
 
     # Encoded turns
-    # 1) False on init
+    # 1) True on init, no need to 'await' promises.
     # 2) False on insert, delete or modify an entry
     # 3) True on encode() and decode()
     #
     has Bool $!encoded;
+#    has Bool $!promises-wait;
 
     # Decoded turns
     # 1) False on init
@@ -26,7 +27,11 @@ package BSON {
     #
     has Bool $!decoded;
 
-    has Promise %promises;
+    subset Index of Int where $_ >= 0;
+
+    has Index $!index = 0;
+
+    has Promise %!promises;
 
     #---------------------------------------------------------------------------
     #
@@ -36,7 +41,8 @@ package BSON {
 
     submethod BUILD (:@pairs) {
 
-      $!encoded = $!decoded = False;
+      $!encoded = True;
+      $!decoded = False;
 
       # self{x} = y will end up at ASSIGN-KEY
       #
@@ -83,8 +89,8 @@ package BSON {
       @!keys.push($key) unless $!data{$key}:exists;
       $!data{$key} = $new;
 
-      %promises{$key}:delete if %promises{$key}:exists;
-      %promises{$key} = Promise.start( {
+      %!promises{$key}:delete if %!promises{$key}:exists;
+      %!promises{$key} = Promise.start( {
           my BSON::Bson $bson .= new;
           $bson.encode-element: ($key => $!data{$key});
         }
@@ -107,9 +113,6 @@ location is changed. This is nessesary to encode the key, value pair.
 
     #---------------------------------------------------------------------------
     # Positional role methods
-    #---------------------------------------------------------------------------
-    subset Index of Int where $_ >= 0;
-
     #---------------------------------------------------------------------------
     multi method elems ( --> Int ) {
 
@@ -147,8 +150,8 @@ location is changed. This is nessesary to encode the key, value pair.
       @!keys.push($key) unless $!data{$key}:exists;
       $!data{$key} = $new;
 
-      %promises{$key}:delete if %promises{$key}:exists;
-      %promises{$key} = Promise.start( {
+      %!promises{$key}:delete if %!promises{$key}:exists;
+      %!promises{$key} = Promise.start( {
           my BSON::Bson $bson .= new;
           $bson.encode-element: ($key => $!data{$key});
         }
@@ -209,12 +212,12 @@ location is changed. This is nessesary to encode the key, value pair.
       if !$!encoded {
         loop ( my $idx = 0; $idx < @!keys.elems; $idx++) {
           my $key = @!keys[$idx];
-          @!encoded-entries[$idx] = await %promises{$key}
-            if %promises{$key}:exists;
+          @!encoded-entries[$idx] = await %!promises{$key}
+            if %!promises{$key}:exists;
         }
 
         $!encoded = True;
-        %promises = ();
+        %!promises = ();
       }
 
       $!encoded-document = [~] @!encoded-entries;
@@ -225,18 +228,75 @@ location is changed. This is nessesary to encode the key, value pair.
     }
 
     #---------------------------------------------------------------------------
-    method decode ( ) {
-
-    }
-
-    #---------------------------------------------------------------------------
-    method load ( Buf :$data ) {
+    method decode ( Buf $data --> Nil ) {
 
       $!encoded-document = $data;
-      $!encoded = $!decoded = False;
+      $!encoded = True;
+      $!decoded = False;
 
       @!keys = ();
       $!data .= new;
+
+      # Document decoding start: init index
+      #
+      $!index = 0;
+
+      # Decode the document, then wait for any started parallel tracks
+      #
+      self!decode-document;
+      await %!promises.values if %!promises.elems;
+    }
+
+    #---------------------------------------------------------------------------
+    method !decode-document ( --> Nil ) {
+
+      # Get the size of the (nested-)document
+      #
+      my Int $doc-size = decode-int32( $!encoded-document, $!index);
+      $!index += int32-size;
+
+      while $!encoded-document[$!index] !~~ 0x00 {
+        self!decode-element;
+      }
+    }
+
+    #---------------------------------------------------------------------------
+    method !decode-element ( --> Nil ) {
+
+      # Get the value type of next pair
+      #
+      my $bson-code = $!encoded-document[$!index++];
+
+      # Get the key value
+      #
+      my Str $key = decode-e-name( $!encoded-document, $!index);
+
+      @!keys.push($key);
+      my Int $size;
+
+      given $bson-code {
+#        when 0x01 {
+#        }
+
+        # 32-bit Integer
+        # "\x10" e_name int32
+        #
+        when BSON::C-BSON-INT32 {
+
+          my $i = $!index;
+          $!index += int32-size;
+          %!promises{$key} = Promise.start( {
+              $!data{$key} = decode-int32( $!encoded-document, $i);
+              say "Done $key => $!data{$key}";
+            }
+          );
+        }
+
+        default {
+          note "BSON code '{.fmt('0x%02x')}' not supported";
+          $!data{$key} = Any;
+        }
+      }
     }
   }
 }

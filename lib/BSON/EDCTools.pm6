@@ -5,6 +5,9 @@ use BSON::Exception;
 # strings and integers.
 
 package BSON {
+  constant C-BSON-INT32       = 0x10;
+
+  constant C-INT32-SIZE = 4;
 
   #-----------------------------------------------------------------------------
   # Encoding tools
@@ -124,6 +127,10 @@ package BSON {
     return decode-cstring( $b, $index);
   }
 
+  multi sub decode-e-name ( Buf:D $b, Int:D $index is rw --> Str ) is export {
+    return decode-cstring( $b, $index);
+  }
+
   #-----------------------------------------------------------------------------
   multi sub decode_cstring ( List:D $a, Int:D $index is rw --> Str
   ) is export is DEPRECATED('decode-cstring') {
@@ -148,6 +155,24 @@ package BSON {
       :operation('decode-cstring'),
       :error('Missing trailing 0x00')
     ) unless $index < $l and $a[$index++] ~~ 0x00;
+    return Buf.new(@a).decode();
+  }
+
+  ####
+  # Alternative
+  #
+  multi sub decode-cstring ( Buf:D $a, Int:D $index is rw --> Str ) is export {
+    my @a;
+    my $l = $a.elems;
+    while $index < $l and $a[$index] !~~ 0x00 {
+      @a.push($a[$index++]);
+    }
+
+    die X::BSON::Parse.new(
+      :operation('decode-cstring'),
+      :error('Missing trailing 0x00')
+    ) unless $index < $l and $a[$index++] ~~ 0x00;
+
     return Buf.new(@a).decode();
   }
 
@@ -218,6 +243,41 @@ package BSON {
                  $a[$index + 2] +< 0x10 +| $a[$index + 3] +< 0x18
                  ;
     $index += 4;
+
+    # Test if most significant bit is set. If so, calculate two's complement
+    # negative number.
+    # Prefix +^: Coerces the argument to Int and does a bitwise negation on
+    # the result, assuming two's complement. (See
+    # http://doc.perl6.org/language/operators^)
+    # Infix +^ :Coerces both arguments to Int and does a bitwise XOR
+    # (exclusive OR) operation.
+    #
+    $ni = (0xffffffff +& (0xffffffff+^$ni) +1) * -1  if $ni +& 0x80000000;
+    return $ni;
+
+    # Original method goes wrong on negative numbers. Also adding might be
+    # slower than the bit operations.
+    #
+    # return [+] $a.shift, $a.shift +< 0x08, $a.shift +< 0x10, $a.shift +< 0x18;
+  }
+
+  ####
+  # Alternative
+  #
+  sub int32-size ( --> Int ) is export { C-INT32-SIZE }
+  multi sub decode-int32 ( Buf:D $a, Int:D $index --> Int ) is export {
+
+    # Check if there are enaugh letters left
+    #
+    die X::BSON::Parse.new(
+      :operation('decode_int32'),
+      :error('Not enaugh characters left')
+    ) if $a.elems - $index < 4;
+
+    my int $ni = $a[$index]             +| $a[$index + 1] +< 0x08 +|
+                 $a[$index + 2] +< 0x10 +| $a[$index + 3] +< 0x18
+                 ;
+#    $index += 4;
 
     # Test if most significant bit is set. If so, calculate two's complement
     # negative number.

@@ -127,6 +127,23 @@ subtest {
 }, "Document encoding positional";
 
 #-------------------------------------------------------------------------------
+subtest {
+  my BSON::Document $d .= new;
+  my Buf $new-data = Buf.new(
+    0x2d, 0x00 xx 3,
+    0x10, 0x6b, 0x65, 0x79, 0x30, 0x00, 0x7a, 0x00 xx 3,   # 10 'key0' 122
+    0x10, 0x6b, 0x65, 0x79, 0x31, 0x00, 0x7b, 0x00 xx 3,   # 10 'key1' 123
+    0x10, 0x6b, 0x65, 0x79, 0x32, 0x00, 0x7c, 0x00 xx 3,   # 10 'key2' 124
+    0x10, 0x6b, 0x65, 0x79, 0x33, 0x00, 0x7d, 0x00 xx 3,   # 10 'key3' 125
+    0x00
+  );
+  $d.decode($new-data);
+  
+  is $d<key0>, 122, "\$d<Key0> => $d<key0>";
+
+}, "Document decoding";
+
+#-------------------------------------------------------------------------------
 # Cleanup
 #
 done-testing();
