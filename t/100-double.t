@@ -66,6 +66,28 @@ $br = BSON::Double.encode-double($v);
 is-deeply $br, $b, "special case $v after encode";
 
 
+# 0x 7ff0 0000 0000 0001 <= nan <= 0x 7ff7 ffff ffff ffff signalling NaN
+# 0x fff0 0000 0000 0001 <= nan <= 0x fff7 ffff ffff ffff
+# 0x 7ff8 0000 0000 0000 <= nan <= 0x 7fff ffff ffff ffff quiet NaN
+# 0x fff8 0000 0000 0000 <= nan <= 0x ffff ffff ffff ffff
+#
+$b = Buf.new( 0x01, 0x03, 0x00, 0x00, 0x00, 0x00, 0xf0, 0x7f);
+$index = 0;
+$v = BSON::Double.decode-double( $b.Array, $index);
+
+is $v, NaN, 'Result is not a number';
+$br = BSON::Double.encode-double($v);
+is-deeply $br, Buf.new( 0 xx 6, 0xF8, 0x7F), "special case $v after encode";
+
+$b = Buf.new( 0x01, 0x03, 0x00, 0x00, 0xff, 0x00, 0xf8, 0xff);
+$index = 0;
+$v = BSON::Double.decode-double( $b.Array, $index);
+
+is $v, NaN, 'Result is not a number';
+$br = BSON::Double.encode-double($v);
+is-deeply $br, Buf.new( 0 xx 6, 0xF8, 0x7F), "special case $v after encode";
+
+
 #-------------------------------------------------------------------------------
 # Other numbers
 #

@@ -3,13 +3,11 @@ use BSON::EDCTools;
 
 package BSON {
 
+  # https://www.doc.ic.ac.uk/~eedwards/compsys/float/nan.html
+  # http://steve.hollasch.net/cgindex/coding/ieeefloat.html
+  # https://en.wikipedia.org/wiki/Floating_point
+  #
   class Double {
-  
-#    has Buf $.double_data;
-  
-#    submethod BUILD (  ) {
-    
-#    }
 
     #---------------------------------------------------------------------------
     # 8 bytes double (64-bit floating point number)
@@ -34,6 +32,10 @@ package BSON {
       # 0x 8000 0000 0000 0000 = -0       Not recognizable
       # 0x 7ff0 0000 0000 0000 = Inf
       # 0x fff0 0000 0000 0000 = -Inf
+      # 0x 7ff0 0000 0000 0001 <= nan <= 0x 7ff7 ffff ffff ffff signalling NaN
+      # 0x fff0 0000 0000 0001 <= nan <= 0x fff7 ffff ffff ffff
+      # 0x 7ff8 0000 0000 0000 <= nan <= 0x 7fff ffff ffff ffff quiet NaN
+      # 0x fff8 0000 0000 0000 <= nan <= 0x ffff ffff ffff ffff
       #
       given $r {
         when 0.0 {
@@ -46,6 +48,12 @@ package BSON {
 
         when Inf {
           $a ~= Buf.new( 0 xx 6, 0xF0, 0x7F);
+        }
+
+        when NaN {
+          # Choose only one number out of the quiet NaN range
+          #
+          $a ~= Buf.new( 0 xx 6, 0xF8, 0x7F);
         }
 
         default {
@@ -155,10 +163,14 @@ package BSON {
       # 0x 8000 0000 0000 0000 = -0
       # 0x 7ff0 0000 0000 0000 = Inf
       # 0x fff0 0000 0000 0000 = -Inf
+      # 0x 7ff0 0000 0000 0001 <= nan <= 0x 7ff7 ffff ffff ffff signalling NaN
+      # 0x fff0 0000 0000 0001 <= nan <= 0x fff7 ffff ffff ffff
+      # 0x 7ff8 0000 0000 0000 <= nan <= 0x 7ff7 ffff ffff ffff quiet NaN
+      # 0x fff8 0000 0000 0000 <= nan <= 0x ffff ffff ffff ffff
       #
       my Bool $six-byte-zeros = True;
       for ^6 -> $i {
-        if $a[$i] {
+        if ? $a[$i] {
           $six-byte-zeros = False;
           last;
         }
@@ -175,7 +187,7 @@ package BSON {
         }
       }
 
-      elsif $a[6] == 0xF0 {
+      elsif $six-byte-zeros and $a[6] == 0xF0 {
         if $a[7] == 0x7F {
           $value .= new(Inf);
         }
@@ -183,6 +195,14 @@ package BSON {
         elsif $a[7] == 0xFF {
           $value .= new(-Inf);
         }
+      }
+
+      elsif $a[7] == 0x7F and (0xf0 <= $a[6] <= 0xf7 or 0xf8 <= $a[6] <= 0xff) {
+        $value .= new(NaN);
+      }
+
+      elsif $a[7] == 0xFF and (0xf0 <= $a[6] <= 0xf7 or 0xf8 <= $a[6] <= 0xff) {
+        $value .= new(NaN);
       }
 
       # If value is set by the special cases above, remove the 8 bytes from
