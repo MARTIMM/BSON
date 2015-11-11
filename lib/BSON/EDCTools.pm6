@@ -5,9 +5,35 @@ use BSON::Exception;
 # strings and integers.
 
 package BSON {
-  constant C-BSON-INT32       = 0x10;
+  constant C-DOUBLE             = 0x01;
+  constant C-STRING             = 0x02;
+  constant C-DOCUMENT           = 0x03;
+  constant C-ARRAY              = 0x04;
+  constant C-BINARY             = 0x05;
+  constant C-UNDEFINED          = 0x06;         # Deprecated
+  constant C-OBJECTID           = 0x07;
+  constant C-BOOLEAN            = 0x08;
+  constant C-DATETIME           = 0x09;
+  constant C-NULL               = 0x0A;
+  constant C-REGEX              = 0x0B;
+  constant C-DBPOINTER          = 0x0C;         # Deprecated
+  constant C-JAVASCRIPT         = 0x0D;
+  constant C-DEPRECATED         = 0x0E;         # Deprecated
+  constant C-JAVASCRIPT-SCOPE   = 0x0F;
+  constant C-INT32              = 0x10;
+  constant C-TIMESTAMP          = 0x11;
+  constant C-INT64              = 0x12;
+  constant C-MIN-KEY            = 0xFF;
+  constant C-MAX-KEY            = 0x7F;
 
-  constant C-INT32-SIZE = 4;
+  #-----------------------------------------------------------------------------
+  constant C-INT32-SIZE         = 4;
+  constant C-INT64-SIZE         = 8;
+  constant C-DOUBLE-SIZE        = 8;
+
+  sub int32-size ( --> Int ) is export { C-INT32-SIZE }
+  sub int64-size ( --> Int ) is export { C-INT64-SIZE }
+  sub double-size ( --> Int ) is export { C-DOUBLE-SIZE }
 
   #-----------------------------------------------------------------------------
   # Encoding tools
@@ -264,7 +290,6 @@ package BSON {
   ####
   # Alternative
   #
-  sub int32-size ( --> Int ) is export { C-INT32-SIZE }
   multi sub decode-int32 ( Buf:D $a, Int:D $index --> Int ) is export {
 
     # Check if there are enaugh letters left
@@ -315,6 +340,10 @@ package BSON {
   }
 
   multi sub decode-int64 ( Array:D $a, Int:D $index is rw --> Int ) is export {
+    decode-int64( $a, $index);
+  }
+
+  multi sub decode-int64 ( Buf:D $a, Int:D $index is rw --> Int ) is export {
     # Check if there are enaugh letters left
     #
     die X::BSON::Parse.new(

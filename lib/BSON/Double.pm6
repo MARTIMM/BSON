@@ -12,10 +12,11 @@ package BSON {
     #---------------------------------------------------------------------------
     # 8 bytes double (64-bit floating point number)
     #
-    method encode_double ( Num:D $r is copy --> Buf
+#`{{    method encode_double ( Num:D $r is copy --> Buf
     ) is DEPRECATED('encode-double') {
       BSON::Double.encode-double($r);
     }
+}}
 
     method encode-double ( Num:D $r is copy --> Buf ) {
 
@@ -156,6 +157,10 @@ package BSON {
 }}
 
     multi method decode-double ( Array:D $a, Int:D $index is rw --> Num ) {
+      self.decode-double( Buf.new($a.List), $index);
+    }
+
+    multi method decode-double ( Buf:D $a, Int:D $index is rw --> Num ) {
 
       # Test special cases
       #
