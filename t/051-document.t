@@ -139,7 +139,7 @@ subtest {
   );
   $d.decode($new-data);
   
-  is $d<key0>, 122, "\$d<Key0> => $d<key0>";
+  is $d<key0>, 122, "\$d<key0> => $d<key0>";
 
 }, "Document decoding";
 

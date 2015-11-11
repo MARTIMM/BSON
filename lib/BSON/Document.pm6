@@ -1,6 +1,7 @@
 use v6;
 use BSON;
 use BSON::EDCTools;
+use BSON::Double;
 
 package BSON {
 
@@ -9,6 +10,7 @@ package BSON {
     has Str @!keys;
     has Hash $!data .= new;
 
+#    has BSON::Bson $bson;
     has Buf $!encoded-document;
     has Buf @!encoded-entries;
 
@@ -43,6 +45,7 @@ package BSON {
 
       $!encoded = True;
       $!decoded = False;
+#      $!bson .= new;
 
       # self{x} = y will end up at ASSIGN-KEY
       #
@@ -73,7 +76,8 @@ package BSON {
         loop ( my $i = 0; $i < @!keys.elems; $i++ ) {
           if @!keys[$i] ~~ $key {
             @!keys.splice( $i, 1);
-            @!encoded-entries.splice( $i, 1);   # $!encoded kept to True!
+#say "Key = $key, i = $i, #ee: {@!encoded-entries.elems}";
+            @!encoded-entries.splice( $i, 1) if @!encoded-entries.elems;   # $!encoded kept to True!
             $value = $!data{$key}:delete;
             last;
           }
@@ -258,6 +262,11 @@ location is changed. This is nessesary to encode the key, value pair.
       while $!encoded-document[$!index] !~~ 0x00 {
         self!decode-element;
       }
+
+      # Check size of document with final byte location
+      #
+      die "Size of document $doc-size does not match with index at $!index"
+        if $doc-size !== $!index + 1;
     }
 
     #---------------------------------------------------------------------------
@@ -275,13 +284,23 @@ location is changed. This is nessesary to encode the key, value pair.
       my Int $size;
 
       given $bson-code {
-#        when 0x01 {
-#        }
+
+        # 64-bit floating point
+        #
+        when BSON::C-DOUBLE {
+
+          my $i = $!index;
+          $!index += double-size;
+          %!promises{$key} = Promise.start( {
+              $!data{$key} = BSON::Double.decode-double( $!encoded-document, $i);
+              say "Done $key => $!data{$key}";
+            }
+          );
+        }
 
         # 32-bit Integer
-        # "\x10" e_name int32
         #
-        when BSON::C-BSON-INT32 {
+        when BSON::C-INT32 {
 
           my $i = $!index;
           $!index += int32-size;
