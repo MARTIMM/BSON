@@ -7,7 +7,7 @@ subtest {
 
   my BSON::Document $d .= new: ('a' ... 'z') Z=> 120..145;
   is $d.^name, 'Document', 'Isa ok';
-  
+
   is $d<a>, 120, "\$d<a> = $d<a>";
   is $d<b>, 121, "\$d<b> = $d<b>";
 
@@ -20,10 +20,10 @@ subtest {
 
   my $count = 0;
   for 'a' ... 'z' -> $c { $d{$c} = $count++; }
-  
+
   is $d.elems, 26, "26 pairs";
   is $d{'d'}, 3, "\$d\{'d'\} = $d{'d'}";
-  
+
   ok $d<q>:exists, '$d<q> exists';
   ok ! ($d<hsdgf>:exists), '$d<hsdgf> does not exist';
 
@@ -45,24 +45,24 @@ subtest {
       }
     }
   }
-  
+
 }, "Test document, associative";
 
 #-------------------------------------------------------------------------------
 subtest {
 
   my BSON::Document $d .= new: ('a' ... 'z') Z=> 120..145;
-  
+
   is $d[0], 120, "\$d[0] = $d[0]";
   is $d[1], 121, "\$d[1] = $d[1]";
-  
+
   $d[1] = 2000;
   is $d[1], 2000, "assign \$d[1] = $d[1]";
   is $d<b>, 2000, "assign \$<b> = \$d[1] = $d[1]";
 
   $d[1000] = 'text';
   is $d[26], 'text', "assign \$d[1000] = \$d[26] = '$d[26]'";
-  is $d<key26>, 'text', "assign \$d<key26> = \$d[26] = '$d[26]'";
+  is $d<key1000>, 'text', "assign \$d<key1000> = \$d[26] = '$d[26]'";
 
   is $d[2000], Any, "Any undefined field returns 'Any'";
   ok $d[26]:exists, '$d[26] exists';
@@ -87,14 +87,14 @@ subtest {
       }
     }
   }
-  
+
 }, "Test document, positional";
 
 #-------------------------------------------------------------------------------
 subtest {
 
   my BSON::Document $d .= new: ('a' ... 'z') Z=> 120..145;
-  
+
   is ($d.kv).elems, 2 * 26, '2 * 26 keys and values';
   is ($d.keys).elems, 26, '26 keys';
   is ($d.keys)[*-1], 'z', "Last key is 'z'";
@@ -146,7 +146,7 @@ subtest {
       }
     }
   }
-  
+
 }, "Document nesting";
 
 #-------------------------------------------------------------------------------
