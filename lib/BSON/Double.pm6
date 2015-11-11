@@ -14,20 +14,18 @@ package BSON {
     #---------------------------------------------------------------------------
     # 8 bytes double (64-bit floating point number)
     #
-#`{{
     method encode_double ( Num:D $r is copy --> Buf
     ) is DEPRECATED('encode-double') {
       BSON::Double.encode-double($r);
     }
-}}
 
-    method encode-double ( Pair:D $p --> Buf ) {
+    method encode-double ( Num:D $r is copy --> Buf ) {
 
-      my Str $key-name = $p.key;
-      my Num $r = $p.value;
+#      my Str $key-name = $p.key;
+#      my Num $r = $p.value;
 
       # Make array starting with bson code 0x01 and the key name
-      my Buf $a = Buf.new(0x01) ~ encode-e-name($key-name);
+      my Buf $a = Buf.new(); # Buf.new(0x01) ~ encode-e-name($key-name);
       my Num $r2;
 
       # Test special cases
@@ -149,9 +147,7 @@ package BSON {
     multi method decode-double ( Array:D $a, Int:D $index is rw ) {
 }}
 
-    multi method decode-double ( Array:D $a, Int:D $index is rw --> Pair ) {
-
-      my Str $key-name = decode-e-name( $a, $index);
+    multi method decode-double ( Array:D $a, Int:D $index is rw --> Num ) {
 
       # Test special cases
       #
@@ -214,7 +210,7 @@ package BSON {
         $value = Num.new((2 ** $exponent) * $significand * $sign);
       }
 
-      return $key-name => $value;
+      return $value;
     }
   }
 }
