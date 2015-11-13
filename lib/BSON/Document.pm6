@@ -34,6 +34,7 @@ package BSON {
     has Index $!index = 0;
 
     has Promise %!promises;
+    has $!start-time;
 
     #---------------------------------------------------------------------------
     #
@@ -177,7 +178,7 @@ location is changed. This is nessesary to encode the key, value pair.
     }
 
     #---------------------------------------------------------------------------
-    # Must be defined because of Positional and Associative
+    # Must be defined because of Positional and Associative sources of of()
     #---------------------------------------------------------------------------
     method of ( ) {
       Mu;
@@ -244,6 +245,7 @@ location is changed. This is nessesary to encode the key, value pair.
       # Document decoding start: init index
       #
       $!index = 0;
+      $!start-time = time;
 
       # Decode the document, then wait for any started parallel tracks
       #
@@ -262,11 +264,11 @@ location is changed. This is nessesary to encode the key, value pair.
       while $!encoded-document[$!index] !~~ 0x00 {
         self!decode-element;
       }
-
+      
       # Check size of document with final byte location
       #
-      die "Size of document $doc-size does not match with index at $!index"
-        if $doc-size !== $!index + 1;
+      die "Size of document $doc-size does not match with index at $!index(+1)"
+        if $doc-size != $!index + 1;
     }
 
     #---------------------------------------------------------------------------
@@ -293,7 +295,7 @@ location is changed. This is nessesary to encode the key, value pair.
           $!index += double-size;
           %!promises{$key} = Promise.start( {
               $!data{$key} = BSON::Double.decode-double( $!encoded-document, $i);
-              say "Done $key => $!data{$key}";
+              say "{time - $!start-time} Done $key => $!data{$key}";
             }
           );
         }
@@ -306,14 +308,29 @@ location is changed. This is nessesary to encode the key, value pair.
           $!index += int32-size;
           %!promises{$key} = Promise.start( {
               $!data{$key} = decode-int32( $!encoded-document, $i);
-              say "Done $key => $!data{$key}";
+              say "{time - $!start-time} Done $key => $!data{$key}";
+            }
+          );
+        }
+
+        # 64-bit Integer
+        #
+        when BSON::C-INT64 {
+
+          my $i = $!index;
+          $!index += int64-size;
+          %!promises{$key} = Promise.start( {
+              $!data{$key} = decode-int64( $!encoded-document, $i);
+              say "{time - $!start-time} Done $key => $!data{$key}";
             }
           );
         }
 
         default {
-          note "BSON code '{.fmt('0x%02x')}' not supported";
-          $!data{$key} = Any;
+          # We must stop because we do not know what the length should be of
+          # this particular structure.
+          #
+          die "BSON code '{.fmt('0x%02x')}' not supported";
         }
       }
     }

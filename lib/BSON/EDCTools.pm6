@@ -340,7 +340,28 @@ package BSON {
   }
 
   multi sub decode-int64 ( Array:D $a, Int:D $index is rw --> Int ) is export {
-    decode-int64( $a, $index);
+    # Check if there are enaugh letters left
+    #
+    die X::BSON::Parse.new(
+      :operation('decode_int64'),
+      :error('Not enaugh characters left')
+    ) if $a.elems - $index < 8;
+
+    my int $ni = $a[$index]             +| $a[$index + 1] +< 0x08 +|
+                 $a[$index + 2] +< 0x10 +| $a[$index + 3] +< 0x18 +|
+                 $a[$index + 4] +< 0x20 +| $a[$index + 5] +< 0x28 +|
+                 $a[$index + 6] +< 0x30 +| $a[$index + 7] +< 0x38
+                 ;
+    $index += 8;
+    return $ni;
+
+    # Original method goes wrong on negative numbers. Also adding might be
+    # slower than the bit operations.
+    #
+    #return [+] $a.shift, $a.shift +< 0x08, $a.shift +< 0x10, $a.shift +< 0x18
+    #         , $a.shift +< 0x20, $a.shift +< 0x28, $a.shift +< 0x30
+    #         , $a.shift +< 0x38
+    #         ;
   }
 
   multi sub decode-int64 ( Buf:D $a, Int:D $index is rw --> Int ) is export {
