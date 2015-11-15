@@ -1,7 +1,7 @@
 use v6;
 #use BSON;
 #use BSON::EDCTools;
-use BSON::Double;
+#use BSON::Double;
 use BSON::ObjectId;
 use BSON::Regex;
 use BSON::Javascript;
@@ -131,7 +131,6 @@ package BSON {
 
       %!promises{$key}:delete if %!promises{$key}:exists;
       %!promises{$key} = Promise.start( {
-
           self!encode-element: ($key => $!data{$key});
         }
       );
@@ -221,7 +220,7 @@ location is changed. This is nessesary to encode the key, value pair.
     #---------------------------------------------------------------------------
     # And some extra methods
     #---------------------------------------------------------------------------
-    multi method kv ( --> List ) {
+    method kv ( --> List ) {
 
       my @l;
       for @!keys -> $k {
@@ -232,13 +231,13 @@ location is changed. This is nessesary to encode the key, value pair.
     }
 
     #---------------------------------------------------------------------------
-    multi method keys ( --> List ) {
+    method keys ( --> List ) {
 
       @!keys.list;
     }
 
     #---------------------------------------------------------------------------
-    multi method values ( --> List ) {
+    method values ( --> List ) {
 
       $!data{@!keys[*]}.list;
     }
@@ -269,7 +268,9 @@ location is changed. This is nessesary to encode the key, value pair.
     }
 
     #---------------------------------------------------------------------------
-    # Encode a key value pair
+    # Encode a key value pair. Called from the insertion methods above when a
+    # key value pair is inserted.
+    #
     # element ::= type-code e_name some-encoding
     #
     method !encode-element ( Pair:D $p --> Buf ) {
@@ -280,18 +281,16 @@ location is changed. This is nessesary to encode the key, value pair.
           # Double precision
           # "\x01" e_name Num
           #
-#          return BSON::Double.encode-double($p);
-
-          return [~] Buf.new(0x01),
+          return [~] Buf.new(C-DOUBLE),
                      encode-e-name($p.key),
-                     BSON::Double.encode-double($p.value);
+                     self!encode-double($p.value);
         }
 
         when Str {
           # UTF-8 string
           # "\x02" e_name string
           #
-          return [~] Buf.new(0x02),
+          return [~] Buf.new(C-STRING),
                      encode-e-name($p.key),
                      encode-string($p.value)
                      ;
@@ -304,7 +303,7 @@ location is changed. This is nessesary to encode the key, value pair.
           # "\x03" e_name document
           #
           my Pair @pairs = $p.value;
-          return [~] Buf.new(0x03),
+          return [~] Buf.new(C-DOCUMENT),
                      encode-e-name($p.key),
                      self.encode-document(@pairs)
                      ;
@@ -314,7 +313,7 @@ location is changed. This is nessesary to encode the key, value pair.
           # Embedded document
           # "\x03" e_name document
           #
-          return [~] Buf.new(0x03),
+          return [~] Buf.new(C-DOCUMENT),
                      encode-e-name($p.key),
                      self.encode-document($p.value)
                      ;
@@ -336,12 +335,12 @@ location is changed. This is nessesary to encode the key, value pair.
           # { 1 => 'abc', 0 => 'def' } was encoded instead of
           # { 0 => 'def', 1 => 'abc' }.
           #
-           my Pair @pairs;
+          my Pair @pairs;
           for .kv -> $k, $v {
             @pairs.push: ("$k" => $v);
           }
 
-          return [~] Buf.new(0x04),
+          return [~] Buf.new(C-ARRAY),
                      encode-e-name($p.key),
                      self.encode-document(@pairs)
                      ;
@@ -352,7 +351,7 @@ location is changed. This is nessesary to encode the key, value pair.
           # "\x05" e_name int32 subtype byte*
           # subtype is '\x00' for the moment (Generic binary subtype)
           #
-          return [~] Buf.new(0x05), encode-e-name($p.key), .encode-binary();
+          return [~] Buf.new(C-BINARY), encode-e-name($p.key), .encode-binary();
         }
 
   #`{{
@@ -371,7 +370,7 @@ location is changed. This is nessesary to encode the key, value pair.
           # ObjectId
           # "\x07" e_name (byte*12)
           #
-          return Buf.new(0x07) ~ encode-e-name($p.key) ~ .Buf;
+          return Buf.new(C-OBJECTID) ~ encode-e-name($p.key) ~ .Buf;
         }
 
         when Bool {
@@ -382,13 +381,13 @@ location is changed. This is nessesary to encode the key, value pair.
             # Boolean "true"
             # "\x08" e_name "\x01
             #
-            return Buf.new(0x08) ~ encode-e-name($p.key) ~ Buf.new(0x01);
+            return Buf.new(C-BOOLEAN) ~ encode-e-name($p.key) ~ Buf.new(0x01);
           }
           else {
             # Boolean "false"
             # "\x08" e_name "\x00
             #
-            return Buf.new(0x08) ~ encode-e-name($p.key) ~ Buf.new(0x00);
+            return Buf.new(C-BOOLEAN) ~ encode-e-name($p.key) ~ Buf.new(0x00);
           }
         }
 
@@ -396,7 +395,7 @@ location is changed. This is nessesary to encode the key, value pair.
           # UTC dateime
           # "\x09" e_name int64
           #
-          return [~] Buf.new(0x09),
+          return [~] Buf.new(C-DATETIME),
                      encode-e-name($p.key),
                      encode-int64($p.value().posix())
                      ;
@@ -406,14 +405,14 @@ location is changed. This is nessesary to encode the key, value pair.
           # Null value
           # "\x0A" e_name
           #
-          return Buf.new(0x0A) ~ encode-e-name($p.key);
+          return Buf.new(C-NULL) ~ encode-e-name($p.key);
         }
 
         when BSON::Regex {
           # Regular expression
           # "\x0B" e_name cstring cstring
           #
-          return [~] Buf.new(0x0B),
+          return [~] Buf.new(C-REGEX),
                      encode-e-name($p.key),
                      encode-cstring($p.value.regex),
                      encode-cstring($p.value.options)
@@ -492,14 +491,14 @@ location is changed. This is nessesary to encode the key, value pair.
           # '\x12' e_name int64
           #
           if -0xffffffff < $p.value < 0xffffffff {
-            return [~] Buf.new(0x10),
+            return [~] Buf.new(C-INT32),
                        encode-e-name($p.key),
                        encode-int32($p.value)
                        ;
           }
 
           elsif -0x7fffffff_ffffffff < $p.value < 0x7fffffff_ffffffff {
-            return [~] Buf.new(0x12),
+            return [~] Buf.new(C-INT64),
                        encode-e-name($p.key),
                        encode-int64($p.value)
                        ;
@@ -562,7 +561,7 @@ location is changed. This is nessesary to encode the key, value pair.
     #---------------------------------------------------------------------------
     sub encode-cstring ( Str:D $s --> Buf ) {
       die X::BSON::Parse.new(
-        :operation('encode_cstring'),
+        :operation('encode-cstring'),
         :error('Forbidden 0x00 sequence in $s')
       ) if $s ~~ /\x00/;
 
@@ -603,6 +602,121 @@ location is changed. This is nessesary to encode the key, value pair.
       #                $i +> 0x28 % 0x100, $i +> 0x30 % 0x100,
       #                $i +> 0x38 % 0x100
       #              );
+    }
+
+    #---------------------------------------------------------------------------
+    method !encode-double ( Num:D $r is copy --> Buf ) {
+
+      # Make array starting with bson code 0x01 and the key name
+      my Buf $a = Buf.new(); # Buf.new(0x01) ~ encode-e-name($key-name);
+      my Num $r2;
+
+      # Test special cases
+      #
+      # 0x 0000 0000 0000 0000 = 0
+      # 0x 8000 0000 0000 0000 = -0       Not recognizable
+      # 0x 7ff0 0000 0000 0000 = Inf
+      # 0x fff0 0000 0000 0000 = -Inf
+      # 0x 7ff0 0000 0000 0001 <= nan <= 0x 7ff7 ffff ffff ffff signalling NaN
+      # 0x fff0 0000 0000 0001 <= nan <= 0x fff7 ffff ffff ffff
+      # 0x 7ff8 0000 0000 0000 <= nan <= 0x 7fff ffff ffff ffff quiet NaN
+      # 0x fff8 0000 0000 0000 <= nan <= 0x ffff ffff ffff ffff
+      #
+      given $r {
+        when 0.0 {
+          $a ~= Buf.new(0 xx 8);
+        }
+
+        when -Inf {
+          $a ~= Buf.new( 0 xx 6, 0xF0, 0xFF);
+        }
+
+        when Inf {
+          $a ~= Buf.new( 0 xx 6, 0xF0, 0x7F);
+        }
+
+        when NaN {
+          # Choose only one number out of the quiet NaN range
+          #
+          $a ~= Buf.new( 0 xx 6, 0xF8, 0x7F);
+        }
+
+        default {
+          my Int $sign = $r.sign == -1 ?? -1 !! 1;
+          $r *= $sign;
+
+          # Get proper precision from base(2). Adjust the exponent bias for
+          # this.
+          #
+          my Int $exp-shift = 0;
+          my Int $exponent = 1023;
+          my Str $bit-string = $r.base(2);
+
+          $bit-string ~= '.' unless $bit-string ~~ m/\./;
+
+          # Smaller than one
+          #
+          if $bit-string ~~ m/^0\./ {
+
+            # Normalize, Check if a '1' is found. Possible situation is
+            # a series of zeros because r.base(2) won't give that much
+            # information.
+            #
+            my $first-one;
+            while !($first-one = $bit-string.index('1')) {
+              $exponent -= 52;
+              $r *= 2 ** 52;
+              $bit-string = $r.base(2);
+            }
+
+            $first-one--;
+            $exponent -= $first-one;
+
+            $r *= 2 ** $first-one;                # 1.***
+            $r2 = $r * 2 ** 52;                   # Get max precision
+            $bit-string = $r2.base(2);            # Get bits
+            $bit-string ~~ s/\.//;                # Remove dot
+            $bit-string ~~ s/^1//;                # Remove first 1
+          }
+
+          # Bigger than one
+          #
+          else {
+            # Normalize
+            #
+            my Int $dot-loc = $bit-string.index('.');
+            $exponent += ($dot-loc - 1);
+
+            # If dot is in the string, not at the end, the precision might
+            # be not sufficient. Enlarge one time more
+            #
+            my Int $str-len = $bit-string.chars;
+            if $dot-loc < $str-len - 1 or $str-len < 52 {
+              $r2 = $r * 2 ** 52;                 # Get max precision
+              $bit-string = $r2.base(2);          # Get bits
+            }
+
+            $bit-string ~~ s/\.//;              # Remove dot
+            $bit-string ~~ s/^1//;              # Remove first 1
+          }
+
+          # Prepare the number. First set the sign bit.
+          #
+          my Int $i = $sign == -1 ?? 0x8000_0000_0000_0000 !! 0;
+
+          # Now fit the exponent on its place
+          #
+          $i +|= $exponent +< 52;
+
+          # And the precision
+          #
+          $i +|= :2($bit-string.substr( 0, 52));
+
+          $a ~= encode-int64($i);
+        }
+      }
+
+      return $a;
     }
 
     #---------------------------------------------------------------------------
@@ -664,12 +778,12 @@ location is changed. This is nessesary to encode the key, value pair.
 
         # 64-bit floating point
         #
-        when BSON::C-DOUBLE {
+        when C-DOUBLE {
 
           my $i = $!index;
           $!index += double-size;
           %!promises{$key} = Promise.start( {
-              $!data{$key} = BSON::Double.decode-double( $!encoded-document, $i);
+              $!data{$key} = self!decode-double( $!encoded-document, $i);
               say "{time - $!start-time} Done $key => $!data{$key}";
             }
           );
@@ -677,7 +791,7 @@ location is changed. This is nessesary to encode the key, value pair.
 
         # 32-bit Integer
         #
-        when BSON::C-INT32 {
+        when C-INT32 {
 
           my $i = $!index;
           $!index += int32-size;
@@ -690,7 +804,7 @@ location is changed. This is nessesary to encode the key, value pair.
 
         # 64-bit Integer
         #
-        when BSON::C-INT64 {
+        when C-INT64 {
 
           my $i = $!index;
           $!index += int64-size;
@@ -711,12 +825,12 @@ location is changed. This is nessesary to encode the key, value pair.
     }
 
     #-----------------------------------------------------------------------------
-    multi sub decode-e-name ( Buf:D $b, Int:D $index is rw --> Str ) {
+    sub decode-e-name ( Buf:D $b, Int:D $index is rw --> Str ) {
       return decode-cstring( $b, $index);
     }
 
     #-----------------------------------------------------------------------------
-    multi sub decode-cstring ( Buf:D $a, Int:D $index is rw --> Str ) {
+    sub decode-cstring ( Buf:D $a, Int:D $index is rw --> Str ) {
       my @a;
       my $l = $a.elems;
       while $index < $l and $a[$index] !~~ 0x00 {
@@ -732,12 +846,12 @@ location is changed. This is nessesary to encode the key, value pair.
     }
 
     #-----------------------------------------------------------------------------
-    multi sub decode-int32 ( Buf:D $a, Int:D $index --> Int ) {
+    sub decode-int32 ( Buf:D $a, Int:D $index --> Int ) {
 
       # Check if there are enaugh letters left
       #
       die X::BSON::Parse.new(
-        :operation('decode_int32'),
+        :operation('decode-int32'),
         :error('Not enaugh characters left')
       ) if $a.elems - $index < 4;
 
@@ -759,11 +873,11 @@ location is changed. This is nessesary to encode the key, value pair.
     }
 
     #-----------------------------------------------------------------------------
-    multi sub decode-int64 ( Buf:D $a, Int:D $index is rw --> Int ) {
+    sub decode-int64 ( Buf:D $a, Int:D $index is rw --> Int ) {
       # Check if there are enaugh letters left
       #
       die X::BSON::Parse.new(
-        :operation('decode_int64'),
+        :operation('decode-int64'),
         :error('Not enaugh characters left')
       ) if $a.elems - $index < 8;
 
@@ -772,7 +886,7 @@ location is changed. This is nessesary to encode the key, value pair.
                    $a[$index + 4] +< 0x20 +| $a[$index + 5] +< 0x28 +|
                    $a[$index + 6] +< 0x30 +| $a[$index + 7] +< 0x38
                    ;
-      $index += 8;
+#      $index += 8;
       return $ni;
 
       # Original method goes wrong on negative numbers. Also adding might be
@@ -782,6 +896,89 @@ location is changed. This is nessesary to encode the key, value pair.
       #         , $a.shift +< 0x20, $a.shift +< 0x28, $a.shift +< 0x30
       #         , $a.shift +< 0x38
       #         ;
+    }
+
+    #---------------------------------------------------------------------------
+    # We have to do some simulation using the information on
+    # http://en.wikipedia.org/wiki/Double-precision_floating-point_format#Endianness
+    # until better times come.
+    #
+    method !decode-double ( Buf:D $a, Int:D $index is rw --> Num ) {
+
+      # Test special cases
+      #
+      # 0x 0000 0000 0000 0000 = 0
+      # 0x 8000 0000 0000 0000 = -0
+      # 0x 7ff0 0000 0000 0000 = Inf
+      # 0x fff0 0000 0000 0000 = -Inf
+      # 0x 7ff0 0000 0000 0001 <= nan <= 0x 7ff7 ffff ffff ffff signalling NaN
+      # 0x fff0 0000 0000 0001 <= nan <= 0x fff7 ffff ffff ffff
+      # 0x 7ff8 0000 0000 0000 <= nan <= 0x 7ff7 ffff ffff ffff quiet NaN
+      # 0x fff8 0000 0000 0000 <= nan <= 0x ffff ffff ffff ffff
+      #
+      my Bool $six-byte-zeros = True;
+      for ^6 -> $i {
+        if ? $a[$i] {
+          $six-byte-zeros = False;
+          last;
+        }
+      }
+
+      my Num $value;
+      if $six-byte-zeros and $a[6] == 0 {
+        if $a[7] == 0 {
+          $value .= new(0);
+        }
+
+        elsif $a[7] == 0x80 {
+          $value .= new(-0);
+        }
+      }
+
+      elsif $six-byte-zeros and $a[6] == 0xF0 {
+        if $a[7] == 0x7F {
+          $value .= new(Inf);
+        }
+
+        elsif $a[7] == 0xFF {
+          $value .= new(-Inf);
+        }
+      }
+
+      elsif $a[7] == 0x7F and (0xf0 <= $a[6] <= 0xf7 or 0xf8 <= $a[6] <= 0xff) {
+        $value .= new(NaN);
+      }
+
+      elsif $a[7] == 0xFF and (0xf0 <= $a[6] <= 0xf7 or 0xf8 <= $a[6] <= 0xff) {
+        $value .= new(NaN);
+      }
+
+      # If value is set by the special cases above, remove the 8 bytes from
+      # the array.
+      #
+      if $value.defined {
+#        $a.splice( 0, 8);
+#        $index += 8;
+      }
+
+      # If value is not set by the special cases above, calculate it here
+      #
+      else {
+        my Int $i = decode-int64( $a, $index);
+        my Int $sign = $i +& 0x8000_0000_0000_0000 ?? -1 !! 1;
+
+        # Significand + implicit bit
+        #
+        my $significand = 0x10_0000_0000_0000 +| ($i +& 0xF_FFFF_FFFF_FFFF);
+
+        # Exponent - bias (1023) - the number of bits for precision
+        #
+        my $exponent = (($i +& 0x7FF0_0000_0000_0000) +> 52) - 1023 - 52;
+
+        $value = Num.new((2 ** $exponent) * $significand * $sign);
+      }
+
+      return $value;
     }
   }
 }
