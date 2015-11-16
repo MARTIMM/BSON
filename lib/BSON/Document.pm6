@@ -1,7 +1,5 @@
 use v6;
-#use BSON;
-#use BSON::EDCTools;
-#use BSON::Double;
+
 use BSON::ObjectId;
 use BSON::Regex;
 use BSON::Javascript;
@@ -93,19 +91,19 @@ package BSON {
     #---------------------------------------------------------------------------
     # Associative role methods
     #---------------------------------------------------------------------------
-    multi method AT-KEY ( Str $key --> Any ) {
+    method AT-KEY ( Str $key --> Any ) {
 
       $!data{$key}:exists ?? $!data{$key} !! Any;
     }
 
     #---------------------------------------------------------------------------
-    multi method EXISTS-KEY ( Str $key --> Bool ) {
+    method EXISTS-KEY ( Str $key --> Bool ) {
 
       return $!data{$key}:exists;
     }
 
     #---------------------------------------------------------------------------
-    multi method DELETE-KEY ( Str $key --> Any ) {
+    method DELETE-KEY ( Str $key --> Any ) {
 
       my $value;
       if $!data{$key}:exists {
@@ -124,7 +122,7 @@ package BSON {
     }
 
     #---------------------------------------------------------------------------
-    multi method ASSIGN-KEY ( $key, $new) {
+    method ASSIGN-KEY ( $key, $new) {
 
       @!keys.push($key) unless $!data{$key}:exists;
       $!data{$key} = $new;
@@ -143,7 +141,7 @@ package BSON {
 Cannot use binding because when value changes the object cannot know that the
 location is changed. This is nessesary to encode the key, value pair.
 }}
-    multi method BIND-KEY ( Str $key, \new ) {
+    method BIND-KEY ( Str $key, \new ) {
 
       die "Can not use binding";
 #      $!data{$key} := new;
@@ -153,31 +151,27 @@ location is changed. This is nessesary to encode the key, value pair.
     #---------------------------------------------------------------------------
     # Positional role methods
     #---------------------------------------------------------------------------
-    multi method elems ( --> Int ) {
-
-      @!keys.elems;
-    }
-
     #---------------------------------------------------------------------------
-    multi method AT-POS ( Index $idx --> Any ) {
+    method AT-POS ( Index $idx --> Any ) {
 
       $idx < @!keys.elems ?? $!data{@!keys[$idx]} !! Any;
     }
 
     #---------------------------------------------------------------------------
-    multi method EXISTS-POS ( Index $idx --> Bool ) {
+    method EXISTS-POS ( Index $idx --> Bool ) {
 
       $idx < @!keys.elems;
     }
 
     #---------------------------------------------------------------------------
-    multi method DELETE-POS ( Index $idx --> Any ) {
+    method DELETE-POS ( Index $idx --> Any ) {
 
       $idx < @!keys.elems ?? (self{@!keys[$idx]}:delete) !! Nil;
     }
 
     #---------------------------------------------------------------------------
-    multi method ASSIGN-POS ( Index $idx, $new! ) {
+    method ASSIGN-POS ( Index $idx, $new! ) {
+say "AP: $idx, $new";
 
       # If index is at a higher position then the last one then only
       # one place extended with a generated key na,e such as key21 on the
@@ -203,7 +197,7 @@ location is changed. This is nessesary to encode the key, value pair.
 Cannot use binding because when value changes the object cannot know that the
 location is changed. This is nessesary to encode the key, value pair.
 }}
-    multi method BIND-POS ( Index $idx, \new ) {
+    method BIND-POS ( Index $idx, \new ) {
 
       die "Can not use binding";
 #      my $key = $idx >= @!keys.elems ?? 'key' ~ $idx !! @!keys[$idx];
@@ -220,6 +214,11 @@ location is changed. This is nessesary to encode the key, value pair.
     #---------------------------------------------------------------------------
     # And some extra methods
     #---------------------------------------------------------------------------
+    method elems ( --> Int ) {
+
+      @!keys.elems;
+    }
+
     method kv ( --> List ) {
 
       my @l;
@@ -268,6 +267,23 @@ location is changed. This is nessesary to encode the key, value pair.
     }
 
     #---------------------------------------------------------------------------
+    method !encode-document ( Pair:D @p --> Buf ) {
+      my Buf $b = self!encode-e-list(@p);
+      return [~] encode-int32($b.elems + 5), $b, Buf.new(0x00);
+    }
+
+    #---------------------------------------------------------------------------
+    method !encode-e-list ( Pair:D @p --> Buf ) {
+      my Buf $b = Buf.new();
+
+      for @p -> $p {
+        $b ~= self!encode-element($p);
+      }
+
+      return $b;
+    }
+
+    #---------------------------------------------------------------------------
     # Encode a key value pair. Called from the insertion methods above when a
     # key value pair is inserted.
     #
@@ -305,7 +321,7 @@ location is changed. This is nessesary to encode the key, value pair.
           my Pair @pairs = $p.value;
           return [~] Buf.new(C-DOCUMENT),
                      encode-e-name($p.key),
-                     self.encode-document(@pairs)
+                     self!encode-document(@pairs)
                      ;
         }
 
@@ -315,7 +331,7 @@ location is changed. This is nessesary to encode the key, value pair.
           #
           return [~] Buf.new(C-DOCUMENT),
                      encode-e-name($p.key),
-                     self.encode-document($p.value)
+                     self!encode-document($p.value)
                      ;
         }
 
@@ -342,7 +358,7 @@ location is changed. This is nessesary to encode the key, value pair.
 
           return [~] Buf.new(C-ARRAY),
                      encode-e-name($p.key),
-                     self.encode-document(@pairs)
+                     self!encode-document(@pairs)
                      ;
         }
 
@@ -436,18 +452,18 @@ location is changed. This is nessesary to encode the key, value pair.
         #
         when BSON::Javascript {
 
-          return .encode-javascript( $p.key, self);
-#`{{
+#          return .encode-javascript( $p.key, self);
+#`{{}}
           # Javascript code
           # "\x0D" e_name string
           # "\x0F" e_name int32 string document
           #
-          if $p.value.has_javascript {
-            my Buf $js = encode-string($p.value.javascript);
+          if .has_javascript {
+            my Buf $js = encode-string(.javascript);
 
             if $p.value.has_scope {
-              my Buf $doc = self.encode-document($p.value.scope);
-              return [~] Buf.new(0x0F),
+              my Buf $doc = self!encode-document(.scope);
+              return [~] Buf.new(C-JAVASCRIPT-SCOPE),
                          encode-e-name($p.key),
                          encode-int32([+] $js.elems, $doc.elems, 4),
                          $js, $doc
@@ -455,7 +471,7 @@ location is changed. This is nessesary to encode the key, value pair.
             }
 
             else {
-              return [~] Buf.new(0x0D), encode-e-name($p.key), $js;
+              return [~] Buf.new(C-JAVASCRIPT), encode-e-name($p.key), $js;
             }
           }
 
@@ -465,7 +481,7 @@ location is changed. This is nessesary to encode the key, value pair.
                                           :emsg('cannot send empty code')
                                         );
           }
-}}
+
         }
 
   #`{{
@@ -734,7 +750,7 @@ location is changed. This is nessesary to encode the key, value pair.
       # Document decoding start: init index
       #
       $!index = 0;
-      $!start-time = time;
+      $!start-time = now;
 
       # Decode the document, then wait for any started parallel tracks
       #
@@ -753,10 +769,11 @@ location is changed. This is nessesary to encode the key, value pair.
       while $!encoded-document[$!index] !~~ 0x00 {
         self!decode-element;
       }
-      
+
       # Check size of document with final byte location
       #
-      die "Size of document $doc-size does not match with index at $!index(+1)"
+      die [~] "Size of document ", $doc-size, " does not match with index at ",
+              $!index, "(+1)"
         if $doc-size != $!index + 1;
     }
 
@@ -780,24 +797,57 @@ location is changed. This is nessesary to encode the key, value pair.
         #
         when C-DOUBLE {
 
-          my $i = $!index;
+          my Int $i = $!index;
           $!index += double-size;
           %!promises{$key} = Promise.start( {
               $!data{$key} = self!decode-double( $!encoded-document, $i);
-              say "{time - $!start-time} Done $key => $!data{$key}";
+              say "{now - $!start-time} Done $key => $!data{$key}";
             }
           );
         }
 
+        # Javascript code
+        # "\x0D" e_name string
+        #
+        when C-JAVASCRIPT {
+
+          # Get the size of the javascript code text, then adjust index
+          # for this size and set i for the decoding. Then adjust index again
+          # for the next action.
+          #
+          my Int $js-size = decode-int32( $!encoded-document, $!index);
+          my Int $i = $!index;
+          $!index += (int32-size() + $js-size);
+          %!promises{$key} = Promise.start( {
+              $!data{$key} = BSON::Javascript.new(
+                :javascript(decode-string( $!encoded-document, $i))
+              );
+              say "{now - $!start-time} Done $key => $!data{$key}";
+            }
+          );
+        }
+#`{{
+        # Javascript code with scope
+        # "\x0F" e_name string document
+        #
+        when C-JAVASCRIPT-SCOPE {
+          my $name = decode-e-name( $a, $!index);
+          my $js_scope_size = decode-int32( $a, $!index);
+          return $name =>
+            BSON::Javascript.new( :javascript(decode-string( $a, $!index)),
+                                  :scope(self.decode-document($a))
+                                );
+        }
+}}
         # 32-bit Integer
         #
         when C-INT32 {
 
-          my $i = $!index;
+          my Int $i = $!index;
           $!index += int32-size;
           %!promises{$key} = Promise.start( {
               $!data{$key} = decode-int32( $!encoded-document, $i);
-              say "{time - $!start-time} Done $key => $!data{$key}";
+              say "{now - $!start-time} Done $key => $!data{$key}";
             }
           );
         }
@@ -806,11 +856,11 @@ location is changed. This is nessesary to encode the key, value pair.
         #
         when C-INT64 {
 
-          my $i = $!index;
+          my Int $i = $!index;
           $!index += int64-size;
           %!promises{$key} = Promise.start( {
               $!data{$key} = decode-int64( $!encoded-document, $i);
-              say "{time - $!start-time} Done $key => $!data{$key}";
+              say "{now - $!start-time} Done $key => $!data{$key}";
             }
           );
         }
@@ -830,35 +880,61 @@ location is changed. This is nessesary to encode the key, value pair.
     }
 
     #-----------------------------------------------------------------------------
-    sub decode-cstring ( Buf:D $a, Int:D $index is rw --> Str ) {
+    sub decode-cstring ( Buf:D $b, Int:D $index is rw --> Str ) {
       my @a;
-      my $l = $a.elems;
-      while $index < $l and $a[$index] !~~ 0x00 {
-        @a.push($a[$index++]);
+      my $l = $b.elems;
+      while $index < $l and $b[$index] !~~ 0x00 {
+        @a.push($b[$index++]);
       }
 
       die X::BSON::Parse.new(
-        :operation('decode-cstring'),
+        :operation<decode-cstring>,
         :error('Missing trailing 0x00')
-      ) unless $index < $l and $a[$index++] ~~ 0x00;
+      ) unless $index < $l and $b[$index++] ~~ 0x00;
 
       return Buf.new(@a).decode();
     }
 
     #-----------------------------------------------------------------------------
-    sub decode-int32 ( Buf:D $a, Int:D $index --> Int ) {
+    sub decode-string ( Buf:D $b, Int:D $index is copy --> Str ) {
+      my $size = decode-int32( $b, $index);
+
+say "S0: {$b.elems} - $size >= $index";
 
       # Check if there are enaugh letters left
       #
       die X::BSON::Parse.new(
-        :operation('decode-int32'),
+        :operation<decode-string>,
         :error('Not enaugh characters left')
-      ) if $a.elems - $index < 4;
+      ) unless ($b.elems - $size) > $index;
 
-      my int $ni = $a[$index]             +| $a[$index + 1] +< 0x08 +|
-                   $a[$index + 2] +< 0x10 +| $a[$index + 3] +< 0x18
+#      my @a;
+#      @a.push($b[$index++]) for ^ ($size - 1);
+
+      die X::BSON::Parse.new(
+        :operation<decode-string>,
+        :error('Missing trailing 0x00')
+      ) unless $b[$index + 4 + $size] ~~ 0x00;
+
+#      return Buf.new(@a).decode();
+      my Str $string = Buf.new($b[$index+4 ..^ $index + 4 + $size]).decode;
+say "S1: $b[$index+4], $b[$index + 4 + $size], $string";
+      return $string;
+    }
+
+    #-----------------------------------------------------------------------------
+    sub decode-int32 ( Buf:D $b, Int:D $index --> Int ) {
+
+      # Check if there are enaugh letters left
+      #
+      die X::BSON::Parse.new(
+        :operation<decode-int32>,
+        :error('Not enaugh characters left')
+      ) if $b.elems - $index < 4;
+
+      my int $ni = $b[$index]             +| $b[$index + 1] +< 0x08 +|
+                   $b[$index + 2] +< 0x10 +| $b[$index + 3] +< 0x18
                    ;
-  #    $index += 4;
 
       # Test if most significant bit is set. If so, calculate two's complement
       # negative number.
@@ -873,29 +949,20 @@ location is changed. This is nessesary to encode the key, value pair.
     }
 
     #-----------------------------------------------------------------------------
-    sub decode-int64 ( Buf:D $a, Int:D $index is rw --> Int ) {
+    sub decode-int64 ( Buf:D $b, Int:D $index --> Int ) {
       # Check if there are enaugh letters left
       #
       die X::BSON::Parse.new(
-        :operation('decode-int64'),
+        :operation<decode-int64>,
         :error('Not enaugh characters left')
-      ) if $a.elems - $index < 8;
+      ) if $b.elems - $index < 8;
 
-      my int $ni = $a[$index]             +| $a[$index + 1] +< 0x08 +|
-                   $a[$index + 2] +< 0x10 +| $a[$index + 3] +< 0x18 +|
-                   $a[$index + 4] +< 0x20 +| $a[$index + 5] +< 0x28 +|
-                   $a[$index + 6] +< 0x30 +| $a[$index + 7] +< 0x38
+      my int $ni = $b[$index]             +| $b[$index + 1] +< 0x08 +|
+                   $b[$index + 2] +< 0x10 +| $b[$index + 3] +< 0x18 +|
+                   $b[$index + 4] +< 0x20 +| $b[$index + 5] +< 0x28 +|
+                   $b[$index + 6] +< 0x30 +| $b[$index + 7] +< 0x38
                    ;
-#      $index += 8;
       return $ni;
-
-      # Original method goes wrong on negative numbers. Also adding might be
-      # slower than the bit operations.
-      #
-      #return [+] $a.shift, $a.shift +< 0x08, $a.shift +< 0x10, $a.shift +< 0x18
-      #         , $a.shift +< 0x20, $a.shift +< 0x28, $a.shift +< 0x30
-      #         , $a.shift +< 0x38
-      #         ;
     }
 
     #---------------------------------------------------------------------------
@@ -903,7 +970,7 @@ location is changed. This is nessesary to encode the key, value pair.
     # http://en.wikipedia.org/wiki/Double-precision_floating-point_format#Endianness
     # until better times come.
     #
-    method !decode-double ( Buf:D $a, Int:D $index is rw --> Num ) {
+    method !decode-double ( Buf:D $b, Int:D $index --> Num ) {
 
       # Test special cases
       #
@@ -918,53 +985,46 @@ location is changed. This is nessesary to encode the key, value pair.
       #
       my Bool $six-byte-zeros = True;
       for ^6 -> $i {
-        if ? $a[$i] {
+        if ? $b[$i] {
           $six-byte-zeros = False;
           last;
         }
       }
 
       my Num $value;
-      if $six-byte-zeros and $a[6] == 0 {
-        if $a[7] == 0 {
+      if $six-byte-zeros and $b[6] == 0 {
+        if $b[7] == 0 {
           $value .= new(0);
         }
 
-        elsif $a[7] == 0x80 {
+        elsif $b[7] == 0x80 {
           $value .= new(-0);
         }
       }
 
-      elsif $six-byte-zeros and $a[6] == 0xF0 {
-        if $a[7] == 0x7F {
+      elsif $six-byte-zeros and $b[6] == 0xF0 {
+        if $b[7] == 0x7F {
           $value .= new(Inf);
         }
 
-        elsif $a[7] == 0xFF {
+        elsif $b[7] == 0xFF {
           $value .= new(-Inf);
         }
       }
 
-      elsif $a[7] == 0x7F and (0xf0 <= $a[6] <= 0xf7 or 0xf8 <= $a[6] <= 0xff) {
+      elsif $b[7] == 0x7F and (0xf0 <= $b[6] <= 0xf7 or 0xf8 <= $b[6] <= 0xff) {
         $value .= new(NaN);
       }
 
-      elsif $a[7] == 0xFF and (0xf0 <= $a[6] <= 0xf7 or 0xf8 <= $a[6] <= 0xff) {
+      elsif $b[7] == 0xFF and (0xf0 <= $b[6] <= 0xf7 or 0xf8 <= $b[6] <= 0xff) {
         $value .= new(NaN);
-      }
-
-      # If value is set by the special cases above, remove the 8 bytes from
-      # the array.
-      #
-      if $value.defined {
-#        $a.splice( 0, 8);
-#        $index += 8;
       }
 
       # If value is not set by the special cases above, calculate it here
       #
-      else {
-        my Int $i = decode-int64( $a, $index);
+      if !$value.defined {
+
+        my Int $i = decode-int64( $b, $index);
         my Int $sign = $i +& 0x8000_0000_0000_0000 ?? -1 !! 1;
 
         # Significand + implicit bit

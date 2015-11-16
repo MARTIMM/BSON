@@ -106,6 +106,8 @@ subtest {
 #-------------------------------------------------------------------------------
 subtest {
 
+  # Try nesting with BSON::Document
+  #
   my BSON::Document $d .= new;
   $d<a> = 10;
   $d<b> = 11;
@@ -147,6 +149,14 @@ subtest {
     }
   }
 
+#`{{
+  # Try nesting with k => v
+  #
+  $d .= new;
+  $d<abcdef> = Pair.new( a1 => 10, bb => 11);
+  is $d<abcdef><a1>, 10, "sub document \$d<abcdef><a1> = $d<abcdef><a1>";
+  say $d.encode;
+}}
 }, "Document nesting";
 
 #-------------------------------------------------------------------------------

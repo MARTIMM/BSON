@@ -221,7 +221,7 @@ package BSON {
       # If value is not set by the special cases above, calculate it here
       #
       else {
-        my Int $i = decode-int64( $a, $index);
+        my Int $i = decode-int64( $a.Array, $index);
         my Int $sign = $i +& 0x8000_0000_0000_0000 ?? -1 !! 1;
 
         # Significand + implicit bit

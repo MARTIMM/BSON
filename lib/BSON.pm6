@@ -251,17 +251,17 @@ package BSON {
         #
         when BSON::Javascript {
 
-          return .encode-javascript( $p.key, self);
-#`{{
+#          return .encode-javascript( $p.key, self);
+#`{{}}
           # Javascript code
           # "\x0D" e_name string
           # "\x0F" e_name int32 string document
           #
-          if $p.value.has_javascript {
-            my Buf $js = encode-string($p.value.javascript);
+          if .has_javascript {
+            my Buf $js = encode-string(.javascript);
 
             if $p.value.has_scope {
-              my Buf $doc = self.encode-document($p.value.scope);
+              my Buf $doc = self.encode-document(.scope);
               return [~] Buf.new(0x0F),
                          encode-e-name($p.key),
                          encode-int32([+] $js.elems, $doc.elems, 4),
@@ -270,6 +270,7 @@ package BSON {
             }
 
             else {
+say "js: ", [~] Buf.new(0x0D), encode-e-name($p.key), $js;
               return [~] Buf.new(0x0D), encode-e-name($p.key), $js;
             }
           }
@@ -280,7 +281,7 @@ package BSON {
                                           :emsg('cannot send empty code')
                                         );
           }
-}}
+
         }
 
   #`{{
@@ -629,11 +630,11 @@ package BSON {
         # Javascript code
         # "\x0D" e_name string
         #
-        return BSON::Javascript.decode-javascript( $a, $!index);
-#`{{
+#        return BSON::Javascript.decode-javascript( $a, $!index);
+#`{{}}
+
         return decode-e-name( $a, $!index) =>
           BSON::Javascript.new( :javascript(decode-string( $a, $!index)));
-}}
       }
 
       elsif $bson_code == 0x0E {

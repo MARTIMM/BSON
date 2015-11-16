@@ -153,9 +153,9 @@ package BSON {
     return decode-cstring( $b, $index);
   }
 
-  multi sub decode-e-name ( Buf:D $b, Int:D $index is rw --> Str ) is export {
-    return decode-cstring( $b, $index);
-  }
+#  multi sub decode-e-name ( Buf:D $b, Int:D $index is rw --> Str ) is export {
+#    return decode-cstring( $b, $index);
+#  }
 
   #-----------------------------------------------------------------------------
   multi sub decode_cstring ( List:D $a, Int:D $index is rw --> Str
@@ -181,24 +181,6 @@ package BSON {
       :operation('decode-cstring'),
       :error('Missing trailing 0x00')
     ) unless $index < $l and $a[$index++] ~~ 0x00;
-    return Buf.new(@a).decode();
-  }
-
-  ####
-  # Alternative
-  #
-  multi sub decode-cstring ( Buf:D $a, Int:D $index is rw --> Str ) is export {
-    my @a;
-    my $l = $a.elems;
-    while $index < $l and $a[$index] !~~ 0x00 {
-      @a.push($a[$index++]);
-    }
-
-    die X::BSON::Parse.new(
-      :operation('decode-cstring'),
-      :error('Missing trailing 0x00')
-    ) unless $index < $l and $a[$index++] ~~ 0x00;
-
     return Buf.new(@a).decode();
   }
 
@@ -287,41 +269,6 @@ package BSON {
     # return [+] $a.shift, $a.shift +< 0x08, $a.shift +< 0x10, $a.shift +< 0x18;
   }
 
-  ####
-  # Alternative
-  #
-  multi sub decode-int32 ( Buf:D $a, Int:D $index --> Int ) is export {
-
-    # Check if there are enaugh letters left
-    #
-    die X::BSON::Parse.new(
-      :operation('decode_int32'),
-      :error('Not enaugh characters left')
-    ) if $a.elems - $index < 4;
-
-    my int $ni = $a[$index]             +| $a[$index + 1] +< 0x08 +|
-                 $a[$index + 2] +< 0x10 +| $a[$index + 3] +< 0x18
-                 ;
-#    $index += 4;
-
-    # Test if most significant bit is set. If so, calculate two's complement
-    # negative number.
-    # Prefix +^: Coerces the argument to Int and does a bitwise negation on
-    # the result, assuming two's complement. (See
-    # http://doc.perl6.org/language/operators^)
-    # Infix +^ :Coerces both arguments to Int and does a bitwise XOR
-    # (exclusive OR) operation.
-    #
-    $ni = (0xffffffff +& (0xffffffff+^$ni) +1) * -1  if $ni +& 0x80000000;
-    return $ni;
-
-    # Original method goes wrong on negative numbers. Also adding might be
-    # slower than the bit operations.
-    #
-    # return [+] $a.shift, $a.shift +< 0x08, $a.shift +< 0x10, $a.shift +< 0x18;
-  }
-
-
   #-----------------------------------------------------------------------------
   # 8 bytes (64-bit int)
   #
@@ -340,31 +287,6 @@ package BSON {
   }
 
   multi sub decode-int64 ( Array:D $a, Int:D $index is rw --> Int ) is export {
-    # Check if there are enaugh letters left
-    #
-    die X::BSON::Parse.new(
-      :operation('decode_int64'),
-      :error('Not enaugh characters left')
-    ) if $a.elems - $index < 8;
-
-    my int $ni = $a[$index]             +| $a[$index + 1] +< 0x08 +|
-                 $a[$index + 2] +< 0x10 +| $a[$index + 3] +< 0x18 +|
-                 $a[$index + 4] +< 0x20 +| $a[$index + 5] +< 0x28 +|
-                 $a[$index + 6] +< 0x30 +| $a[$index + 7] +< 0x38
-                 ;
-    $index += 8;
-    return $ni;
-
-    # Original method goes wrong on negative numbers. Also adding might be
-    # slower than the bit operations.
-    #
-    #return [+] $a.shift, $a.shift +< 0x08, $a.shift +< 0x10, $a.shift +< 0x18
-    #         , $a.shift +< 0x20, $a.shift +< 0x28, $a.shift +< 0x30
-    #         , $a.shift +< 0x38
-    #         ;
-  }
-
-  multi sub decode-int64 ( Buf:D $a, Int:D $index is rw --> Int ) is export {
     # Check if there are enaugh letters left
     #
     die X::BSON::Parse.new(
