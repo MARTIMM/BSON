@@ -57,6 +57,7 @@ package BSON {
     # 3) True on encode() and decode()
     #
     has Bool $!encoded;
+    has $!start-enc-time;
 #    has Bool $!promises-wait;
 
     # Decoded turns
@@ -65,20 +66,22 @@ package BSON {
     # 3) True on encode() and decode()
     #
     has Bool $!decoded;
+    has $!start-dec-time;
 
     has Promise %!promises;
-    has $!start-time;
 
     #---------------------------------------------------------------------------
     #
     method new ( *@ps ) {
+say "PM: ", @ps.WHAT;
       self.bless(:pairs(@ps));
     }
 
-    submethod BUILD (:@pairs) {
+    submethod BUILD (:@pairs!) {
 
       $!encoded = True;
       $!decoded = False;
+      $!start-enc-time = now;
 #      $!bson .= new;
 
       # self{x} = y will end up at ASSIGN-KEY
@@ -122,14 +125,84 @@ package BSON {
     }
 
     #---------------------------------------------------------------------------
-    method ASSIGN-KEY ( $key, $new) {
+    multi method ASSIGN-KEY ( Str:D $key, Document:D $new) {
+
+say "Asign-key($?LINE): $key => ", $new.WHAT;
+      @!keys.push($key) unless $!data{$key}:exists;
+      $!data{$key} = $new;
+
+      %!promises{$key}:delete if %!promises{$key}:exists;
+      
+      my $k = $key;
+      my $d := $!data{$key};
+      %!promises{$key} = Promise.start( {
+          my Buf $b = self!encode-element: ($k => $d);
+say "E: {now - $!start-enc-time} Done $k";
+          $b;
+        }
+      );
+
+      $!encoded = False;
+    }
+
+    multi method ASSIGN-KEY ( Str:D $key, List:D $new) {
+
+say "Asign-key($?LINE): $key => ", $new.WHAT;
+      @!keys.push($key) unless $!data{$key}:exists;
+      $!data{$key} = BSON::Document.new(|$new);
+
+      %!promises{$key}:delete if %!promises{$key}:exists;
+      
+      my $k = $key;
+      my $d := $!data{$key};
+      %!promises{$key} = Promise.start( {
+          my Buf $b = self!encode-element: ($k => $d);
+say "E: {now - $!start-enc-time} Done $k";
+          $b;
+        }
+      );
+
+      $!encoded = False;
+    }
+
+    multi method ASSIGN-KEY ( Str:D $key, Pair:D $new) {
+
+say "Asign-key($?LINE): $key => ", $new.WHAT;
+
+      @!keys.push($key) unless $!data{$key}:exists;
+      $!data{$key} = BSON::Document.new($new);
+
+      %!promises{$key}:delete if %!promises{$key}:exists;
+      
+      my $k = $key;
+      my $d := $!data{$key};
+say "KV: $k => $d";
+      %!promises{$key} = Promise.start( {
+          my Buf $b = self!encode-element: ($k => $d);
+say "E: {now - $!start-enc-time} Done $k";
+          $b;
+        }
+      );
+
+      $!encoded = False;
+    }
+
+    multi method ASSIGN-KEY ( Str:D $key, Any:D $new) {
+
+say "Asign-key($?LINE): $key => ", $new.WHAT;
 
       @!keys.push($key) unless $!data{$key}:exists;
       $!data{$key} = $new;
 
       %!promises{$key}:delete if %!promises{$key}:exists;
+      
+      my $k = $key;
+      my $d := $!data{$key};
       %!promises{$key} = Promise.start( {
-          self!encode-element: ($key => $!data{$key});
+          my Buf $b = self!encode-element: ($k => $d);
+say "B: $k => $d == $b";
+say "E: {now - $!start-enc-time} Done $k";
+          $b;
         }
       );
 
@@ -247,23 +320,31 @@ location is changed. This is nessesary to encode the key, value pair.
     # Called from user to get encoded document
     #
     method encode ( --> Buf ) {
+say "Encode0: {self}, $!encoded";
 
-      if !$!encoded {
+      if ! ? $!encoded {
+say "Encode1: {@!keys.elems}";
         loop ( my $idx = 0; $idx < @!keys.elems; $idx++) {
           my $key = @!keys[$idx];
+say "Encode2: $key, {%!promises{$key}:exists}";
           @!encoded-entries[$idx] = await %!promises{$key}
             if %!promises{$key}:exists;
+say "Encode3: $idx, $key, @!encoded-entries[$idx]";
         }
 
         $!encoded = True;
-        %!promises = ();
+        %!promises = Nil;
+say "Encode4: $!encoded, @!keys.elems";
       }
 
       $!encoded-document = [~] @!encoded-entries;
 
-      [~] encode-int32($!encoded-document.elems + 5),
+      my Buf $b = [~] encode-int32($!encoded-document.elems + 5),
           $!encoded-document,
           Buf.new(0x00);
+
+say "Encode4: $!encoded, $b";
+      return $b;
     }
 
     #---------------------------------------------------------------------------
@@ -291,6 +372,7 @@ location is changed. This is nessesary to encode the key, value pair.
     #
     method !encode-element ( Pair:D $p --> Buf ) {
 
+say "EE: {$p.key} => {$p.value}, {$p.perl}";
       given $p.value {
 
         when Num {
@@ -332,6 +414,18 @@ location is changed. This is nessesary to encode the key, value pair.
           return [~] Buf.new(C-DOCUMENT),
                      encode-e-name($p.key),
                      self!encode-document($p.value)
+                     ;
+        }
+
+        when BSON::Document {
+          # Embedded document
+          # "\x03" e_name document
+          #
+say "Document: ", $p.key, ' => ', .keys;
+
+          return [~] Buf.new(C-DOCUMENT),
+                     encode-e-name($p.key),
+                     .encode
                      ;
         }
 
@@ -562,7 +656,7 @@ location is changed. This is nessesary to encode the key, value pair.
           else {
             die X::BSON::NYS.new(
               :operation('encode'),
-              :type($_ ~ '(' ~ $_.WHAT ~ ')')
+              :type($_ ~ '(' ~ ($_.^name // 'Unknown') ~ ')')
             );
           }
         }
@@ -750,7 +844,7 @@ location is changed. This is nessesary to encode the key, value pair.
       # Document decoding start: init index
       #
       $!index = 0;
-      $!start-time = now;
+      $!start-dec-time = now;
 
       # Decode the document, then wait for any started parallel tracks
       #
@@ -801,7 +895,7 @@ location is changed. This is nessesary to encode the key, value pair.
           $!index += double-size;
           %!promises{$key} = Promise.start( {
               $!data{$key} = self!decode-double( $!encoded-document, $i);
-              say "{now - $!start-time} Done $key => $!data{$key}";
+say "{now - $!start-dec-time} Done $key => $!data{$key}";
             }
           );
         }
@@ -822,7 +916,7 @@ location is changed. This is nessesary to encode the key, value pair.
               $!data{$key} = BSON::Javascript.new(
                 :javascript(decode-string( $!encoded-document, $i))
               );
-              say "{now - $!start-time} Done $key => $!data{$key}";
+              say "{now - $!start-dec-time} Done $key => $!data{$key}";
             }
           );
         }
@@ -847,7 +941,7 @@ location is changed. This is nessesary to encode the key, value pair.
           $!index += int32-size;
           %!promises{$key} = Promise.start( {
               $!data{$key} = decode-int32( $!encoded-document, $i);
-              say "{now - $!start-time} Done $key => $!data{$key}";
+              say "{now - $!start-dec-time} Done $key => $!data{$key}";
             }
           );
         }
@@ -860,7 +954,7 @@ location is changed. This is nessesary to encode the key, value pair.
           $!index += int64-size;
           %!promises{$key} = Promise.start( {
               $!data{$key} = decode-int64( $!encoded-document, $i);
-              say "{now - $!start-time} Done $key => $!data{$key}";
+              say "{now - $!start-dec-time} Done $key => $!data{$key}";
             }
           );
         }

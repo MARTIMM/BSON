@@ -111,7 +111,7 @@ subtest {
   my BSON::Document $d .= new;
   $d<a> = 10;
   $d<b> = 11;
-  $d<c> = BSON::Document.new: (p => 1, q => 2);
+  $d<c> = BSON::Document.new: ( p => 1, q => 2);
   $d<c><a> = 100;
   $d<c><b> = 110;
 
@@ -149,14 +149,19 @@ subtest {
     }
   }
 
-#`{{
+#`{{}}
   # Try nesting with k => v
   #
   $d .= new;
-  $d<abcdef> = Pair.new( a1 => 10, bb => 11);
+  $d<abcdef> = a1 => 10, bb => 11;
   is $d<abcdef><a1>, 10, "sub document \$d<abcdef><a1> = $d<abcdef><a1>";
-  say $d.encode;
-}}
+
+  $d<abcdef><b1> = q => 255;
+  is $d<abcdef><b1><q>, 255,
+     "sub document \$d<abcdef><b1><q> = $d<abcdef><b1><q>";
+
+say $d.encode;
+
 }, "Document nesting";
 
 #-------------------------------------------------------------------------------
@@ -164,3 +169,22 @@ subtest {
 #
 done-testing();
 exit(0);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
