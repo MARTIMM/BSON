@@ -1,19 +1,32 @@
 use v6;
 use BSON::EDCTools;
+use BSON::Document;
 
 package BSON {
 
   class Javascript {
 
     has Str $.javascript;
-    has Hash $.scope;
+    has $.scope;
 
     has Bool $.has_javascript = False;
     has Bool $.has_scope = False;
 
     #---------------------------------------------------------------------------
     #
-    submethod BUILD ( Str :$javascript, Hash :$scope) {
+    multi submethod BUILD ( Str :$javascript, Hash :$scope!) {
+      # Store the attribute values. ? sets True if defined and filled.
+      #
+      $!javascript = $javascript;
+      $!scope = $scope;
+
+      $!has_javascript = ?$!javascript;
+      $!has_scope = ?$!scope;
+    }
+
+    #---------------------------------------------------------------------------
+    #
+    multi submethod BUILD ( Str :$javascript, BSON::Document :$scope!) {
       # Store the attribute values. ? sets True if defined and filled.
       #
       $!javascript = $javascript;

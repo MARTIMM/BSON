@@ -935,8 +935,8 @@ say "{now - $!start-dec-time} Done $key => $!data{$key}";
           # for this size and set i for the decoding. Then adjust index again
           # for the next action.
           #
-          my Int $js-size = decode-int32( $!encoded-document, $!index);
           my Int $i = $!index;
+          my Int $js-size = decode-int32( $!encoded-document, $1);
           $!index += (C-INT32-SIZE + $js-size);
           %!promises{$key} = Promise.start( {
               $!data{$key} = BSON::Javascript.new(
@@ -946,18 +946,30 @@ say "{now - $!start-dec-time} Done $key => $!data{$key}";
             }
           );
         }
-#`{{
+
         # Javascript code with scope
         #
         when C-JAVASCRIPT-SCOPE {
-          my $name = decode-e-name( $a, $!index);
-          my $js_scope_size = decode-int32( $a, $!index);
-          return $name =>
-            BSON::Javascript.new( :javascript(decode-string( $a, $!index)),
-                                  :scope(self.decode-document($a))
-                                );
+
+          my Int $i1 = $!index;
+          my Int $i2 = $!index + C-INT32-SIZE + $js-size;
+          my Int $js-size = decode-int32( $!encoded-document, $1);
+          my Int $js-scope-size = decode-int32( $!encoded-document, $i2);
+
+          $!index += (C-INT32-SIZE + $js-size + C-INT32-SIZE + $js-scope-size);
+
+          %!promises{$key} = Promise.start( {
+              my BSON::Document $d .= new;
+              $d.decode($!encoded-document[$i2 ..^ ($i2 + $js-size));
+              $!data{$key} = BSON::Javascript.new(
+                :javascript(decode-string( $!encoded-document, $!index)),
+                :scope($d)
+              );
+              say "{now - $!start-dec-time} Done $key => $!data{$key}";
+            }
+          );
         }
-}}
+
         # 32-bit Integer
         #
         when C-INT32 {

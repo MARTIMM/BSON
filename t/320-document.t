@@ -12,13 +12,15 @@ subtest {
 
   my BSON::Javascript $js-scope .= new(
     :javascript('function(x){return x;}'),
-    :scope({ n => 10 })
+    :scope(Document.new: (nn => 10, a1 => 2))
   );
 
   # Tests of
   #
   # 0x01 Double
+  # 0x03 Document
   # 0x0D Javascript
+  # 0x0F Javascript with scope
   # 0x10 int32
   # 0x12 int64
   #
@@ -32,13 +34,14 @@ subtest {
   $d<w> = $js;
   $d<abcdef> = a1 => 10, bb => 11;
   $d<abcdef><b1> = q => 255;
+  $d<jss> = $js-scope;
 
 say $d.encode;
 
   # Handcrafted encoded BSON data
   #
   my Buf $etst = Buf.new(
-    # 109 (4 + 11 + 7 + 11 + 30 + 45 + 1)
+    # 157 (4 + 11 + 7 + 11 + 30 + 45 + 48 + 1)
     0x6d, 0x00, 0x00, 0x00,                     # Size document
 
     # 11
@@ -73,7 +76,7 @@ say $d.encode;
 
       # 37 (4 + 8 + 8 + 16 + 1)
       0x25, 0x00, 0x00, 0x00,                   # Size nested document
-      
+
       # 8
       BSON::C-INT32,                            # 0x10
         0x61, 0x31, 0x00,                       # 'a1'
@@ -100,6 +103,33 @@ say $d.encode;
 
       0x00,                                     # End nested document
 
+    # 48 (32 + 16)
+    C-JAVASCRIPT-SCOPE,                         # 0x0F
+      0x6a, 0x73, 0x73, 0x00,                   # 'jss'
+      0x17, 0x00, 0x00, 0x00,                   # 23 bytes js code + 1
+      0x66, 0x75, 0x6e, 0x63, 0x74, 0x69,       # UTF8 encoded Javascript
+      0x6f, 0x6e, 0x28, 0x78, 0x29, 0x7b,       # 'function(x){return x;}'
+      0x72, 0x65, 0x74, 0x75, 0x72, 0x6e,
+      0x20, 0x78, 0x3b, 0x7d, 0x00,
+
+      # 16 (21 + 1)                             # No key encoded
+      BSON::C-DOCUMENT,                         # 0x03
+
+        # 21 (4 + 8 + 8 + 1)
+        0x15, 0x00, 0x00, 0x00,                 # Size nested document
+
+        # 8
+        BSON::C-INT32,                          # 0x10
+          0x6e, 0x6e, 0x00,                     # 'nn'
+          0x0a, 0x00, 0x00, 0x00,               # 10
+
+        # 8
+        BSON::C-INT32,                          # 0x10
+          0x61, 0x31, 0x00,                     # 'a1'
+          0x02, 0x00, 0x00, 0x00,               # 2
+
+      0x00,                                     # End nested document
+
     0x00                                        # End document
   );
 
@@ -120,9 +150,10 @@ say $d.encode;
 
   is $d<w>.^name, 'Javascript', 'Javascript code on $d<w>';
   is $d<w>.javascript, 'function(x){return x;}', 'Code is same';
+
   is $d<abcdef><a1>, 10, "nest \$d<abcdef><a1> = $d<abcdef><a1>";
   is $d<abcdef><b1><q>, 255, "nest \$d<abcdef><b1><q> = $d<abcdef><b1><q>";
-  
+
 
   # Test sequence
   #
