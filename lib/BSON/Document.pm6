@@ -34,10 +34,6 @@ package BSON {
   constant C-INT64-SIZE         = 8;
   constant C-DOUBLE-SIZE        = 8;
 
-  sub int32-size ( --> Int ) { C-INT32-SIZE }
-  sub int64-size ( --> Int ) { C-INT64-SIZE }
-  sub double-size ( --> Int ) { C-DOUBLE-SIZE }
-
   class Document does Associative does Positional {
 
     subset Index of Int where $_ >= 0;
@@ -862,7 +858,7 @@ say "Document: ", $p.key, ' => ', .keys;
       # Get the size of the (nested-)document
       #
       my Int $doc-size = decode-int32( $!encoded-document, $!index);
-      $!index += int32-size;
+      $!index += C-INT32-SIZE;
 
       while $!encoded-document[$!index] !~~ 0x00 {
         self!decode-element;
@@ -900,7 +896,12 @@ say "Document: ", $p.key, ' => ', .keys;
         when C-DOUBLE {
 
           my Int $i = $!index;
-          $!index += double-size;
+          $!index += C-DOUBLE-SIZE;
+
+say "DE: $i, $!index, {C-DOUBLE-SIZE}, ",
+    $!encoded-document[$i].fmt('%02x'), ', ',
+    $!encoded-document[$!index].fmt('%02x');
+
           %!promises{$key} = Promise.start( {
               $!data{$key} = self!decode-double( $!encoded-document, $i);
 say "{now - $!start-dec-time} Done $key => $!data{$key}";
@@ -936,7 +937,7 @@ say "{now - $!start-dec-time} Done $key => $!data{$key}";
           #
           my Int $js-size = decode-int32( $!encoded-document, $!index);
           my Int $i = $!index;
-          $!index += (int32-size() + $js-size);
+          $!index += (C-INT32-SIZE + $js-size);
           %!promises{$key} = Promise.start( {
               $!data{$key} = BSON::Javascript.new(
                 :javascript(decode-string( $!encoded-document, $i))
@@ -962,7 +963,12 @@ say "{now - $!start-dec-time} Done $key => $!data{$key}";
         when C-INT32 {
 
           my Int $i = $!index;
-          $!index += int32-size;
+          $!index += C-INT32-SIZE;
+
+say "IS: $i, $!index, {C-INT32-SIZE}, ",
+    $!encoded-document[$i].fmt('%02x'), ', ',
+    $!encoded-document[$!index].fmt('%02x');
+
           %!promises{$key} = Promise.start( {
               $!data{$key} = decode-int32( $!encoded-document, $i);
               say "{now - $!start-dec-time} Done $key => $!data{$key}";
@@ -975,7 +981,7 @@ say "{now - $!start-dec-time} Done $key => $!data{$key}";
         when C-INT64 {
 
           my Int $i = $!index;
-          $!index += int64-size;
+          $!index += C-INT64-SIZE;
           %!promises{$key} = Promise.start( {
               $!data{$key} = decode-int64( $!encoded-document, $i);
               say "{now - $!start-dec-time} Done $key => $!data{$key}";
@@ -999,6 +1005,7 @@ say "{now - $!start-dec-time} Done $key => $!data{$key}";
 
     #-----------------------------------------------------------------------------
     sub decode-cstring ( Buf:D $b, Int:D $index is rw --> Str ) {
+
       my @a;
       my $l = $b.elems;
 note "DCS: $index, $l, $b[$l]";
@@ -1007,20 +1014,23 @@ note "DCS: $index, $l, $b[$l]";
         @a.push($b[$index++]);
       }
 
-#`{{
+#`{{}}
       die X::BSON::Parse.new(
         :operation<decode-cstring>,
         :error('Missing trailing 0x00')
       ) unless $index < $l and $b[$index++] ~~ 0x00;
-}}
+
       return Buf.new(@a).decode();
     }
 
     #-----------------------------------------------------------------------------
     sub decode-string ( Buf:D $b, Int:D $index is copy --> Str ) {
+
       my $size = decode-int32( $b, $index);
 
-say "S0: {$b.elems} - $size >= $index";
+say "\nDS0: {$b.elems} - $size >= $index, ", $b;
+      my $end-string-at = $index + 4 + $size - 1;
+say "DS1: ", $b[$index+4].fmt('%02x'), ', ', $b[$end-string-at].fmt('%02x');
 
       # Check if there are enaugh letters left
       #
@@ -1029,18 +1039,12 @@ say "S0: {$b.elems} - $size >= $index";
         :error('Not enaugh characters left')
       ) unless ($b.elems - $size) > $index;
 
-#      my @a;
-#      @a.push($b[$index++]) for ^ ($size - 1);
-
       die X::BSON::Parse.new(
         :operation<decode-string>,
         :error('Missing trailing 0x00')
-      ) unless $b[$index + 4 + $size] ~~ 0x00;
+      ) unless $b[$end-string-at] ~~ 0x00;
 
-#      return Buf.new(@a).decode();
-      my Str $string = Buf.new($b[$index+4 ..^ $index + 4 + $size]).decode;
-say "S1: $b[$index+4], $b[$index + 4 + $size], $string";
-      return $string;
+      return $string Buf.new($b[$index+4 ..^ $index + 4 + $size]).decode;
     }
 
     #-----------------------------------------------------------------------------
