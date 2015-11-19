@@ -965,10 +965,6 @@ say "{now - $!start-dec-time} Done $key => $!data{$key}";
           my Int $i = $!index;
           $!index += C-INT32-SIZE;
 
-say "IS: $i, $!index, {C-INT32-SIZE}, ",
-    $!encoded-document[$i].fmt('%02x'), ', ',
-    $!encoded-document[$!index].fmt('%02x');
-
           %!promises{$key} = Promise.start( {
               $!data{$key} = decode-int32( $!encoded-document, $i);
               say "{now - $!start-dec-time} Done $key => $!data{$key}";
@@ -1014,7 +1010,6 @@ note "DCS: $index, $l, $b[$l]";
         @a.push($b[$index++]);
       }
 
-#`{{}}
       die X::BSON::Parse.new(
         :operation<decode-cstring>,
         :error('Missing trailing 0x00')
@@ -1044,13 +1039,11 @@ say "DS1: ", $b[$index+4].fmt('%02x'), ', ', $b[$end-string-at].fmt('%02x');
         :error('Missing trailing 0x00')
       ) unless $b[$end-string-at] ~~ 0x00;
 
-      return $string Buf.new($b[$index+4 ..^ $index + 4 + $size]).decode;
+      return Buf.new($b[$index+4 ..^ $end-string-at]).decode;
     }
 
     #-----------------------------------------------------------------------------
     sub decode-int32 ( Buf:D $b, Int:D $index --> Int ) {
-
-say "d32: {$b.elems}, $index, ", $b;
 
       # Check if there are enaugh letters left
       #

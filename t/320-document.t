@@ -119,6 +119,9 @@ say $d.encode;
   is $d<v>, 4295392664, "v => $d<v>, int64";
 
   is $d<w>.^name, 'Javascript', 'Javascript code on $d<w>';
+  is $d<w>.javascript, 'function(x){return x;}', 'Code is same';
+  is $d<abcdef><a1>, 10, "nest \$d<abcdef><a1> = $d<abcdef><a1>";
+  is $d<abcdef><b1><q>, 255, "nest \$d<abcdef><b1><q> = $d<abcdef><b1><q>";
   
 
   # Test sequence
