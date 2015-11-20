@@ -16,15 +16,16 @@ When installing MongoDB, BSON will be installed automatically as a dependency.
 
 ## VERSION PERL AND MOARVM
 
-* Perl6 version ```2015.10-206-gca7ed86```
-* MoarVM version ```2015.10-56-g9fd3005```
+* Perl6 version ```2015.11-5-g08a804c```
+* MoarVM version ```2015.11```
+
 
 ## SYNOPSIS
 
     my $b = BSON::Bson.new;
 
     my Buf $encoded = $b.encode( {
-        "_id" => BSON::ObjectId.new( "4e4987edfed4c16f8a56ed1d" ),
+        "_id" => BSON::ObjectId.new("4e4987edfed4c16f8a56ed1d"),
         "some string"   => "foo",
         "some number"   => 123,
         "some array"    => [ ],
@@ -33,7 +34,7 @@ When installing MongoDB, BSON will be installed automatically as a dependency.
       }
     );
 
-    my $decoded = $b.decode( $encoded );
+    my $decoded = $b.decode($encoded);
 
 
 ### SUPPORTED TYPES

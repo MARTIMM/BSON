@@ -1,7 +1,7 @@
 use v6;
 use BSON::ObjectId;
 use BSON::Regex;
-use BSON::Javascript;
+use BSON::Javascript-old;
 use BSON::Binary;
 use BSON::Double;
 use BSON::EDCTools;

@@ -12,7 +12,7 @@ subtest {
 
   my BSON::Javascript $js-scope .= new(
     :javascript('function(x){return x;}'),
-    :scope(Document.new: (nn => 10, a1 => 2))
+    :scope(BSON::Document.new: (nn => 10, a1 => 2))
   );
 
   # Tests of
@@ -41,8 +41,8 @@ say $d.encode;
   # Handcrafted encoded BSON data
   #
   my Buf $etst = Buf.new(
-    # 157 (4 + 11 + 7 + 11 + 30 + 45 + 48 + 1)
-    0x6d, 0x00, 0x00, 0x00,                     # Size document
+    # 163 (4 + 11 + 7 + 11 + 30 + 45 + 53 + 1)
+    0xa2, 0x00, 0x00, 0x00,                     # Size document
 
     # 11
     BSON::C-DOUBLE,                             # 0x01
@@ -103,8 +103,8 @@ say $d.encode;
 
       0x00,                                     # End nested document
 
-    # 48 (32 + 16)
-    C-JAVASCRIPT-SCOPE,                         # 0x0F
+    # 53 (32 + 21)
+    BSON::C-JAVASCRIPT-SCOPE,                   # 0x0F
       0x6a, 0x73, 0x73, 0x00,                   # 'jss'
       0x17, 0x00, 0x00, 0x00,                   # 23 bytes js code + 1
       0x66, 0x75, 0x6e, 0x63, 0x74, 0x69,       # UTF8 encoded Javascript
@@ -112,8 +112,8 @@ say $d.encode;
       0x72, 0x65, 0x74, 0x75, 0x72, 0x6e,
       0x20, 0x78, 0x3b, 0x7d, 0x00,
 
-      # 16 (21 + 1)                             # No key encoded
-      BSON::C-DOCUMENT,                         # 0x03
+      # 21                                      # No key encoded
+                                                # No BSON::C-DOCUMENT# code
 
         # 21 (4 + 8 + 8 + 1)
         0x15, 0x00, 0x00, 0x00,                 # Size nested document
@@ -128,10 +128,12 @@ say $d.encode;
           0x61, 0x31, 0x00,                     # 'a1'
           0x02, 0x00, 0x00, 0x00,               # 2
 
-      0x00,                                     # End nested document
+        0x00,                                   # End nested document
 
     0x00                                        # End document
   );
+
+#  say "Size handyman Buf: ", $etst.elems;
 
   # Encode document and compare with handcrafted byte array
   #
@@ -148,7 +150,7 @@ say $d.encode;
   is $d<b>, -203.345, "b => $d<b>, double";
   is $d<v>, 4295392664, "v => $d<v>, int64";
 
-  is $d<w>.^name, 'Javascript', 'Javascript code on $d<w>';
+  is $d<w>.^name, 'BSON::Javascript', 'Javascript code on $d<w>';
   is $d<w>.javascript, 'function(x){return x;}', 'Code is same';
 
   is $d<abcdef><a1>, 10, "nest \$d<abcdef><a1> = $d<abcdef><a1>";

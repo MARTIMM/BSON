@@ -6,7 +6,7 @@ use BSON::Document;
 subtest {
 
   my BSON::Document $d .= new: ('a' ... 'z') Z=> 120..145;
-  is $d.^name, 'Document', 'Isa ok';
+  is $d.^name, 'BSON::Document', 'Isa ok';
 
   is $d<a>, 120, "\$d<a> = $d<a>";
   is $d<b>, 121, "\$d<b> = $d<b>";
