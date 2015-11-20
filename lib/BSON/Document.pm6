@@ -69,7 +69,7 @@ package BSON {
     #---------------------------------------------------------------------------
     #
     method new ( *@ps ) {
-say "PM: ", @ps.WHAT;
+#say "PM: ", @ps.WHAT;
       self.bless(:pairs(@ps));
     }
 
@@ -327,8 +327,18 @@ location is changed. This is nessesary to encode the key, value pair.
         loop ( my $idx = 0; $idx < @!keys.elems; $idx++) {
           my $key = @!keys[$idx];
 #say "Encode2: $key, {%!promises{$key}:exists}";
-          @!encoded-entries[$idx] = await %!promises{$key}
-            if %!promises{$key}:exists;
+          if %!promises{$key}:exists {
+            try {
+              @!encoded-entries[$idx] = await %!promises{$key};
+
+              CATCH {
+                default {
+                  say $_;
+                }
+              }
+            }
+          }
+
 #say "Encode3: $idx, $key, ", @!encoded-entries[$idx];
         }
 
@@ -372,7 +382,7 @@ location is changed. This is nessesary to encode the key, value pair.
     #
     method !encode-element ( Pair:D $p --> Buf ) {
 
-say "EE: {$p.key} => {$p.value}, {$p.perl}";
+#say "EE: {$p.key} => {$p.value}, {$p.perl}";
       given $p.value {
 
         when Num {
@@ -421,7 +431,7 @@ say "EE: {$p.key} => {$p.value}, {$p.perl}";
           # Embedded document
           # "\x03" e_name document
           #
-say "Document: ", $p.key, ' => ', .keys;
+#say "Document: ", $p.key, ' => ', .keys;
 
           return [~] Buf.new(C-DOCUMENT),
                      encode-e-name($p.key),
@@ -447,7 +457,7 @@ say "Document: ", $p.key, ' => ', .keys;
           #
           my Pair @pairs;
           for .kv -> $k, $v {
-            @pairs.push: ("$k" => $v);
+            @pairs.push: ($k => $v);
           }
 
           return [~] Buf.new(C-ARRAY),
@@ -552,14 +562,15 @@ say "Document: ", $p.key, ' => ', .keys;
           # "\x0D" e_name string
           # "\x0F" e_name int32 string document
           #
-          if .has_javascript {
+          if .has-javascript {
             my Buf $js = encode-string(.javascript);
 
-            if $p.value.has_scope {
-              my Buf $doc = self!encode-document(.scope);
+            if .has-scope {
+              my Buf $doc = .scope.encode;
+#say "JS Doc: ", $doc;
               return [~] Buf.new(C-JAVASCRIPT-SCOPE),
                          encode-e-name($p.key),
-                         encode-int32([+] $js.elems, $doc.elems, 4),
+#                         encode-int32([+] $js.elems, $doc.elems, 4),
                          $js, $doc
                          ;
             }
@@ -849,25 +860,38 @@ say "Document: ", $p.key, ' => ', .keys;
       # Decode the document, then wait for any started parallel tracks
       #
       self!decode-document;
-      await %!promises.values if %!promises.elems;
+      if %!promises.elems {
+        try {
+          await %!promises.values;
+
+          CATCH {
+            default {
+              say $_;
+            }
+          }
+        }
+      }
     }
 
     #---------------------------------------------------------------------------
     method !decode-document ( --> Nil ) {
 
+say "DE 0 I: $!index";
       # Get the size of the (nested-)document
       #
       my Int $doc-size = decode-int32( $!encoded-document, $!index);
       $!index += C-INT32-SIZE;
+say "DE 1 I: $!index, $doc-size, ", $!encoded-document;
 
       while $!encoded-document[$!index] !~~ 0x00 {
+say "DE 2 I: $!index, $doc-size";
         self!decode-element;
       }
+say "DE 3 I: $!index, $doc-size";
 
       # Check size of document with final byte location
       #
-      die [~] "Size of document ", $doc-size, " does not match with index at ",
-              $!index, "(+1)"
+      die "Size of document $doc-size does not match with index at $!index(+1)"
         if $doc-size != $!index + 1;
     }
 
@@ -897,11 +921,6 @@ say "Document: ", $p.key, ' => ', .keys;
 
           my Int $i = $!index;
           $!index += C-DOUBLE-SIZE;
-
-say "DE: $i, $!index, {C-DOUBLE-SIZE}, ",
-    $!encoded-document[$i].fmt('%02x'), ', ',
-    $!encoded-document[$!index].fmt('%02x');
-
           %!promises{$key} = Promise.start( {
               $!data{$key} = self!decode-double( $!encoded-document, $i);
 say "{now - $!start-dec-time} Done $key => $!data{$key}";
@@ -913,11 +932,11 @@ say "{now - $!start-dec-time} Done $key => $!data{$key}";
         #
         when C-DOCUMENT {
 
-say "Doc 0: $!index";
+#say "Doc 0: $!index";
           my $i = $!index;
           my Int $doc-size = decode-int32( $!encoded-document, $i);
           $!index += $doc-size;
-say "Doc 1: $doc-size, $i, $!index, $!encoded-document[$!index]";
+#say "Doc 1: $doc-size, $i, $!index, $!encoded-document[$!index]";
           %!promises{$key} = Promise.start( {
               my BSON::Document $d .= new;
               $d.decode(Buf.new($!encoded-document[$i ..^ ($i + $doc-size)]));
@@ -936,13 +955,13 @@ say "{now - $!start-dec-time} Done $key => $!data{$key}";
           # for the next action.
           #
           my Int $i = $!index;
-          my Int $js-size = decode-int32( $!encoded-document, $1);
+          my Int $js-size = decode-int32( $!encoded-document, $i);
           $!index += (C-INT32-SIZE + $js-size);
           %!promises{$key} = Promise.start( {
               $!data{$key} = BSON::Javascript.new(
                 :javascript(decode-string( $!encoded-document, $i))
               );
-              say "{now - $!start-dec-time} Done $key => $!data{$key}";
+say "{now - $!start-dec-time} Done $key => $!data{$key}";
             }
           );
         }
@@ -952,20 +971,20 @@ say "{now - $!start-dec-time} Done $key => $!data{$key}";
         when C-JAVASCRIPT-SCOPE {
 
           my Int $i1 = $!index;
+          my Int $js-size = decode-int32( $!encoded-document, $i1);
           my Int $i2 = $!index + C-INT32-SIZE + $js-size;
-          my Int $js-size = decode-int32( $!encoded-document, $1);
           my Int $js-scope-size = decode-int32( $!encoded-document, $i2);
 
-          $!index += (C-INT32-SIZE + $js-size + C-INT32-SIZE + $js-scope-size);
+          $!index += (C-INT32-SIZE + $js-size + $js-scope-size);
 
           %!promises{$key} = Promise.start( {
               my BSON::Document $d .= new;
-              $d.decode($!encoded-document[$i2 ..^ ($i2 + $js-size));
+              $d.decode(Buf.new($!encoded-document[$i2 ..^ ($i2 + $js-size)]));
               $!data{$key} = BSON::Javascript.new(
-                :javascript(decode-string( $!encoded-document, $!index)),
+                :javascript(decode-string( $!encoded-document, $i1)),
                 :scope($d)
               );
-              say "{now - $!start-dec-time} Done $key => $!data{$key}";
+say "{now - $!start-dec-time} Done $key => $!data{$key}";
             }
           );
         }
@@ -979,7 +998,7 @@ say "{now - $!start-dec-time} Done $key => $!data{$key}";
 
           %!promises{$key} = Promise.start( {
               $!data{$key} = decode-int32( $!encoded-document, $i);
-              say "{now - $!start-dec-time} Done $key => $!data{$key}";
+say "{now - $!start-dec-time} Done $key => $!data{$key}";
             }
           );
         }
@@ -992,7 +1011,7 @@ say "{now - $!start-dec-time} Done $key => $!data{$key}";
           $!index += C-INT64-SIZE;
           %!promises{$key} = Promise.start( {
               $!data{$key} = decode-int64( $!encoded-document, $i);
-              say "{now - $!start-dec-time} Done $key => $!data{$key}";
+say "{now - $!start-dec-time} Done $key => $!data{$key}";
             }
           );
         }
@@ -1016,7 +1035,7 @@ say "{now - $!start-dec-time} Done $key => $!data{$key}";
 
       my @a;
       my $l = $b.elems;
-note "DCS: $index, $l, $b[$l]";
+#note "DCS: $index, $l, $b[$l]";
 #      while $index < $l and $b[$index] !~~ 0x00 {
       while $b[$index] !~~ 0x00 and $index < $l {
         @a.push($b[$index++]);
@@ -1035,9 +1054,9 @@ note "DCS: $index, $l, $b[$l]";
 
       my $size = decode-int32( $b, $index);
 
-say "\nDS0: {$b.elems} - $size >= $index, ", $b;
+#say "\nDS0: {$b.elems} - $size >= $index, ", $b;
       my $end-string-at = $index + 4 + $size - 1;
-say "DS1: ", $b[$index+4].fmt('%02x'), ', ', $b[$end-string-at].fmt('%02x');
+#say "DS1: ", $b[$index+4].fmt('%02x'), ', ', $b[$end-string-at].fmt('%02x');
 
       # Check if there are enaugh letters left
       #
@@ -1056,6 +1075,9 @@ say "DS1: ", $b[$index+4].fmt('%02x'), ', ', $b[$end-string-at].fmt('%02x');
 
     #-----------------------------------------------------------------------------
     sub decode-int32 ( Buf:D $b, Int:D $index --> Int ) {
+
+#say "i32 0: CF: ", callframe(1).file, ', ', callframe(1).line;
+#say "i32 1: CF: $index, ", $b;
 
       # Check if there are enaugh letters left
       #

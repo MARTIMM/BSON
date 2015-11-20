@@ -1,6 +1,5 @@
 use v6;
 use BSON::EDCTools;
-use BSON::Document;
 
 package BSON {
 
@@ -9,40 +8,29 @@ package BSON {
     has Str $.javascript;
     has $.scope;
 
-    has Bool $.has_javascript = False;
-    has Bool $.has_scope = False;
+    has Bool $.has-javascript = False;
+    has Bool $.has-scope = False;
 
     #---------------------------------------------------------------------------
     #
-    multi submethod BUILD ( Str :$javascript, Hash :$scope!) {
+    submethod BUILD ( Str:D :$javascript, :$scope ) {
+
       # Store the attribute values. ? sets True if defined and filled.
       #
       $!javascript = $javascript;
       $!scope = $scope;
 
-      $!has_javascript = ?$!javascript;
-      $!has_scope = ?$!scope;
-    }
-
-    #---------------------------------------------------------------------------
-    #
-    multi submethod BUILD ( Str :$javascript, BSON::Document :$scope!) {
-      # Store the attribute values. ? sets True if defined and filled.
-      #
-      $!javascript = $javascript;
-      $!scope = $scope;
-
-      $!has_javascript = ?$!javascript;
-      $!has_scope = ?$!scope;
+      $!has-javascript = ?$!javascript;
+      $!has-scope = ?$!scope if $scope.^name ~~ 'BSON::Document';
     }
 
     #---------------------------------------------------------------------------
     #
     method encode-javascript ( Str $key-name, $bson-obj --> Buf ) {
-      if $!has_javascript {
+      if $!has-javascript {
         my Buf $js = encode-string($!javascript);
 
-        if $!has_scope {
+        if $!has-scope {
           my Buf $doc = $bson-obj.encode-document($!scope);
           return [~] Buf.new(0x0F), encode-e-name($key-name),
                      encode-int32([+] $js.elems, $doc.elems, 4), $js, $doc;
