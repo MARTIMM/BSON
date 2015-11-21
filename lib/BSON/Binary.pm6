@@ -3,12 +3,12 @@ use BSON::EDCTools;
 
 package BSON {
 
-  constant $GENERIC             = 0x00;
-  constant $FUNCTION            = 0x01;
-  constant $BINARY-OLD          = 0x02;         # Deprecated
-  constant $UUID-OLD            = 0x03;         # Deprecated
-  constant $UUID                = 0x04;
-  constant $MD5                 = 0x05;
+  constant C-GENERIC            = 0x00;
+  constant C-FUNCTION           = 0x01;
+  constant C-BINARY-OLD         = 0x02;         # Deprecated
+  constant C-UUID-OLD           = 0x03;         # Deprecated
+  constant C-UUID               = 0x04;
+  constant C-MD5                = 0x05;
 
   class Binary {
 
@@ -18,7 +18,7 @@ package BSON {
 
     #-----------------------------------------------------------------------------
     #
-    submethod BUILD ( Buf :$data, Int :$type = $GENERIC ) {
+    submethod BUILD ( Buf :$data, Int :$type = C-GENERIC ) {
       $!binary-data = $data;
       $!has-binary-data = ?$!binary-data;
       $!binary-type = $type;
@@ -86,31 +86,31 @@ package BSON {
       # UUID and MD5 can be tested.
       #
       given $sub_type {
-        when $GENERIC {
+        when C-GENERIC {
           # Generic binary subtype
         }
 
-        when $FUNCTION {
+        when C-FUNCTION {
           # Function
         }
 
-        when $BINARY-OLD {
+        when C-BINARY-OLD {
           # Binary (Old - deprecated)
           die 'Code (0x02) Deprecated binary data';
         }
 
-        when $UUID-OLD {
+        when C-UUID-OLD {
           # UUID (Old - deprecated)
           die 'UUID(0x03) Deprecated binary data';
         }
 
-        when $UUID {
+        when C-UUID {
           # UUID. According to http://en.wikipedia.org/wiki/Universally_unique_identifier
           # the universally unique identifier is a 128-bit (16 byte) value.
           die 'UUID(0x04) Binary string parse error' unless $lng ~~ 16;
         }
 
-        when $MD5 {
+        when C-MD5 {
           # MD5. This is a 16 byte number (32 character hex string)
           die 'MD5(0x05) Binary string parse error' unless $lng ~~ 16;
         }
