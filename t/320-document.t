@@ -27,6 +27,8 @@ subtest {
   #
   # 0x01 Double
   # 0x03 Document
+  # 0x05 Binary
+  # 0x08 Boolean
   # 0x0D Javascript
   # 0x0F Javascript with scope
   # 0x10 int32
@@ -44,14 +46,16 @@ subtest {
   $d<abcdef><b1> = q => 255;
   $d<jss> = $js-scope;
   $d<bin> = $bin;
+  $d<bf> = False;
+  $d<bt> = True;
 
 say $d.encode;
 
   # Handcrafted encoded BSON data
   #
   my Buf $etst = Buf.new(
-    # 163 (4 + 11 + 7 + 11 + 30 + 45 + 53 + 26 + 1)
-    0xbc, 0x00, 0x00, 0x00,                     # Size document
+    # 198 (4 + 11 + 7 + 11 + 30 + 45 + 53 + 26 + 5 + 5 + 1)
+    0xc6, 0x00, 0x00, 0x00,                     # Size document
 
     # 11
     BSON::C-DOUBLE,                             # 0x01
@@ -146,6 +150,16 @@ say $d.encode;
       BSON::C-UUID,                             # Binary type = UUID
       $uuid.Blob.List,                          # Binary Data
 
+    # 5
+    BSON::C-BOOLEAN,                            # 0x08
+      0x62, 0x66, 0x00,                         # 'bf'
+      0x00,                                     # False
+
+    # 5
+    BSON::C-BOOLEAN,                            # 0x08
+      0x62, 0x74, 0x00,                         # 'bt'
+      0x01,                                     # True
+
     0x00                                        # End document
   );
 
@@ -179,6 +193,9 @@ say $d.encode;
   is-deeply $d<bin>.binary-data.List, $uuid.Blob.List, "UUID binary data ok";
   is $d<bin>.binary-type, BSON::C-UUID, "Binary type is UUID";
 
+  ok $d<bf> ~~ False, "Boolean False";
+  ok $d<bt> ~~ False, "Boolean True";
+
   # Test sequence
   #
   diag "Sequence of index";
@@ -192,6 +209,8 @@ say $d.encode;
   is $d[4][2][0], 255, "4: subnest 255";
   is $d[5].javascript, 'function(x){return x;}', "5: '{$d[5].javascript}'";
   is $d[6].binary-type, BSON::C-UUID, "6: Binary type is UUID";
+  ok $d[7] ~~ False, "Boolean False";
+  ok $d[8] ~~ False, "Boolean True";
 
 }, "Document encoding decoding types";
 

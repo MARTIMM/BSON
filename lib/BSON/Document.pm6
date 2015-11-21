@@ -993,6 +993,18 @@ say "{now - $!start-dec-time} Done $key => $!data{$key}";
           );
         }
 
+        # Boolean code
+        #
+        when C-BOOLEAN {
+
+          my $i = $!index;
+          $!index++;
+          %!promises{$key} = Promise.start( {
+              $!data{$key} = $!encoded-document[$i] ~~ 0x00 ?? False !! True;
+            }
+          );
+        }
+
         # Javascript code
         #
         when C-JAVASCRIPT {
