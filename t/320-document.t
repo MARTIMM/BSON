@@ -2,6 +2,8 @@ use v6;
 use Test;
 use BSON::Document;
 use BSON::Javascript;
+use BSON::Binary;
+use UUID;
 
 #-------------------------------------------------------------------------------
 subtest {
@@ -13,6 +15,12 @@ subtest {
   my BSON::Javascript $js-scope .= new(
     :javascript('function(x){return x;}'),
     :scope(BSON::Document.new: (nn => 10, a1 => 2))
+  );
+
+  my UUID $uuid .= new(:version(4));
+  my BSON::Binary $bin .= new(
+    :data($uuid.Blob),
+    :type(BSON::C-UUID)
   );
 
   # Tests of
@@ -35,14 +43,15 @@ subtest {
   $d<abcdef> = a1 => 10, bb => 11;
   $d<abcdef><b1> = q => 255;
   $d<jss> = $js-scope;
+  $d<bin> = $bin;
 
 say $d.encode;
 
   # Handcrafted encoded BSON data
   #
   my Buf $etst = Buf.new(
-    # 163 (4 + 11 + 7 + 11 + 30 + 45 + 53 + 1)
-    0xa2, 0x00, 0x00, 0x00,                     # Size document
+    # 163 (4 + 11 + 7 + 11 + 30 + 45 + 53 + 26 + 1)
+    0xbc, 0x00, 0x00, 0x00,                     # Size document
 
     # 11
     BSON::C-DOUBLE,                             # 0x01
@@ -130,6 +139,13 @@ say $d.encode;
 
         0x00,                                   # End nested document
 
+    # 26
+    BSON::C-BINARY,                             # 0x05
+      0x62, 0x69, 0x6e, 0x00,                   # 'bin'
+      BSON::C-UUID-SIZE, 0x00, 0x00, 0x00,      # UUID size
+      BSON::C-UUID,                             # Binary type = UUID
+      $uuid.Blob.List,                          # Binary Data
+
     0x00                                        # End document
   );
 
@@ -156,6 +172,12 @@ say $d.encode;
   is $d<abcdef><a1>, 10, "nest \$d<abcdef><a1> = $d<abcdef><a1>";
   is $d<abcdef><b1><q>, 255, "nest \$d<abcdef><b1><q> = $d<abcdef><b1><q>";
 
+  is $d<jss>.^name, 'BSON::Javascript', 'Javascript code on $d<w>';
+  is $d<jss>.javascript, 'function(x){return x;}', 'Code is same';
+  is $d<jss>.scope<nn>, 10, "\$d<jss>.scope<nn> = {$d<jss>.scope<nn>}";
+
+  is-deeply $d<bin>.binary-data.List, $uuid.Blob.List, "UUID binary data ok";
+  is $d<bin>.binary-type, BSON::C-UUID, "Binary type is UUID";
 
   # Test sequence
   #
@@ -163,7 +185,13 @@ say $d.encode;
 
   is $d[0], -203.345.Num, "0: $d[0], double";
   is $d[1], 1234, "1: $d[1], int32";
-  is $d[2], 4295392664, "1: $d[2], int64";
+  is $d[2], 4295392664, "2: $d[2], int64";
+  is $d[3].^name, 'BSON::Javascript', '3:Javascript code on $d<w>';
+  is $d[4][0], 10, "4: nest 10";
+  is $d[4][1], 11, "4: nest 11";
+  is $d[4][2][0], 255, "4: subnest 255";
+  is $d[5].javascript, 'function(x){return x;}', "5: '{$d[5].javascript}'";
+  is $d[6].binary-type, BSON::C-UUID, "6: Binary type is UUID";
 
 }, "Document encoding decoding types";
 

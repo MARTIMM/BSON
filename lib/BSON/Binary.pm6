@@ -10,11 +10,14 @@ package BSON {
   constant C-UUID               = 0x04;
   constant C-MD5                = 0x05;
 
+  constant C-UUID-SIZE          = 16;
+  constant C-MD5-SIZE           = 16;
+
   class Binary {
 
-    has Buf $!binary-data;
-    has Bool $!has-binary-data = False;
-    has Int $!binary-type;
+    has Buf $.binary-data;
+    has Bool $.has-binary-data = False;
+    has Int $.binary-type;
 
     #-----------------------------------------------------------------------------
     #
@@ -23,7 +26,10 @@ package BSON {
       $!has-binary-data = ?$!binary-data;
       $!binary-type = $type;
     }
+  }
+}
 
+=finish
     #-----------------------------------------------------------------------------
     #
     method get_type ( --> Int ) is DEPRECATED('get-type') {
@@ -35,7 +41,7 @@ package BSON {
     }
 
     #-----------------------------------------------------------------------------
-    #
+    # Uneeded. Use $o.binary-data;
     method Buf ( --> Buf ) {
       return $!binary-data;
     }

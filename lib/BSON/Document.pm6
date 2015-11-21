@@ -8,6 +8,9 @@ use BSON::Exception;
 
 package BSON {
 
+  #-----------------------------------------------------------------------------
+  # BSON type codes
+  #
   constant C-DOUBLE             = 0x01;
   constant C-STRING             = 0x02;
   constant C-DOCUMENT           = 0x03;
@@ -30,10 +33,13 @@ package BSON {
   constant C-MAX-KEY            = 0x7F;
 
   #-----------------------------------------------------------------------------
+  # Fixed sizes
+  #
   constant C-INT32-SIZE         = 4;
   constant C-INT64-SIZE         = 8;
   constant C-DOUBLE-SIZE        = 8;
 
+  #-----------------------------------------------------------------------------
   class Document does Associative does Positional {
 
     subset Index of Int where $_ >= 0;
@@ -41,7 +47,6 @@ package BSON {
     has Str @!keys;
     has Hash $!data .= new;
 
-#    has BSON::Bson $bson;
     has Buf $!encoded-document;
     has Buf @!encoded-entries;
     has Index $!index = 0;
@@ -471,7 +476,20 @@ location is changed. This is nessesary to encode the key, value pair.
           # "\x05" e_name int32 subtype byte*
           # subtype is '\x00' for the moment (Generic binary subtype)
           #
-          return [~] Buf.new(C-BINARY), encode-e-name($p.key), .encode-binary();
+          my Buf $b = [~] Buf.new(C-BINARY), encode-e-name($p.key);
+
+          if .has-binary-data {
+            $b ~= encode-int32(.binary-data.elems);
+            $b ~= Buf.new(.binary-type);
+            $b ~= .binary-data;
+          }
+
+          else {
+            $b ~= encode-int32(0);
+            $b ~= Buf.new(.binary-type);
+          }
+
+          $b;
         }
 
 #`{{
@@ -646,22 +664,27 @@ location is changed. This is nessesary to encode the key, value pair.
         }
 }}
 
+        # Buf is converted to BSON binary with generic type. When decoding it
+        # will always be BSON::Binary again. Buf can be retrieved with
+        # $o.binary-data;
+        #
         when Buf {
-          die X::BSON::ImProperUse.new(
-              :operation('encode'),
-              :type('Binary Buf'),
-              :emsg('Buf not supported, please use BSON::Binary')
-          );
+          my BSON::Binary $bbin .= new(:data($_));
+          my Buf $b = [~] Buf.new(C-BINARY), encode-e-name($p.key);
+          $b ~= encode-int32(.binary-data.elems);
+          $b ~= Buf.new(.binary-type);
+          $b ~= .binary-data;
+
+          $b;
         }
 
         default {
-          if .can('encode') {
-            my $code = 0x1F; # which bson code??
+          if .can('encode') and .can('bson-code') {
+            my $code = .bson-code;
 
             return [~] Buf.new($code),
                        encode-e-name($p.key),
                        .encode;
-                       ;
           }
 
           else {
@@ -946,6 +969,30 @@ say "{now - $!start-dec-time} Done $key => $!data{$key}";
           );
         }
 
+        # Binary code
+        # "\x05 e_name int32 subtype byte*
+        # subtype = byte \x00 .. \x05, .. \xFF
+        # subtypes \x80 to \xFF are user defined
+        #
+        when C-BINARY {
+
+          my Int $nbr-bytes = decode-int32( $!encoded-document, $!index);
+          my $i = $!index + C-INT32-SIZE;
+
+          # Step over size field, subtype and binary data
+          #
+          $!index += C-INT32-SIZE + 1 + $nbr-bytes;
+
+          %!promises{$key} = Promise.start( {
+              $!data{$key} = self!decode-binary(
+                $!encoded-document,
+                $i,
+                $nbr-bytes
+              );
+            }
+          );
+        }
+
         # Javascript code
         #
         when C-JAVASCRIPT {
@@ -956,7 +1003,11 @@ say "{now - $!start-dec-time} Done $key => $!data{$key}";
           #
           my Int $i = $!index;
           my Int $js-size = decode-int32( $!encoded-document, $i);
+
+          # Step over size field and the javascript text
+          #
           $!index += (C-INT32-SIZE + $js-size);
+
           %!promises{$key} = Promise.start( {
               $!data{$key} = BSON::Javascript.new(
                 :javascript(decode-string( $!encoded-document, $i))
@@ -1009,6 +1060,7 @@ say "{now - $!start-dec-time} Done $key => $!data{$key}";
 
           my Int $i = $!index;
           $!index += C-INT64-SIZE;
+
           %!promises{$key} = Promise.start( {
               $!data{$key} = decode-int64( $!encoded-document, $i);
 say "{now - $!start-dec-time} Done $key => $!data{$key}";
@@ -1193,6 +1245,65 @@ say "{now - $!start-dec-time} Done $key => $!data{$key}";
       }
 
       return $value;
+    }
+
+    #---------------------------------------------------------------------------
+    method !decode-binary (
+      Buf:D $b, Int:D $index is copy, Int:D $nbr-bytes
+      --> BSON::Binary
+    ) {
+
+      # Get subtype
+      #
+      my $sub_type = $b[$index++];
+
+      # Most of the tests are not necessary because of arbitrary sizes.
+      # UUID and MD5 can be tested.
+      #
+      given $sub_type {
+        when BSON::C-GENERIC {
+          # Generic binary subtype
+        }
+
+        when BSON::C-FUNCTION {
+          # Function
+        }
+
+        when BSON::C-BINARY-OLD {
+          # Binary (Old - deprecated)
+          die 'Code (0x02) Deprecated binary data';
+        }
+
+        when BSON::C-UUID-OLD {
+          # UUID (Old - deprecated)
+          die 'UUID(0x03) Deprecated binary data';
+        }
+
+        when BSON::C-UUID {
+          # UUID. According to
+          # http://en.wikipedia.org/wiki/Universally_unique_identifier the
+          # universally unique identifier is a 128-bit (16 byte) value.
+          #
+          die 'UUID(0x04) Binary string parse error'
+            unless $nbr-bytes ~~ BSON::C-UUID-SIZE;
+        }
+
+        when BSON::C-MD5 {
+          # MD5. This is a 16 byte number (32 character hex string)
+          die 'MD5(0x05) Binary string parse error'
+            unless $nbr-bytes ~~ BSON::C-MD5-SIZE;
+        }
+
+        when 0x80 {
+          # User defined. That is, all other codes 0x80 .. 0xFF
+        }
+      }
+
+say "Bin: $index .. {$index + $nbr-bytes}";
+      return BSON::Binary.new(
+        :data(Buf.new($b[$index ..^ ($index + $nbr-bytes)])),
+        :type($sub_type)
+      );
     }
   }
 }
