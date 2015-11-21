@@ -2,7 +2,7 @@ use v6;
 use BSON::ObjectId;
 use BSON::Regex;
 use BSON::Javascript-old;
-use BSON::Binary;
+use BSON::Binary-old;
 use BSON::Double;
 use BSON::EDCTools;
 use BSON::Exception;

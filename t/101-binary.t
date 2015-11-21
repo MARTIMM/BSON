@@ -1,7 +1,7 @@
 use v6;
 use Test;
 use BSON;
-use BSON::Binary;
+use BSON::Binary-old;
 use UUID;
 use Digest::MD5;
 
