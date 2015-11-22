@@ -270,7 +270,6 @@ package BSON {
             }
 
             else {
-say "js: ", [~] Buf.new(0x0D), encode-e-name($p.key), $js;
               return [~] Buf.new(0x0D), encode-e-name($p.key), $js;
             }
           }
