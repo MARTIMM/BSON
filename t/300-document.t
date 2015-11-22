@@ -100,7 +100,9 @@ subtest {
   is ($d.keys)[*-1], 'z', "Last key is 'z'";
   is ($d.values).elems, 26, '26 values';
   is ($d.values)[*-1], 145, "Last value is 145";
-
+  is ($d.keys)[3], 'd', "4th key is 'd'";
+  is ($d.values)[3], 123, '4th value is 123';
+  
 }, "Test document, other";
 
 #-------------------------------------------------------------------------------
