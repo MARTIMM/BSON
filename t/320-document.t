@@ -26,6 +26,7 @@ subtest {
   # Tests of
   #
   # 0x01 Double
+  # 0x02 String
   # 0x03 Document
   # 0x05 Binary
   # 0x08 Boolean
@@ -48,14 +49,15 @@ subtest {
   $d<bin> = $bin;
   $d<bf> = False;
   $d<bt> = True;
+  $d<str> = "String text";
 
 say $d.encode;
 
   # Handcrafted encoded BSON data
   #
   my Buf $etst = Buf.new(
-    # 198 (4 + 11 + 7 + 11 + 30 + 45 + 53 + 26 + 5 + 5 + 1)
-    0xc6, 0x00, 0x00, 0x00,                     # Size document
+    # 219 (4 + 11 + 7 + 11 + 30 + 45 + 53 + 26 + 5 + 5 + 21 + 1)
+    0xdb, 0x00, 0x00, 0x00,                     # Size document
 
     # 11
     BSON::C-DOUBLE,                             # 0x01
@@ -112,8 +114,10 @@ say $d.encode;
           0x71, 0x00,                           # 'q'
           0xff, 0x00, 0x00, 0x00,               # 255
 
+        # 1
         0x00,                                   # End nested document
 
+      # 1
       0x00,                                     # End nested document
 
     # 53 (32 + 21)
@@ -141,6 +145,7 @@ say $d.encode;
           0x61, 0x31, 0x00,                     # 'a1'
           0x02, 0x00, 0x00, 0x00,               # 2
 
+        # 1
         0x00,                                   # End nested document
 
     # 26
@@ -160,6 +165,16 @@ say $d.encode;
       0x62, 0x74, 0x00,                         # 'bt'
       0x01,                                     # True
 
+    # 21 (5 + 16)
+    BSON::C-STRING,                             # 0x02
+      0x73, 0x74, 0x72, 0x00,                   # 'str'
+
+      # 16 (4 + 12)
+      0x0c, 0x00, 0x00, 0x00,
+      0x53, 0x74, 0x72, 0x69, 0x6e, 0x67,       # 'String text'
+      0x20, 0x74, 0x65, 0x78, 0x74, 0x00,
+
+    # 1
     0x00                                        # End document
   );
 
@@ -193,8 +208,10 @@ say $d.encode;
   is-deeply $d<bin>.binary-data.List, $uuid.Blob.List, "UUID binary data ok";
   is $d<bin>.binary-type, BSON::C-UUID, "Binary type is UUID";
 
-  ok $d<bf> ~~ False, "Boolean False";
-  ok $d<bt> ~~ False, "Boolean True";
+  ok !?$d<bf>, "Boolean False";
+  ok ?$d<bt>, "Boolean True";
+
+  is $d<str>, 'String text', 'Text ok';
 
   # Test sequence
   #
@@ -209,8 +226,9 @@ say $d.encode;
   is $d[4][2][0], 255, "4: subnest 255";
   is $d[5].javascript, 'function(x){return x;}', "5: '{$d[5].javascript}'";
   is $d[6].binary-type, BSON::C-UUID, "6: Binary type is UUID";
-  ok $d[7] ~~ False, "Boolean False";
-  ok $d[8] ~~ False, "Boolean True";
+  ok !?$d[7], "7: Boolean False";
+  ok ?$d[8], "8: Boolean True";
+  is $d[9], 'String text', '9: Text ok';
 
 }, "Document encoding decoding types";
 

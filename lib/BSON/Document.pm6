@@ -405,8 +405,7 @@ location is changed. This is nessesary to encode the key, value pair.
           #
           return [~] Buf.new(C-STRING),
                      encode-e-name($p.key),
-                     encode-string($p.value)
-                     ;
+                     encode-string($p.value);
         }
 
         # Converting a pair same way as a hash:
@@ -418,8 +417,7 @@ location is changed. This is nessesary to encode the key, value pair.
           my Pair @pairs = $p.value;
           return [~] Buf.new(C-DOCUMENT),
                      encode-e-name($p.key),
-                     self!encode-document(@pairs)
-                     ;
+                     self!encode-document(@pairs);
         }
 
         when Hash {
@@ -428,8 +426,7 @@ location is changed. This is nessesary to encode the key, value pair.
           #
           return [~] Buf.new(C-DOCUMENT),
                      encode-e-name($p.key),
-                     self!encode-document($p.value)
-                     ;
+                     self!encode-document($p.value);
         }
 
         when BSON::Document {
@@ -440,8 +437,7 @@ location is changed. This is nessesary to encode the key, value pair.
 
           return [~] Buf.new(C-DOCUMENT),
                      encode-e-name($p.key),
-                     .encode
-                     ;
+                     .encode;
         }
 
         when Array {
@@ -467,8 +463,7 @@ location is changed. This is nessesary to encode the key, value pair.
 
           return [~] Buf.new(C-ARRAY),
                      encode-e-name($p.key),
-                     self!encode-document(@pairs)
-                     ;
+                     self!encode-document(@pairs);
         }
 
         when BSON::Binary {
@@ -535,8 +530,7 @@ location is changed. This is nessesary to encode the key, value pair.
           #
           return [~] Buf.new(C-DATETIME),
                      encode-e-name($p.key),
-                     encode-int64($p.value().posix())
-                     ;
+                     encode-int64($p.value().posix());
         }
 
         when not .defined {
@@ -553,8 +547,7 @@ location is changed. This is nessesary to encode the key, value pair.
           return [~] Buf.new(C-REGEX),
                      encode-e-name($p.key),
                      encode-cstring($p.value.regex),
-                     encode-cstring($p.value.options)
-                     ;
+                     encode-cstring($p.value.options);
         }
 
 #`{{
@@ -944,8 +937,27 @@ say "DE 3 I: $!index, $doc-size";
 
           my Int $i = $!index;
           $!index += C-DOUBLE-SIZE;
+
           %!promises{$key} = Promise.start( {
               $!data{$key} = self!decode-double( $!encoded-document, $i);
+say "{now - $!start-dec-time} Done $key => $!data{$key}";
+            }
+          );
+        }
+
+        # String type
+        #
+        when C-STRING {
+
+          my Int $i = $!index;
+          my Int $nbr-bytes = decode-int32( $!encoded-document, $!index);
+
+          # Step over the size field and the null terminated string
+          #
+          $!index += C-INT32-SIZE + $nbr-bytes;
+
+          %!promises{$key} = Promise.start( {
+              $!data{$key} = decode-string( $!encoded-document, $i);
 say "{now - $!start-dec-time} Done $key => $!data{$key}";
             }
           );
