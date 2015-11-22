@@ -23,11 +23,12 @@ subtest {
     :type(BSON::C-UUID)
   );
 
-  # Tests of
+  # Checklist/Tests of
   #
   # 0x01 Double
   # 0x02 String
   # 0x03 Document
+  # 0x04 Array
   # 0x05 Binary
   # 0x08 Boolean
   # 0x0D Javascript
@@ -50,14 +51,15 @@ subtest {
   $d<bf> = False;
   $d<bt> = True;
   $d<str> = "String text";
+  $d<array> = [ 10, 'abc', 345];
 
 say $d.encode;
 
   # Handcrafted encoded BSON data
   #
   my Buf $etst = Buf.new(
-    # 219 (4 + 11 + 7 + 11 + 30 + 45 + 53 + 26 + 5 + 5 + 21 + 1)
-    0xdb, 0x00, 0x00, 0x00,                     # Size document
+    # 256 (4 + 11 + 7 + 11 + 30 + 45 + 53 + 26 + 5 + 5 + 21 + 37 + 1)
+    0x00, 0x01, 0x00, 0x00,                     # Size document
 
     # 11
     BSON::C-DOUBLE,                             # 0x01
@@ -170,9 +172,37 @@ say $d.encode;
       0x73, 0x74, 0x72, 0x00,                   # 'str'
 
       # 16 (4 + 12)
-      0x0c, 0x00, 0x00, 0x00,
+      0x0c, 0x00, 0x00, 0x00,                   # String size
       0x53, 0x74, 0x72, 0x69, 0x6e, 0x67,       # 'String text'
       0x20, 0x74, 0x65, 0x78, 0x74, 0x00,
+
+    # 37 (7 + 30)
+    BSON::C-ARRAY,                              # 0x04
+      0x61, 0x72, 0x72, 0x61, 0x79, 0x00,       # 'array'
+
+      # 30 (4 + 7 + 11 + 7 + 1)
+      0x1e, 0x00, 0x00, 0x00,                   # Size array document
+
+        # 7
+        BSON::C-INT32,                          # 0x10
+          0x30, 0x00,                           # '0'
+          0x0a, 0x00, 0x00, 0x00,               # 10
+
+        # 11 (3 + 8)
+        BSON::C-STRING,                         # 0x02
+          0x31, 0x00,                           # '1'
+
+          # 8 (4 + 4)
+          0x04, 0x00, 0x00, 0x00,               # String size
+          0x61, 0x62, 0x63, 0x00,               # 'abc'
+
+        # 7
+        BSON::C-INT32,                          # 0x10
+          0x32, 0x00,                           # '2'
+          0x59, 0x01, 0x00, 0x00,               # 345
+
+        # 1
+        0x00,                                   # End array document
 
     # 1
     0x00                                        # End document
@@ -213,6 +243,9 @@ say $d.encode;
 
   is $d<str>, 'String text', 'Text ok';
 
+  is $d<array>[[1]], 'abc', 'A[[1]] = abc';
+  is $d<array>[[2]], 345, 'A[[2]] = 345';
+
   # Test sequence
   #
   diag "Sequence of index";
@@ -229,6 +262,8 @@ say $d.encode;
   ok !?$d[7], "7: Boolean False";
   ok ?$d[8], "8: Boolean True";
   is $d[9], 'String text', '9: Text ok';
+  is $d[10][[1]], 'abc', '10: A[[1]] = abc';
+  is $d[10][[2]], 345, '10: A[[2]] = 345';
 
 }, "Document encoding decoding types";
 

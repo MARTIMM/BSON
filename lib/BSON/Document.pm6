@@ -59,7 +59,6 @@ package BSON {
     #
     has Bool $!encoded;
     has $!start-enc-time;
-#    has Bool $!promises-wait;
 
     # Decoded turns
     # 1) False on init
@@ -78,6 +77,7 @@ package BSON {
       self.bless(:pairs(@ps));
     }
 
+    #---------------------------------------------------------------------------
     submethod BUILD (:@pairs!) {
 
       $!encoded = True;
@@ -90,6 +90,18 @@ package BSON {
       for @pairs -> $pair {
         self{$pair.key} = $pair.value;
       }
+    }
+
+    #---------------------------------------------------------------------------
+    submethod DESTROY ( ) {
+
+      @!keys = Nil;
+      $!data = Nil;
+
+      $!encoded-document = Nil;
+      @!encoded-entries = Nil;
+
+      %!promises = ();
     }
 
     #---------------------------------------------------------------------------
@@ -114,7 +126,6 @@ package BSON {
         loop ( my $i = 0; $i < @!keys.elems; $i++ ) {
           if @!keys[$i] ~~ $key {
             @!keys.splice( $i, 1);
-#say "Key = $key, i = $i, #ee: {@!encoded-entries.elems}";
             @!encoded-entries.splice( $i, 1) if @!encoded-entries.elems;   # $!encoded kept to True!
             $value = $!data{$key}:delete;
             last;
@@ -139,7 +150,6 @@ say "Asign-key($?LINE): $key => ", $new.WHAT;
       my $d := $!data{$key};
 #      %!promises{$key} = Promise.start( {
           my Buf $b = self!encode-element: ($k => $d);
-say "E: {now - $!start-enc-time} Done $k";
           $b;
 #        }
 #      );
@@ -147,6 +157,20 @@ say "E: {now - $!start-enc-time} Done $k";
       $!encoded = False;
     }
 }}
+
+    multi method ASSIGN-KEY ( Str:D $key, Array:D $new) {
+
+say "Asign-key($?LINE): $key => ", $new.WHAT;
+      @!keys.push($key) unless $!data{$key}:exists;
+      $!data{$key} = $new;
+
+      %!promises{$key}:delete if %!promises{$key}:exists;
+
+      my $k = $key;
+      my $d := $!data{$key};
+      %!promises{$key} = Promise.start({ self!encode-element: ($k => $d); });
+      $!encoded = False;
+    }
 
     multi method ASSIGN-KEY ( Str:D $key, List:D $new) {
 
@@ -158,13 +182,7 @@ say "Asign-key($?LINE): $key => ", $new.WHAT;
 
       my $k = $key;
       my $d := $!data{$key};
-      %!promises{$key} = Promise.start( {
-          my Buf $b = self!encode-element: ($k => $d);
-#say "E: {now - $!start-enc-time} Done $k";
-          $b;
-        }
-      );
-
+      %!promises{$key} = Promise.start({ self!encode-element: ($k => $d); });
       $!encoded = False;
     }
 
@@ -183,7 +201,6 @@ say "Asign-key($?LINE): $key => ", $new.WHAT;
 say "KV: $k => $d";
 #      %!promises{$key} = Promise.start( {
           my Buf $b = self!encode-element: ($k => $d);
-say "E: {now - $!start-enc-time} Done $k";
           $b;
 #        }
 #      );
@@ -203,14 +220,7 @@ say "Asign-key($?LINE): $key => ", $new.WHAT;
 
       my $k = $key;
       my $d := $!data{$key};
-      %!promises{$key} = Promise.start( {
-          my Buf $b = self!encode-element: ($k => $d);
-#say "B: $k => $d == ", $b;
-#say "E: {now - $!start-enc-time} Done $k";
-          $b;
-        }
-      );
-
+      %!promises{$key} = Promise.start({ self!encode-element: ($k => $d); });
       $!encoded = False;
     }
 
@@ -299,12 +309,12 @@ location is changed. This is nessesary to encode the key, value pair.
 
     method kv ( --> List ) {
 
-      my @l;
+      my @kv-list;
       for @!keys -> $k {
-        @l.push( $k, $!data{$k});
+        @kv-list.push( $k, $!data{$k});
       }
 
-      @l;
+      @kv-list;
     }
 
     #---------------------------------------------------------------------------
@@ -394,7 +404,7 @@ location is changed. This is nessesary to encode the key, value pair.
           # Double precision
           # "\x01" e_name Num
           #
-          return [~] Buf.new(C-DOUBLE),
+          return [~] Buf.new(BSON::C-DOUBLE),
                      encode-e-name($p.key),
                      self!encode-double($p.value);
         }
@@ -403,11 +413,10 @@ location is changed. This is nessesary to encode the key, value pair.
           # UTF-8 string
           # "\x02" e_name string
           #
-          return [~] Buf.new(C-STRING),
+          return [~] Buf.new(BSON::C-STRING),
                      encode-e-name($p.key),
                      encode-string($p.value);
         }
-
         # Converting a pair same way as a hash:
         #
         when Pair {
@@ -415,11 +424,12 @@ location is changed. This is nessesary to encode the key, value pair.
           # "\x03" e_name document
           #
           my Pair @pairs = $p.value;
-          return [~] Buf.new(C-DOCUMENT),
+          return [~] Buf.new(BSON::C-DOCUMENT),
                      encode-e-name($p.key),
                      self!encode-document(@pairs);
         }
 
+#`{{
         when Hash {
           # Embedded document
           # "\x03" e_name document
@@ -428,14 +438,14 @@ location is changed. This is nessesary to encode the key, value pair.
                      encode-e-name($p.key),
                      self!encode-document($p.value);
         }
-
+}}
         when BSON::Document {
           # Embedded document
           # "\x03" e_name document
           #
 #say "Document: ", $p.key, ' => ', .keys;
 
-          return [~] Buf.new(C-DOCUMENT),
+          return [~] Buf.new(BSON::C-DOCUMENT),
                      encode-e-name($p.key),
                      .encode;
         }
@@ -456,14 +466,12 @@ location is changed. This is nessesary to encode the key, value pair.
           # { 1 => 'abc', 0 => 'def' } was encoded instead of
           # { 0 => 'def', 1 => 'abc' }.
           #
-          my Pair @pairs;
-          for .kv -> $k, $v {
-            @pairs.push: ($k => $v);
-          }
+          my BSON::Document $d .= new: ('0' ... $p.value.elems.Str) Z=> $p.value;
+#          for .kv -> $k, $v {
+#            $d{"$k"} = $v;
+#          }
 
-          return [~] Buf.new(C-ARRAY),
-                     encode-e-name($p.key),
-                     self!encode-document(@pairs);
+          return [~] Buf.new(BSON::C-ARRAY), encode-e-name($p.key), $d.encode;
         }
 
         when BSON::Binary {
@@ -471,7 +479,7 @@ location is changed. This is nessesary to encode the key, value pair.
           # "\x05" e_name int32 subtype byte*
           # subtype is '\x00' for the moment (Generic binary subtype)
           #
-          my Buf $b = [~] Buf.new(C-BINARY), encode-e-name($p.key);
+          my Buf $b = [~] Buf.new(BSON::C-BINARY), encode-e-name($p.key);
 
           if .has-binary-data {
             $b ~= encode-int32(.binary-data.elems);
@@ -503,7 +511,7 @@ location is changed. This is nessesary to encode the key, value pair.
           # ObjectId
           # "\x07" e_name (byte*12)
           #
-          return Buf.new(C-OBJECTID) ~ encode-e-name($p.key) ~ .Buf;
+          return Buf.new(BSON::C-OBJECTID) ~ encode-e-name($p.key) ~ .Buf;
         }
 
         when Bool {
@@ -514,13 +522,13 @@ location is changed. This is nessesary to encode the key, value pair.
             # Boolean "true"
             # "\x08" e_name "\x01
             #
-            return Buf.new(C-BOOLEAN) ~ encode-e-name($p.key) ~ Buf.new(0x01);
+            return Buf.new(BSON::C-BOOLEAN) ~ encode-e-name($p.key) ~ Buf.new(0x01);
           }
           else {
             # Boolean "false"
             # "\x08" e_name "\x00
             #
-            return Buf.new(C-BOOLEAN) ~ encode-e-name($p.key) ~ Buf.new(0x00);
+            return Buf.new(BSON::C-BOOLEAN) ~ encode-e-name($p.key) ~ Buf.new(0x00);
           }
         }
 
@@ -528,7 +536,7 @@ location is changed. This is nessesary to encode the key, value pair.
           # UTC dateime
           # "\x09" e_name int64
           #
-          return [~] Buf.new(C-DATETIME),
+          return [~] Buf.new(BSON::C-DATETIME),
                      encode-e-name($p.key),
                      encode-int64($p.value().posix());
         }
@@ -537,14 +545,14 @@ location is changed. This is nessesary to encode the key, value pair.
           # Null value
           # "\x0A" e_name
           #
-          return Buf.new(C-NULL) ~ encode-e-name($p.key);
+          return Buf.new(BSON::C-NULL) ~ encode-e-name($p.key);
         }
 
         when BSON::Regex {
           # Regular expression
           # "\x0B" e_name cstring cstring
           #
-          return [~] Buf.new(C-REGEX),
+          return [~] Buf.new(BSON::C-REGEX),
                      encode-e-name($p.key),
                      encode-cstring($p.value.regex),
                      encode-cstring($p.value.options);
@@ -579,7 +587,7 @@ location is changed. This is nessesary to encode the key, value pair.
             if .has-scope {
               my Buf $doc = .scope.encode;
 #say "JS Doc: ", $doc;
-              return [~] Buf.new(C-JAVASCRIPT-SCOPE),
+              return [~] Buf.new(BSON::C-JAVASCRIPT-SCOPE),
                          encode-e-name($p.key),
 #                         encode-int32([+] $js.elems, $doc.elems, 4),
                          $js, $doc
@@ -587,7 +595,7 @@ location is changed. This is nessesary to encode the key, value pair.
             }
 
             else {
-              return [~] Buf.new(C-JAVASCRIPT), encode-e-name($p.key), $js;
+              return [~] Buf.new(BSON::C-JAVASCRIPT), encode-e-name($p.key), $js;
             }
           }
 
@@ -623,14 +631,14 @@ location is changed. This is nessesary to encode the key, value pair.
           # '\x12' e_name int64
           #
           if -0xffffffff < $p.value < 0xffffffff {
-            return [~] Buf.new(C-INT32),
+            return [~] Buf.new(BSON::C-INT32),
                        encode-e-name($p.key),
                        encode-int32($p.value)
                        ;
           }
 
           elsif -0x7fffffff_ffffffff < $p.value < 0x7fffffff_ffffffff {
-            return [~] Buf.new(C-INT64),
+            return [~] Buf.new(BSON::C-INT64),
                        encode-e-name($p.key),
                        encode-int64($p.value)
                        ;
@@ -663,7 +671,7 @@ location is changed. This is nessesary to encode the key, value pair.
         #
         when Buf {
           my BSON::Binary $bbin .= new(:data($_));
-          my Buf $b = [~] Buf.new(C-BINARY), encode-e-name($p.key);
+          my Buf $b = [~] Buf.new(BSON::C-BINARY), encode-e-name($p.key);
           $b ~= encode-int32(.binary-data.elems);
           $b ~= Buf.new(.binary-type);
           $b ~= .binary-data;
@@ -933,7 +941,7 @@ say "DE 3 I: $!index, $doc-size";
 
         # 64-bit floating point
         #
-        when C-DOUBLE {
+        when BSON::C-DOUBLE {
 
           my Int $i = $!index;
           $!index += C-DOUBLE-SIZE;
@@ -947,7 +955,7 @@ say "{now - $!start-dec-time} Done $key => $!data{$key}";
 
         # String type
         #
-        when C-STRING {
+        when BSON::C-STRING {
 
           my Int $i = $!index;
           my Int $nbr-bytes = decode-int32( $!encoded-document, $!index);
@@ -965,7 +973,7 @@ say "{now - $!start-dec-time} Done $key => $!data{$key}";
 
         # Nested document
         #
-        when C-DOCUMENT {
+        when BSON::C-DOCUMENT {
 
 #say "Doc 0: $!index";
           my $i = $!index;
@@ -981,12 +989,30 @@ say "{now - $!start-dec-time} Done $key => $!data{$key}";
           );
         }
 
+        # Array code
+        #
+        when BSON::C-ARRAY {
+
+          my $i = $!index;
+          my Int $doc-size = decode-int32( $!encoded-document, $!index);
+          $!index += $doc-size;
+
+          %!promises{$key} = Promise.start( {
+              my BSON::Document $d .= new;
+              $d.decode(Buf.new($!encoded-document[$i ..^ ($i + $doc-size)]));
+              $!data{$key} = [$d.values];
+
+say "{now - $!start-dec-time} Done $key => $!data{$key}";
+            }
+          );
+        }
+
         # Binary code
         # "\x05 e_name int32 subtype byte*
         # subtype = byte \x00 .. \x05, .. \xFF
         # subtypes \x80 to \xFF are user defined
         #
-        when C-BINARY {
+        when BSON::C-BINARY {
 
           my Int $nbr-bytes = decode-int32( $!encoded-document, $!index);
           my $i = $!index + C-INT32-SIZE;
@@ -1007,7 +1033,7 @@ say "{now - $!start-dec-time} Done $key => $!data{$key}";
 
         # Boolean code
         #
-        when C-BOOLEAN {
+        when BSON::C-BOOLEAN {
 
           my $i = $!index;
           $!index++;
@@ -1019,7 +1045,7 @@ say "{now - $!start-dec-time} Done $key => $!data{$key}";
 
         # Javascript code
         #
-        when C-JAVASCRIPT {
+        when BSON::C-JAVASCRIPT {
 
           # Get the size of the javascript code text, then adjust index
           # for this size and set i for the decoding. Then adjust index again
@@ -1043,7 +1069,7 @@ say "{now - $!start-dec-time} Done $key => $!data{$key}";
 
         # Javascript code with scope
         #
-        when C-JAVASCRIPT-SCOPE {
+        when BSON::C-JAVASCRIPT-SCOPE {
 
           my Int $i1 = $!index;
           my Int $js-size = decode-int32( $!encoded-document, $i1);
@@ -1066,7 +1092,7 @@ say "{now - $!start-dec-time} Done $key => $!data{$key}";
 
         # 32-bit Integer
         #
-        when C-INT32 {
+        when BSON::C-INT32 {
 
           my Int $i = $!index;
           $!index += C-INT32-SIZE;
@@ -1080,7 +1106,7 @@ say "{now - $!start-dec-time} Done $key => $!data{$key}";
 
         # 64-bit Integer
         #
-        when C-INT64 {
+        when BSON::C-INT64 {
 
           my Int $i = $!index;
           $!index += C-INT64-SIZE;
