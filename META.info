@@ -21,6 +21,7 @@
     "BSON::Javascript":         "lib/BSON/Javascript.pm6",
     "BSON::Javascript-old":     "lib/BSON/Javascript-old.pm6",
     "BSON::ObjectId":           "lib/BSON/ObjectId.pm6",
+    "BSON::ObjectId-old":       "lib/BSON/ObjectId-old.pm6",
     "BSON::Regex":              "lib/BSON/Regex.pm6"
   },
   "source-url": "git://github.com/MARTIMM/BSON.git",

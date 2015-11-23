@@ -1,5 +1,5 @@
 use v6;
-use BSON::ObjectId;
+use BSON::ObjectId-old;
 use BSON::Regex;
 use BSON::Javascript-old;
 use BSON::Binary-old;
