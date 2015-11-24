@@ -25,6 +25,8 @@ subtest {
   );
 
   my BSON::ObjectId $oid .= new;
+  
+  my DateTime $datetime .= now;
 
   # Checklist/Tests of
   #
@@ -36,6 +38,7 @@ subtest {
   # 0x06 -
   # 0x07 ObjectId
   # 0x08 Boolean
+  # 0x09 Date and time
   # 0x0C -
   # 0x0D Javascript
   # 0x0E -
@@ -60,14 +63,15 @@ subtest {
   $d<str> = "String text";
   $d<array> = [ 10, 'abc', 345];
   $d<oid> = $oid;
+  $d<dtime> = $datetime;
 
 say $d.encode;
 
   # Handcrafted encoded BSON data
   #
   my Buf $etst = Buf.new(
-    # 273 (4 + 11 + 7 + 11 + 30 + 45 + 53 + 26 + 5 + 5 + 21 + 37 + 17 + 1)
-    0x11, 0x01, 0x00, 0x00,                     # Size document
+    # 288 (4 + 11 + 7 + 11 + 30 + 45 + 53 + 26 + 5 + 5 + 21 + 37 + 17 + 15 + 1)
+    0x20, 0x01, 0x00, 0x00,                     # Size document
 
     # 11
     BSON::C-DOUBLE,                             # 0x01
@@ -217,6 +221,11 @@ say $d.encode;
       0x6f, 0x69, 0x64, 0x00,                   # 'oid'
       $oid.oid.List,
 
+    # 15
+    BSON::C-DATETIME,                           # 0x09
+      0x64, 0x74, 0x69, 0x6d, 0x65, 0x00,       # 'dtime'
+      local-encode-int64($datetime.posix).List, # time
+
     # 1
     0x00                                        # End document
   );
@@ -262,6 +271,8 @@ say $d.encode;
   is $d<oid>.oid.elems, 12, 'Length of object id ok';
   is $d<oid>.pid, $*PID, "Pid = $*PID";
 
+  is $d<dtime>.Str, $datetime.Str, 'Date and time ok';
+
   # Test sequence
   #
   diag "Sequence of index";
@@ -281,6 +292,7 @@ say $d.encode;
   is $d[10][[1]], 'abc', '10: A[[1]] = abc';
   is $d[10][[2]], 345, '10: A[[2]] = 345';
   is $d[11].oid.elems, 12, '11: Length of object id ok';
+  is $d[12].Str, $datetime.Str, '12 Date and time ok';
 
 }, "Document encoding decoding types";
 
@@ -291,3 +303,17 @@ say $d.encode;
 #
 done-testing();
 exit(0);
+
+#---------------------------------------------------------------------------
+sub local-encode-int64 ( Int:D $i ) {
+  # No tests for too large/small numbers because it is called from
+  # _enc_element normally where it is checked
+  #
+  my int $ni = $i;
+  return Buf.new(
+    $ni +& 0xFF, ($ni +> 0x08) +& 0xFF,
+    ($ni +> 0x10) +& 0xFF, ($ni +> 0x18) +& 0xFF,
+    ($ni +> 0x20) +& 0xFF, ($ni +> 0x28) +& 0xFF,
+    ($ni +> 0x30) +& 0xFF, ($ni +> 0x38) +& 0xFF
+  );
+}

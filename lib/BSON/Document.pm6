@@ -518,13 +518,17 @@ location is changed. This is nessesary to encode the key, value pair.
             # Boolean "true"
             # "\x08" e_name "\x01
             #
-            return Buf.new(BSON::C-BOOLEAN) ~ encode-e-name($p.key) ~ Buf.new(0x01);
+            return [~] Buf.new(BSON::C-BOOLEAN),
+                       encode-e-name($p.key),
+                       Buf.new(0x01);
           }
           else {
             # Boolean "false"
             # "\x08" e_name "\x00
             #
-            return Buf.new(BSON::C-BOOLEAN) ~ encode-e-name($p.key) ~ Buf.new(0x00);
+            return [~] Buf.new(BSON::C-BOOLEAN),
+                       encode-e-name($p.key),
+                       Buf.new(0x00);
           }
         }
 
@@ -534,7 +538,7 @@ location is changed. This is nessesary to encode the key, value pair.
           #
           return [~] Buf.new(BSON::C-DATETIME),
                      encode-e-name($p.key),
-                     encode-int64($p.value().posix());
+                     encode-int64(.posix());
         }
 
         when not .defined {
@@ -716,7 +720,7 @@ location is changed. This is nessesary to encode the key, value pair.
     }
 
     #---------------------------------------------------------------------------
-    sub encode-int32 ( Int:D $i ) {
+    sub encode-int32 ( Int:D $i --> Buf ) {
       my int $ni = $i;      
       return Buf.new( $ni +& 0xFF, ($ni +> 0x08) +& 0xFF,
                       ($ni +> 0x10) +& 0xFF, ($ni +> 0x18) +& 0xFF
@@ -724,9 +728,9 @@ location is changed. This is nessesary to encode the key, value pair.
     }
 
     #---------------------------------------------------------------------------
-    sub encode-int64 ( Int:D $i ) {
+    sub encode-int64 ( Int:D $i --> Buf ) {
       # No tests for too large/small numbers because it is called from
-      # _enc_element normally where it is checked
+      # enc-element normally where it is checked
       #
       my int $ni = $i;
       return Buf.new( $ni +& 0xFF, ($ni +> 0x08) +& 0xFF,
@@ -734,15 +738,6 @@ location is changed. This is nessesary to encode the key, value pair.
                       ($ni +> 0x20) +& 0xFF, ($ni +> 0x28) +& 0xFF,
                       ($ni +> 0x30) +& 0xFF, ($ni +> 0x38) +& 0xFF
                     );
-
-      # Original method goes wrong on negative numbers. Also modulo operations
-      # are slower than the bit operations.
-      #
-      #return Buf.new( $i % 0x100, $i +> 0x08 % 0x100, $i +> 0x10 % 0x100,
-      #                $i +> 0x18 % 0x100, $i +> 0x20 % 0x100,
-      #                $i +> 0x28 % 0x100, $i +> 0x30 % 0x100,
-      #                $i +> 0x38 % 0x100
-      #              );
     }
 
     #---------------------------------------------------------------------------
@@ -1051,6 +1046,21 @@ say "{now - $!start-dec-time} Done $key => $!data{$key}";
 
           %!promises{$key} = Promise.start( {
               $!data{$key} = $!encoded-document[$i] ~~ 0x00 ?? False !! True;
+            }
+          );
+        }
+
+        # Datetime code
+        #
+        when BSON::C-DATETIME {
+          my Int $i = $!index;
+          $!index += BSON::C-INT64-SIZE;
+
+          %!promises{$key} = Promise.start( {
+              $!data{$key} = DateTime.new(
+                decode-int64( $!encoded-document, $i),
+                :timezone($*TZ)
+              );
             }
           );
         }
