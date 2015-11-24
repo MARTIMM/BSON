@@ -209,7 +209,7 @@ say "KV: $k => $d";
     }
 }}
 
-    multi method ASSIGN-KEY ( Str:D $key, Any:D $new) {
+    multi method ASSIGN-KEY ( Str:D $key, Any $new) {
 
 say "Asign-key($?LINE): $key => ", $new.WHAT;
 
@@ -542,7 +542,7 @@ location is changed. This is nessesary to encode the key, value pair.
         }
 
         when not .defined {
-          # Null value
+          # Nil == Undefined value == typed object
           # "\x0A" e_name
           #
           return Buf.new(BSON::C-NULL) ~ encode-e-name($p.key);
@@ -1063,6 +1063,10 @@ say "{now - $!start-dec-time} Done $key => $!data{$key}";
               );
             }
           );
+        }
+        
+        when BSON::C-NULL {
+          %!promises{$key} = Promise.start( { $!data[$key] = Any; } );
         }
 
         # Javascript code
