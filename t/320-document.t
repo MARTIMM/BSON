@@ -3,6 +3,7 @@ use Test;
 use BSON::Document;
 use BSON::Javascript;
 use BSON::Binary;
+use BSON::ObjectId;
 use UUID;
 
 #-------------------------------------------------------------------------------
@@ -23,6 +24,8 @@ subtest {
     :type(BSON::C-UUID)
   );
 
+  my BSON::ObjectId $oid .= new;
+
   # Checklist/Tests of
   #
   # 0x01 Double
@@ -30,8 +33,12 @@ subtest {
   # 0x03 Document
   # 0x04 Array
   # 0x05 Binary
+  # 0x06 -
+  # 0x07 ObjectId
   # 0x08 Boolean
+  # 0x0C -
   # 0x0D Javascript
+  # 0x0E -
   # 0x0F Javascript with scope
   # 0x10 int32
   # 0x12 int64
@@ -52,14 +59,15 @@ subtest {
   $d<bt> = True;
   $d<str> = "String text";
   $d<array> = [ 10, 'abc', 345];
+  $d<oid> = $oid;
 
 say $d.encode;
 
   # Handcrafted encoded BSON data
   #
   my Buf $etst = Buf.new(
-    # 256 (4 + 11 + 7 + 11 + 30 + 45 + 53 + 26 + 5 + 5 + 21 + 37 + 1)
-    0x00, 0x01, 0x00, 0x00,                     # Size document
+    # 273 (4 + 11 + 7 + 11 + 30 + 45 + 53 + 26 + 5 + 5 + 21 + 37 + 17 + 1)
+    0x11, 0x01, 0x00, 0x00,                     # Size document
 
     # 11
     BSON::C-DOUBLE,                             # 0x01
@@ -204,6 +212,11 @@ say $d.encode;
         # 1
         0x00,                                   # End array document
 
+    # 17
+    BSON::C-OBJECTID,                           # 0x07
+      0x6f, 0x69, 0x64, 0x00,                   # 'oid'
+      $oid.oid.List,
+
     # 1
     0x00                                        # End document
   );
@@ -246,6 +259,9 @@ say $d.encode;
   is $d<array>[[1]], 'abc', 'A[[1]] = abc';
   is $d<array>[[2]], 345, 'A[[2]] = 345';
 
+  is $d<oid>.oid.elems, 12, 'Length of object id ok';
+  is $d<oid>.pid, $*PID, "Pid = $*PID";
+
   # Test sequence
   #
   diag "Sequence of index";
@@ -264,6 +280,7 @@ say $d.encode;
   is $d[9], 'String text', '9: Text ok';
   is $d[10][[1]], 'abc', '10: A[[1]] = abc';
   is $d[10][[2]], 345, '10: A[[2]] = 345';
+  is $d[11].oid.elems, 12, '11: Length of object id ok';
 
 }, "Document encoding decoding types";
 

@@ -466,11 +466,7 @@ location is changed. This is nessesary to encode the key, value pair.
           # { 1 => 'abc', 0 => 'def' } was encoded instead of
           # { 0 => 'def', 1 => 'abc' }.
           #
-          my BSON::Document $d .= new: ('0' ... $p.value.elems.Str) Z=> $p.value;
-#          for .kv -> $k, $v {
-#            $d{"$k"} = $v;
-#          }
-
+          my BSON::Document $d .= new: ('0' ...^ $p.value.elems.Str) Z=> $p.value;
           return [~] Buf.new(BSON::C-ARRAY), encode-e-name($p.key), $d.encode;
         }
 
@@ -511,7 +507,7 @@ location is changed. This is nessesary to encode the key, value pair.
           # ObjectId
           # "\x07" e_name (byte*12)
           #
-          return Buf.new(BSON::C-OBJECTID) ~ encode-e-name($p.key) ~ .Buf;
+          return Buf.new(BSON::C-OBJECTID) ~ encode-e-name($p.key) ~ .oid;
         }
 
         when Bool {
@@ -976,7 +972,7 @@ say "{now - $!start-dec-time} Done $key => $!data{$key}";
         when BSON::C-DOCUMENT {
 
 #say "Doc 0: $!index";
-          my $i = $!index;
+          my Int $i = $!index;
           my Int $doc-size = decode-int32( $!encoded-document, $i);
           $!index += $doc-size;
 #say "Doc 1: $doc-size, $i, $!index, $!encoded-document[$!index]";
@@ -993,7 +989,7 @@ say "{now - $!start-dec-time} Done $key => $!data{$key}";
         #
         when BSON::C-ARRAY {
 
-          my $i = $!index;
+          my Int $i = $!index;
           my Int $doc-size = decode-int32( $!encoded-document, $!index);
           $!index += $doc-size;
 
@@ -1015,7 +1011,7 @@ say "{now - $!start-dec-time} Done $key => $!data{$key}";
         when BSON::C-BINARY {
 
           my Int $nbr-bytes = decode-int32( $!encoded-document, $!index);
-          my $i = $!index + C-INT32-SIZE;
+          my Int $i = $!index + C-INT32-SIZE;
 
           # Step over size field, subtype and binary data
           #
@@ -1031,12 +1027,28 @@ say "{now - $!start-dec-time} Done $key => $!data{$key}";
           );
         }
 
+        # Object id
+        #
+        when BSON::C-OBJECTID {
+          
+          my Int $i = $!index;
+          $!index += 12;
+          
+          %!promises{$key} = Promise.start( {
+              $!data{$key} = BSON::ObjectId.new(
+                :bytes($!encoded-document[$i ..^ ($i + 12)])
+              );
+            }
+          );
+        }
+
         # Boolean code
         #
         when BSON::C-BOOLEAN {
 
-          my $i = $!index;
+          my Int $i = $!index;
           $!index++;
+
           %!promises{$key} = Promise.start( {
               $!data{$key} = $!encoded-document[$i] ~~ 0x00 ?? False !! True;
             }
