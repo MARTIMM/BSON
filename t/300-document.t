@@ -41,7 +41,7 @@ subtest {
 
     CATCH {
       default {
-        is ~$_, "Cannot use binding", $_;
+        ok .message ~~ ms/'Cannot' 'use' 'binding'/, $_;
       }
     }
   }
@@ -83,7 +83,7 @@ subtest {
 
     CATCH {
       default {
-        is ~$_, "Cannot use binding", $_;
+        ok .message ~~ ms/'Cannot' 'use' 'binding'/, $_;
       }
     }
   }
@@ -151,19 +151,15 @@ subtest {
     }
   }
 
-#`{{}}
   # Try nesting with k => v
   #
   $d .= new;
   $d<abcdef> = a1 => 10, bb => 11;
   is $d<abcdef><a1>, 10, "sub document \$d<abcdef><a1> = $d<abcdef><a1>";
 
-#`{{}}
   $d<abcdef><b1> = q => 255;
   is $d<abcdef><b1><q>, 255,
      "sub document \$d<abcdef><b1><q> = $d<abcdef><b1><q>";
-
-say $d.encode;
 
 }, "Document nesting";
 

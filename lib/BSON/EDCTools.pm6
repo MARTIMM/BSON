@@ -21,7 +21,7 @@ package BSON {
   constant C-DEPRECATED         = 0x0E;         # Deprecated
   constant C-JAVASCRIPT-SCOPE   = 0x0F;
   constant C-INT32              = 0x10;
-  constant C-TIMESTAMP          = 0x11;
+  constant C-TIMESTAMP          = 0x11;         # Used internally
   constant C-INT64              = 0x12;
   constant C-MIN-KEY            = 0xFF;
   constant C-MAX-KEY            = 0x7F;
@@ -30,10 +30,6 @@ package BSON {
   constant C-INT32-SIZE         = 4;
   constant C-INT64-SIZE         = 8;
   constant C-DOUBLE-SIZE        = 8;
-
-  sub int32-size ( --> Int ) is export { C-INT32-SIZE }
-  sub int64-size ( --> Int ) is export { C-INT64-SIZE }
-  sub double-size ( --> Int ) is export { C-DOUBLE-SIZE }
 
   #-----------------------------------------------------------------------------
   # Encoding tools

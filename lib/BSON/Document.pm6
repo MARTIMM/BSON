@@ -27,7 +27,7 @@ package BSON {
   constant C-DEPRECATED         = 0x0E;         # Deprecated
   constant C-JAVASCRIPT-SCOPE   = 0x0F;
   constant C-INT32              = 0x10;
-  constant C-TIMESTAMP          = 0x11;
+  constant C-TIMESTAMP          = 0x11;         # Used internally
   constant C-INT64              = 0x12;
   constant C-MIN-KEY            = 0xFF;
   constant C-MAX-KEY            = 0x7F;
@@ -38,6 +38,16 @@ package BSON {
   constant C-INT32-SIZE         = 4;
   constant C-INT64-SIZE         = 8;
   constant C-DOUBLE-SIZE        = 8;
+
+  #-----------------------------------------------------------------------------
+  class X::Parse is Exception {
+    has $.operation;                      # Operation method
+    has $.error;                          # Parse error
+
+    method message () {
+      return "\n$!operation error: $!error\n";
+    }
+  }
 
   #-----------------------------------------------------------------------------
   class Document does Associative does Positional {
@@ -73,7 +83,7 @@ package BSON {
     #---------------------------------------------------------------------------
     #
     method new ( *@ps ) {
-#say "PM: ", @ps.WHAT;
+
       self.bless(:pairs(@ps));
     }
 
@@ -137,30 +147,9 @@ package BSON {
     }
 
     #---------------------------------------------------------------------------
-#`{{
-    multi method ASSIGN-KEY ( Str:D $key, Document:D $new) {
-
-say "Asign-key($?LINE): $key => ", $new.WHAT;
-      @!keys.push($key) unless $!data{$key}:exists;
-      $!data{$key} = $new;
-
-      %!promises{$key}:delete if %!promises{$key}:exists;
-
-      my $k = $key;
-      my $d := $!data{$key};
-#      %!promises{$key} = Promise.start( {
-          my Buf $b = self!encode-element: ($k => $d);
-          $b;
-#        }
-#      );
-
-      $!encoded = False;
-    }
-}}
-
     multi method ASSIGN-KEY ( Str:D $key, Array:D $new) {
 
-say "Asign-key($?LINE): $key => ", $new.WHAT;
+#say "Asign-key($?LINE): $key => ", $new.WHAT;
       @!keys.push($key) unless $!data{$key}:exists;
       $!data{$key} = $new;
 
@@ -174,7 +163,7 @@ say "Asign-key($?LINE): $key => ", $new.WHAT;
 
     multi method ASSIGN-KEY ( Str:D $key, List:D $new) {
 
-say "Asign-key($?LINE): $key => ", $new.WHAT;
+#say "Asign-key($?LINE): $key => ", $new.WHAT;
       @!keys.push($key) unless $!data{$key}:exists;
       $!data{$key} = BSON::Document.new(|$new);
 
@@ -186,32 +175,9 @@ say "Asign-key($?LINE): $key => ", $new.WHAT;
       $!encoded = False;
     }
 
-#`{{
-    multi method ASSIGN-KEY ( Str:D $key, Pair:D $new) {
-
-say "Asign-key($?LINE): $key => ", $new.WHAT;
-
-      @!keys.push($key) unless $!data{$key}:exists;
-      $!data{$key} = BSON::Document.new($new);
-
-      %!promises{$key}:delete if %!promises{$key}:exists;
-
-      my $k = $key;
-      my $d := $!data{$key};
-say "KV: $k => $d";
-#      %!promises{$key} = Promise.start( {
-          my Buf $b = self!encode-element: ($k => $d);
-          $b;
-#        }
-#      );
-
-      $!encoded = False;
-    }
-}}
-
     multi method ASSIGN-KEY ( Str:D $key, Any $new) {
 
-say "Asign-key($?LINE): $key => ", $new.WHAT;
+#say "Asign-key($?LINE): $key => ", $new.WHAT;
 
       @!keys.push($key) unless $!data{$key}:exists;
       $!data{$key} = $new;
@@ -225,14 +191,16 @@ say "Asign-key($?LINE): $key => ", $new.WHAT;
     }
 
     #---------------------------------------------------------------------------
-#`{{
-Cannot use binding because when value changes the object cannot know that the
-location is changed. This is nessesary to encode the key, value pair.
-}}
+    #`{{
+    Cannot use binding because when value changes this object cannot know that
+    the location is changed. This is nessesary to encode the key, value pair.
+    }}
     method BIND-KEY ( Str $key, \new ) {
 
-      die "Cannot use binding";
-#      $!data{$key} := new;
+      die X::Parse.new(
+        :operation("\$d<$key> := {new}")
+        :error("Cannot use binding")
+      );
     }
 
 
@@ -259,7 +227,6 @@ location is changed. This is nessesary to encode the key, value pair.
 
     #---------------------------------------------------------------------------
     method ASSIGN-POS ( Index $idx, $new! ) {
-say "AP: $idx, $new";
 
       # If index is at a higher position then the last one then only
       # one place extended with a generated key na,e such as key21 on the
@@ -281,15 +248,16 @@ say "AP: $idx, $new";
     }
 
     #---------------------------------------------------------------------------
-#`{{
-Cannot use binding because when value changes the object cannot know that the
-location is changed. This is nessesary to encode the key, value pair.
-}}
+    #`{{
+    Cannot use binding because when value changes the object cannot know that
+    the location is changed. This is nessesary to encode the key, value pair.
+    }}
     method BIND-POS ( Index $idx, \new ) {
 
-      die "Cannot use binding";
-#      my $key = $idx >= @!keys.elems ?? 'key' ~ $idx !! @!keys[$idx];
-#      $!data{$key} := new;
+      die X::Parse.new(
+        :operation("\$d[$idx] := {new}")
+        :error("Cannot use binding")
+      );
     }
 
     #---------------------------------------------------------------------------
@@ -335,13 +303,10 @@ location is changed. This is nessesary to encode the key, value pair.
     # Called from user to get encoded document
     #
     method encode ( --> Buf ) {
-#say "Encode0: {self}, $!encoded";
 
       if ! ? $!encoded {
-#say "Encode1: {@!keys.elems}";
         loop ( my $idx = 0; $idx < @!keys.elems; $idx++) {
           my $key = @!keys[$idx];
-#say "Encode2: $key, {%!promises{$key}:exists}";
           if %!promises{$key}:exists {
             try {
               @!encoded-entries[$idx] = await %!promises{$key};
@@ -353,13 +318,10 @@ location is changed. This is nessesary to encode the key, value pair.
               }
             }
           }
-
-#say "Encode3: $idx, $key, ", @!encoded-entries[$idx];
         }
 
         $!encoded = True;
         %!promises = ();
-#say "Encode4: $!encoded, {@!keys.elems}";
       }
 
       $!encoded-document = [~] @!encoded-entries;
@@ -368,7 +330,6 @@ location is changed. This is nessesary to encode the key, value pair.
           $!encoded-document,
           Buf.new(0x00);
 
-#say "Encode5: $!encoded, ", $b;
       return $b;
     }
 
@@ -397,7 +358,6 @@ location is changed. This is nessesary to encode the key, value pair.
     #
     method !encode-element ( Pair:D $p --> Buf ) {
 
-#say "EE: {$p.key} => {$p.value}, {$p.perl}";
       given $p.value {
 
         when Num {
@@ -443,8 +403,6 @@ location is changed. This is nessesary to encode the key, value pair.
           # Embedded document
           # "\x03" e_name document
           #
-#say "Document: ", $p.key, ' => ', .keys;
-
           return [~] Buf.new(BSON::C-DOCUMENT),
                      encode-e-name($p.key),
                      .encode;
@@ -491,19 +449,7 @@ location is changed. This is nessesary to encode the key, value pair.
           $b;
         }
 
-#`{{
-        # Do not know what type to test. Any, Nil?
-        when Any {
-          # Undefined deprecated 
-          # "\x06" e_name
-          #
-          die X::BSON::Deprecated.new(
-            operation => 'encode',
-            type => 'Undefined(0x06)'
-          );
-        }
-}}
-        when BSON::ObjectId {
+       when BSON::ObjectId {
           # ObjectId
           # "\x07" e_name (byte*12)
           #
@@ -538,7 +484,7 @@ location is changed. This is nessesary to encode the key, value pair.
           #
           return [~] Buf.new(BSON::C-DATETIME),
                      encode-e-name($p.key),
-                     encode-int64(.posix());
+                     encode-int64(.posix);
         }
 
         when not .defined {
@@ -554,8 +500,8 @@ location is changed. This is nessesary to encode the key, value pair.
           #
           return [~] Buf.new(BSON::C-REGEX),
                      encode-e-name($p.key),
-                     encode-cstring($p.value.regex),
-                     encode-cstring($p.value.options);
+                     encode-cstring(.regex),
+                     encode-cstring(.options);
         }
 
 #`{{
@@ -575,8 +521,6 @@ location is changed. This is nessesary to encode the key, value pair.
         #
         when BSON::Javascript {
 
-#          return .encode-javascript( $p.key, self);
-#`{{}}
           # Javascript code
           # "\x0D" e_name string
           # "\x0F" e_name int32 string document
@@ -586,12 +530,9 @@ location is changed. This is nessesary to encode the key, value pair.
 
             if .has-scope {
               my Buf $doc = .scope.encode;
-#say "JS Doc: ", $doc;
               return [~] Buf.new(BSON::C-JAVASCRIPT-SCOPE),
                          encode-e-name($p.key),
-#                         encode-int32([+] $js.elems, $doc.elems, 4),
-                         $js, $doc
-                         ;
+                         $js, $doc;
             }
 
             else {
@@ -605,25 +546,7 @@ location is changed. This is nessesary to encode the key, value pair.
                                           :emsg('cannot send empty code')
                                         );
           }
-
         }
-
-#`{{
-        when ... {
-          # ? - deprecated
-          # "\x0E" e_name string (byte*12)
-          #
-          die X::BSON::Deprecated(
-            operation => 'encoding ?',
-            type => '0x0E'
-          );
-        }
-
-        when ... {
-          # Javascript code with scope. Handled above.
-          # "\x0F" e_name string document
-        }
-}}
 
         when Int {
           # Integer
@@ -891,18 +814,14 @@ location is changed. This is nessesary to encode the key, value pair.
     #---------------------------------------------------------------------------
     method !decode-document ( --> Nil ) {
 
-say "DE 0 I: $!index";
       # Get the size of the (nested-)document
       #
       my Int $doc-size = decode-int32( $!encoded-document, $!index);
       $!index += C-INT32-SIZE;
-say "DE 1 I: $!index, $doc-size, ", $!encoded-document;
 
       while $!encoded-document[$!index] !~~ 0x00 {
-say "DE 2 I: $!index, $doc-size";
         self!decode-element;
       }
-say "DE 3 I: $!index, $doc-size";
 
       # Check size of document with final byte location
       #
@@ -939,7 +858,6 @@ say "DE 3 I: $!index, $doc-size";
 
           %!promises{$key} = Promise.start( {
               $!data{$key} = self!decode-double( $!encoded-document, $i);
-say "{now - $!start-dec-time} Done $key => $!data{$key}";
             }
           );
         }
@@ -957,7 +875,6 @@ say "{now - $!start-dec-time} Done $key => $!data{$key}";
 
           %!promises{$key} = Promise.start( {
               $!data{$key} = decode-string( $!encoded-document, $i);
-say "{now - $!start-dec-time} Done $key => $!data{$key}";
             }
           );
         }
@@ -966,16 +883,13 @@ say "{now - $!start-dec-time} Done $key => $!data{$key}";
         #
         when BSON::C-DOCUMENT {
 
-#say "Doc 0: $!index";
           my Int $i = $!index;
           my Int $doc-size = decode-int32( $!encoded-document, $i);
           $!index += $doc-size;
-#say "Doc 1: $doc-size, $i, $!index, $!encoded-document[$!index]";
           %!promises{$key} = Promise.start( {
               my BSON::Document $d .= new;
               $d.decode(Buf.new($!encoded-document[$i ..^ ($i + $doc-size)]));
               $!data{$key} = $d;
-say "{now - $!start-dec-time} Done $key => $!data{$key}";
             }
           );
         }
@@ -992,8 +906,6 @@ say "{now - $!start-dec-time} Done $key => $!data{$key}";
               my BSON::Document $d .= new;
               $d.decode(Buf.new($!encoded-document[$i ..^ ($i + $doc-size)]));
               $!data{$key} = [$d.values];
-
-say "{now - $!start-dec-time} Done $key => $!data{$key}";
             }
           );
         }
@@ -1025,10 +937,10 @@ say "{now - $!start-dec-time} Done $key => $!data{$key}";
         # Object id
         #
         when BSON::C-OBJECTID {
-          
+
           my Int $i = $!index;
           $!index += 12;
-          
+
           %!promises{$key} = Promise.start( {
               $!data{$key} = BSON::ObjectId.new(
                 :bytes($!encoded-document[$i ..^ ($i + 12)])
@@ -1064,9 +976,33 @@ say "{now - $!start-dec-time} Done $key => $!data{$key}";
             }
           );
         }
-        
+
         when BSON::C-NULL {
-          %!promises{$key} = Promise.start( { $!data[$key] = Any; } );
+          %!promises{$key} = Promise.start( { $!data{$key} = Any; } );
+        }
+
+        when BSON::C-REGEX {
+
+          my $doc-size = $!encoded-document.elems;
+          my $i1 = $!index;
+          while $!encoded-document[$!index] !~~ 0x00 and $!index < $doc-size {
+            $!index++;
+          }
+          $!index++;
+          my $i2 = $!index;
+
+          while $!encoded-document[$!index] !~~ 0x00 and $!index < $doc-size {
+            $!index++;
+          }
+          $!index++;
+
+          %!promises{$key} = Promise.start( {
+              $!data{$key} = BSON::Regex.new(
+                :regex(decode-cstring( $!encoded-document, $i1)),
+                :options(decode-cstring( $!encoded-document, $i2))
+              );
+            }
+          );
         }
 
         # Javascript code
@@ -1088,7 +1024,6 @@ say "{now - $!start-dec-time} Done $key => $!data{$key}";
               $!data{$key} = BSON::Javascript.new(
                 :javascript(decode-string( $!encoded-document, $i))
               );
-say "{now - $!start-dec-time} Done $key => $!data{$key}";
             }
           );
         }
@@ -1111,7 +1046,6 @@ say "{now - $!start-dec-time} Done $key => $!data{$key}";
                 :javascript(decode-string( $!encoded-document, $i1)),
                 :scope($d)
               );
-say "{now - $!start-dec-time} Done $key => $!data{$key}";
             }
           );
         }
@@ -1125,7 +1059,6 @@ say "{now - $!start-dec-time} Done $key => $!data{$key}";
 
           %!promises{$key} = Promise.start( {
               $!data{$key} = decode-int32( $!encoded-document, $i);
-say "{now - $!start-dec-time} Done $key => $!data{$key}";
             }
           );
         }
@@ -1139,7 +1072,6 @@ say "{now - $!start-dec-time} Done $key => $!data{$key}";
 
           %!promises{$key} = Promise.start( {
               $!data{$key} = decode-int64( $!encoded-document, $i);
-say "{now - $!start-dec-time} Done $key => $!data{$key}";
             }
           );
         }
@@ -1163,8 +1095,7 @@ say "{now - $!start-dec-time} Done $key => $!data{$key}";
 
       my @a;
       my $l = $b.elems;
-#note "DCS: $index, $l, $b[$l]";
-#      while $index < $l and $b[$index] !~~ 0x00 {
+
       while $b[$index] !~~ 0x00 and $index < $l {
         @a.push($b[$index++]);
       }
@@ -1181,10 +1112,7 @@ say "{now - $!start-dec-time} Done $key => $!data{$key}";
     sub decode-string ( Buf:D $b, Int:D $index is copy --> Str ) {
 
       my $size = decode-int32( $b, $index);
-
-#say "\nDS0: {$b.elems} - $size >= $index, ", $b;
       my $end-string-at = $index + 4 + $size - 1;
-#say "DS1: ", $b[$index+4].fmt('%02x'), ', ', $b[$end-string-at].fmt('%02x');
 
       # Check if there are enaugh letters left
       #
@@ -1203,9 +1131,6 @@ say "{now - $!start-dec-time} Done $key => $!data{$key}";
 
     #-----------------------------------------------------------------------------
     sub decode-int32 ( Buf:D $b, Int:D $index --> Int ) {
-
-#say "i32 0: CF: ", callframe(1).file, ', ', callframe(1).line;
-#say "i32 1: CF: $index, ", $b;
 
       # Check if there are enaugh letters left
       #
@@ -1375,7 +1300,6 @@ say "{now - $!start-dec-time} Done $key => $!data{$key}";
         }
       }
 
-say "Bin: $index .. {$index + $nbr-bytes}";
       return BSON::Binary.new(
         :data(Buf.new($b[$index ..^ ($index + $nbr-bytes)])),
         :type($sub_type)

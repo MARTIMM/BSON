@@ -121,7 +121,6 @@ subtest {
   );
 
   $edoc = $d.encode;
-#say $edoc;
   is-deeply $edoc, $etst, 'Encoded document is correct after adding';
 
 }, "Document encoding positional";

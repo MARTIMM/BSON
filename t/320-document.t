@@ -4,6 +4,7 @@ use BSON::Document;
 use BSON::Javascript;
 use BSON::Binary;
 use BSON::ObjectId;
+use BSON::Regex;
 use UUID;
 
 #-------------------------------------------------------------------------------
@@ -25,8 +26,10 @@ subtest {
   );
 
   my BSON::ObjectId $oid .= new;
-  
+
   my DateTime $datetime .= now;
+
+  my BSON::Regex $rex .= new( :regex('abc|def'), :options<is>);
 
   # Checklist/Tests of
   #
@@ -40,11 +43,13 @@ subtest {
   # 0x08 Boolean
   # 0x09 Date and time
   # 0x0A Null value
+  # 0x0B Regex
   # 0x0C -
   # 0x0D Javascript
   # 0x0E -
   # 0x0F Javascript with scope
   # 0x10 int32
+  # 0x11 -
   # 0x12 int64
   #
   my BSON::Document $d .= new;
@@ -66,15 +71,14 @@ subtest {
   $d<oid> = $oid;
   $d<dtime> = $datetime;
   $d<null> = Any;
-
-say $d.encode;
+  $d<rex> = $rex;
 
   # Handcrafted encoded BSON data
   #
   my Buf $etst = Buf.new(
-    # 294 (4 + 11 + 7 + 11 + 30 + 45 + 53 + 26 + 5 + 5 + 21 + 37
-    #      + 17 + 15 + 6 + 1)
-    0x26, 0x01, 0x00, 0x00,                     # Size document
+    # 310 (4 + 11 + 7 + 11 + 30 + 45 + 53 + 26 + 5 + 5 + 21 + 37
+    #      + 17 + 15 + 6 + 16 + 1)
+    0x36, 0x01, 0x00, 0x00,                     # Size document
 
     # 11
     BSON::C-DOUBLE,                             # 0x01
@@ -233,11 +237,16 @@ say $d.encode;
     BSON::C-NULL,                               # 0x0A
       0x6e, 0x75, 0x6c, 0x6c, 0x00,             # 'null'
 
+    # 16
+    BSON::C-REGEX,                              # 0x0B
+      0x72, 0x65, 0x78, 0x00,                   # 'rex'
+      0x61, 0x62, 0x63, 0x7c,                   # 'abc|def' regex
+      0x64, 0x65, 0x66, 0x00,
+      0x69, 0x73, 0x00,                         # 'is' options
+
     # 1
     0x00                                        # End document
   );
-
-#  say "Size handyman Buf: ", $etst.elems;
 
   # Encode document and compare with handcrafted byte array
   #
@@ -282,6 +291,9 @@ say $d.encode;
 
   nok $d<null>.defined, 'Null not defined';
 
+  is $d<rex>.regex, 'abc|def', 'Regex ok';
+  is $d<rex>.options, 'is', 'Regex options ok';
+
   # Test sequence
   #
   diag "Sequence of index";
@@ -303,6 +315,8 @@ say $d.encode;
   is $d[11].oid.elems, 12, '11: Length of object id ok';
   is $d[12].Str, $datetime.Str, '12: Date and time ok';
   nok $d[13].defined, '13: Null not defined';
+  is $d[14].regex, 'abc|def', '14: Regex ok';
+  is $d[14].options, 'is', '14: Regex options ok';
 
 }, "Document encoding decoding types";
 

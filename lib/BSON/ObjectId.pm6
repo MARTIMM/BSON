@@ -7,6 +7,7 @@ use Digest::MD5;
 
 package BSON {
 
+  #-----------------------------------------------------------------------------
   class X::Parse is Exception {
     has $.operation;                      # Operation method
     has $.error;                          # Parse error
@@ -16,6 +17,7 @@ package BSON {
     }
   }
 
+  #-----------------------------------------------------------------------------
   class ObjectId {
 
     # Represents ObjectId BSON type described in
