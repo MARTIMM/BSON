@@ -4,7 +4,6 @@ use BSON::ObjectId;
 use BSON::Regex;
 use BSON::Javascript;
 use BSON::Binary;
-use BSON::Exception;
 
 package BSON {
 
@@ -61,43 +60,20 @@ package BSON {
     has Buf @!encoded-entries;
     has Index $!index = 0;
 
-
-    # Encoded turns
-    # 1) True on init, no need to 'await' promises.
-    # 2) False on insert, delete or modify an entry
-    # 3) True on encode() and decode()
-    #
-    has Bool $!encoded;
-    has $!start-enc-time;
-
-    # Decoded turns
-    # 1) False on init
-    # 2) False on loading into $!encoded-document
-    # 3) True on encode() and decode()
-    #
-    has Bool $!decoded;
-    has $!start-dec-time;
-
     has Promise %!promises;
 
     #---------------------------------------------------------------------------
     #
-    method new ( *@ps ) {
-
-      self.bless(:pairs(@ps));
+    method new ( List $pairs = () ) {
+      self.bless(:$pairs);
     }
 
     #---------------------------------------------------------------------------
-    submethod BUILD (:@pairs!) {
-
-      $!encoded = True;
-      $!decoded = False;
-      $!start-enc-time = now;
-#      $!bson .= new;
+    submethod BUILD ( List :$pairs! ) {
 
       # self{x} = y will end up at ASSIGN-KEY
       #
-      for @pairs -> $pair {
+      for @$pairs -> $pair {
         self{$pair.key} = $pair.value;
       }
     }
@@ -136,7 +112,7 @@ package BSON {
         loop ( my $i = 0; $i < @!keys.elems; $i++ ) {
           if @!keys[$i] ~~ $key {
             @!keys.splice( $i, 1);
-            @!encoded-entries.splice( $i, 1) if @!encoded-entries.elems;   # $!encoded kept to True!
+            @!encoded-entries.splice( $i, 1) if @!encoded-entries.elems;
             $value = $!data{$key}:delete;
             last;
           }
@@ -150,29 +126,27 @@ package BSON {
     multi method ASSIGN-KEY ( Str:D $key, Array:D $new) {
 
 #say "Asign-key($?LINE): $key => ", $new.WHAT;
-      @!keys.push($key) unless $!data{$key}:exists;
-      $!data{$key} = $new;
-
-      %!promises{$key}:delete if %!promises{$key}:exists;
-
       my $k = $key;
-      my $d := $!data{$key};
-      %!promises{$key} = Promise.start({ self!encode-element: ($k => $d); });
-      $!encoded = False;
+      @!keys.push($k) unless $!data{$k}:exists;
+      $!data{$k} = $new;
+
+      %!promises{$k}:delete if %!promises{$k}:exists;
+
+#      my $d := $!data{$key};
+      %!promises{$k} = Promise.start({ self!encode-element: ($k => $!data{$k}); });
     }
 
     multi method ASSIGN-KEY ( Str:D $key, List:D $new) {
 
-#say "Asign-key($?LINE): $key => ", $new.WHAT;
+#say "Asign-key($?LINE): $key => ", $new.WHAT, ', ', $new[0].WHAT;
       @!keys.push($key) unless $!data{$key}:exists;
-      $!data{$key} = BSON::Document.new(|$new);
+      $!data{$key} = BSON::Document.new($new);
 
       %!promises{$key}:delete if %!promises{$key}:exists;
 
       my $k = $key;
       my $d := $!data{$key};
       %!promises{$key} = Promise.start({ self!encode-element: ($k => $d); });
-      $!encoded = False;
     }
 
     multi method ASSIGN-KEY ( Str:D $key, Any $new) {
@@ -187,7 +161,6 @@ package BSON {
       my $k = $key;
       my $d := $!data{$key};
       %!promises{$key} = Promise.start({ self!encode-element: ($k => $d); });
-      $!encoded = False;
     }
 
     #---------------------------------------------------------------------------
@@ -243,8 +216,6 @@ package BSON {
           self!encode-element: ($key => $!data{$key});
         }
       );
-
-      $!encoded = False;
     }
 
     #---------------------------------------------------------------------------
@@ -304,7 +275,7 @@ package BSON {
     #
     method encode ( --> Buf ) {
 
-      if ! ? $!encoded {
+      if %!promises.elems {
         loop ( my $idx = 0; $idx < @!keys.elems; $idx++) {
           my $key = @!keys[$idx];
           if %!promises{$key}:exists {
@@ -313,14 +284,13 @@ package BSON {
 
               CATCH {
                 default {
-                  say $_;
+                  say "Error: $_";
                 }
               }
             }
           }
         }
 
-        $!encoded = True;
         %!promises = ();
       }
 
@@ -424,7 +394,9 @@ package BSON {
           # { 1 => 'abc', 0 => 'def' } was encoded instead of
           # { 0 => 'def', 1 => 'abc' }.
           #
-          my BSON::Document $d .= new: ('0' ...^ $p.value.elems.Str) Z=> $p.value;
+          my BSON::Document $d .= new(
+            (('0' ...^ $p.value.elems.Str) Z=> $p.value).List
+          );
           return [~] Buf.new(BSON::C-ARRAY), encode-e-name($p.key), $d.encode;
         }
 
@@ -784,8 +756,6 @@ package BSON {
     method decode ( Buf $data --> Nil ) {
 
       $!encoded-document = $data;
-      $!encoded = True;
-      $!decoded = False;
 
       @!keys = ();
       $!data .= new;
@@ -793,7 +763,6 @@ package BSON {
       # Document decoding start: init index
       #
       $!index = 0;
-      $!start-dec-time = now;
 
       # Decode the document, then wait for any started parallel tracks
       #

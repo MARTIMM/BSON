@@ -9,7 +9,7 @@ use BSON::Exception;
 
 package BSON {
 
-  class Bson:ver<0.9.11> {
+  class Bson:ver<0.9.13> {
     constant $BSON_BOOL = 0x08;
 
     has Int $!index = 0;
