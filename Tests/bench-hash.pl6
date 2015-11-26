@@ -7,7 +7,7 @@ use UUID;
 
 #`{{
 Timing 50 iterations of 32 inserts...
-32 inserts: 8.0268 wallclock secs @ 6.2291/s (n=50)
+32 inserts: 3.1424 wallclock secs @ 15.9112/s (n=50)
 }}
 
 my BSON::Javascript $js .= new(

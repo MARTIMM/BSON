@@ -3,7 +3,7 @@
 use v6;
 use lib './Tests';
 use Bench;
-use BSON::Document;
+use Document2;
 use UUID;
 
 #`{{

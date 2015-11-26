@@ -3,18 +3,12 @@
 use v6;
 use lib './Tests';
 use Bench;
-use BSON::Document;
+use Document1;
 use UUID;
 
 #`{{
-Timing 50 iterations of 32 inserts...
-
-With use of Promises on encoding as well as decoding
-32 inserts: 7.9156 wallclock secs @ 6.3167/s (n=50)
-
-Use of Promise only when encoding. It is slower, so parallel processing
-really helps!
-32 inserts: 9.3994 wallclock secs @ 5.3195/s (n=50)
+Timing 50 iterations of encode...
+    encode: 7.9156 wallclock secs @ 6.3167/s (n=50)
 }}
 
 
