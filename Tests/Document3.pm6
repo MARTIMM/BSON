@@ -54,7 +54,7 @@ package BSON {
     subset Index of Int where $_ >= 0;
 
     has Str @!keys;
-    has @!values;
+    has Hash $!data .= new;
 
     has Buf $!encoded-document;
     has Buf @!encoded-entries;
@@ -64,14 +64,7 @@ package BSON {
 
     #---------------------------------------------------------------------------
     #
-    multi method new ( List $pairs = () ) {
-      self.bless(:$pairs);
-    }
-
-    # No default value! is handled by new() above
-    #
-    multi method new ( Seq $p ) {
-      my List $pairs = $p.List;
+    method new ( List $pairs = () ) {
       self.bless(:$pairs);
     }
 
@@ -88,27 +81,13 @@ package BSON {
     #---------------------------------------------------------------------------
     submethod DESTROY ( ) {
 
-      @!keys = ();
-      @!values = ();
+      @!keys = Nil;
+      $!data = Nil;
 
       $!encoded-document = Nil;
       @!encoded-entries = Nil;
 
       %!promises = ();
-    }
-    
-    #---------------------------------------------------------------------------
-    method find-key ( Str:D $key --> Int ) {
-    
-      my Int $idx;
-      loop ( my $i = 0; $i < @!keys.elems; $i++) {
-        if @!keys[$i] eq $key {
-          $idx = $i;
-          last;
-        }
-      }
-      
-      $idx;
     }
 
     #---------------------------------------------------------------------------
@@ -116,28 +95,28 @@ package BSON {
     #---------------------------------------------------------------------------
     method AT-KEY ( Str $key --> Any ) {
 
-      my $value;
-      if (my Int $idx = self.find-key($key)).defined {
-        $value = @!values[$idx];
-      }
-      
-      $value;
+      $!data{$key}:exists ?? $!data{$key} !! Any;
     }
 
     #---------------------------------------------------------------------------
     method EXISTS-KEY ( Str $key --> Bool ) {
 
-      ? self.find-key($key);
+      return $!data{$key}:exists;
     }
 
     #---------------------------------------------------------------------------
     method DELETE-KEY ( Str $key --> Any ) {
 
       my $value;
-      if (my Int $idx = self.find-key($key)).defined {
-        $value = @!values.splice( $idx, 1);
-        @!keys.splice( $idx, 1);
-        @!encoded-entries.splice( $idx, 1) if @!encoded-entries.elems;
+      if $!data{$key}:exists {
+        loop ( my $i = 0; $i < @!keys.elems; $i++ ) {
+          if @!keys[$i] ~~ $key {
+            @!keys.splice( $i, 1);
+            @!encoded-entries.splice( $i, 1) if @!encoded-entries.elems;
+            $value = $!data{$key}:delete;
+            last;
+          }
+        }
       }
 
       $value;
@@ -147,73 +126,48 @@ package BSON {
     multi method ASSIGN-KEY ( Str:D $key, Array:D $new) {
 
 #say "Asign-key($?LINE): $key => ", $new.WHAT;
+      my $k = $key;
+      @!keys.push($k) unless $!data{$k}:exists;
+      $!data{$k} = $new;
 
-      my Str $k = $key;
-      my Array $v = $new;
+      %!promises{$k}:delete if %!promises{$k}:exists;
 
-      my Int $idx = self.find-key($k);
-      if $idx.defined {
-        %!promises{$k}:delete;
-      }
-      
-      else {
-        $idx = @!keys.elems;
-      }
-      
-      @!keys[$idx] = $k;
-      @!values[$idx] = $v;
-      
-      %!promises{$k} = Promise.start({ self!encode-element: ($k => $v); });
+#      my $d := $!data{$key};
+      %!promises{$k} = Promise.start({ self!encode-element: ($k => $!data{$k}); });
     }
 
     multi method ASSIGN-KEY ( Str:D $key, List:D $new) {
 
 #say "Asign-key($?LINE): $key => ", $new.WHAT, ', ', $new[0].WHAT;
+      @!keys.push($key) unless $!data{$key}:exists;
+      $!data{$key} = BSON::Document.new($new);
 
-      my Str $k = $key;
-      my BSON::Document $v .= new($new);
+      %!promises{$key}:delete if %!promises{$key}:exists;
 
-      my Int $idx = self.find-key($k);
-      if $idx.defined {
-        %!promises{$k}:delete;
-      }
-      
-      else {
-        $idx = @!keys.elems;
-      }
-      
-      @!keys[$idx] = $k;
-      @!values[$idx] = $v;
-      
-      %!promises{$k} = Promise.start({ self!encode-element: ($k => $v); });
+      my $k = $key;
+      my $d := $!data{$key};
+      %!promises{$key} = Promise.start({ self!encode-element: ($k => $d); });
     }
 
     multi method ASSIGN-KEY ( Str:D $key, Any $new) {
 
 #say "Asign-key($?LINE): $key => ", $new.WHAT;
 
-      my Str $k = $key;
-      my $v = $new;
+      @!keys.push($key) unless $!data{$key}:exists;
+      $!data{$key} = $new;
 
-      my Int $idx = self.find-key($k);
-      if $idx.defined {
-        %!promises{$k}:delete;
-      }
-      
-      else {
-        $idx = @!keys.elems;
-      }
-      
-      @!keys[$idx] = $k;
-      @!values[$idx] = $v;
+      %!promises{$key}:delete if %!promises{$key}:exists;
 
-      %!promises{$k} = Promise.start({ self!encode-element: ($k => $v); });
+      my $k = $key;
+      my $d := $!data{$key};
+      %!promises{$key} = Promise.start({ self!encode-element: ($k => $d); });
     }
 
     #---------------------------------------------------------------------------
-    # Cannot use binding because when value changes this object cannot know that
-    # the location is changed. This is nessesary to encode the key, value pair.
-    #
+    #`{{
+    Cannot use binding because when value changes this object cannot know that
+    the location is changed. This is nessesary to encode the key, value pair.
+    }}
     method BIND-KEY ( Str $key, \new ) {
 
       die X::Parse.new(
@@ -229,7 +183,7 @@ package BSON {
     #---------------------------------------------------------------------------
     method AT-POS ( Index $idx --> Any ) {
 
-      $idx < @!keys.elems ?? @!values[$idx] !! Any;
+      $idx < @!keys.elems ?? $!data{@!keys[$idx]} !! Any;
     }
 
     #---------------------------------------------------------------------------
@@ -247,20 +201,28 @@ package BSON {
     #---------------------------------------------------------------------------
     method ASSIGN-POS ( Index $idx, $new! ) {
 
-      # If index is at a higher position then the last one then only extend
-      # one place (like a push) with a generated key name such as key21 when
-      # [21] was used. Furthermore when a key like key21 has been used
-      # before the array is not extended but the key location is used
-      # instead.
+      # If index is at a higher position then the last one then only
+      # one place extended with a generated key na,e such as key21 on the
+      # 21st location. Furthermore when a key like key21 has been used before
+      # the array is not extended but the key location is used instead.
       #
       my $key = $idx >= @!keys.elems ?? 'key' ~ $idx !! @!keys[$idx];
-      self{$key} = $new;
+
+      @!keys.push($key) unless $!data{$key}:exists;
+      $!data{$key} = $new;
+
+      %!promises{$key}:delete if %!promises{$key}:exists;
+      %!promises{$key} = Promise.start( {
+          self!encode-element: ($key => $!data{$key});
+        }
+      );
     }
 
     #---------------------------------------------------------------------------
-    # Cannot use binding because when value changes the object cannot know that
-    # the location is changed. This is nessesary to encode the key, value pair.
-    #
+    #`{{
+    Cannot use binding because when value changes the object cannot know that
+    the location is changed. This is nessesary to encode the key, value pair.
+    }}
     method BIND-POS ( Index $idx, \new ) {
 
       die X::Parse.new(
@@ -287,8 +249,8 @@ package BSON {
     method kv ( --> List ) {
 
       my @kv-list;
-      loop ( my $i = 0; $i < @!keys.elems; $i++) {
-        @kv-list.push( @!keys[$i], @!values[$i]);
+      for @!keys -> $k {
+        @kv-list.push( $k, $!data{$k});
       }
 
       @kv-list;
@@ -303,7 +265,7 @@ package BSON {
     #---------------------------------------------------------------------------
     method values ( --> List ) {
 
-      @!values.list;
+      $!data{@!keys[*]}.list;
     }
 
     #---------------------------------------------------------------------------
@@ -796,7 +758,7 @@ package BSON {
       $!encoded-document = $data;
 
       @!keys = ();
-      @!values = ();
+      $!data .= new;
 
       # Document decoding start: init index
       #
@@ -851,8 +813,7 @@ package BSON {
       # Keys are pushed in the proper order as they are seen in the
       # byte buffer.
       #
-      my Int $idx = @!keys.elems;
-      @!keys[$idx] = $key;              # index on new location == push()
+      @!keys.push($key);
       my Int $size;
 
       given $bson-code {
@@ -865,7 +826,7 @@ package BSON {
           $!index += C-DOUBLE-SIZE;
 
           %!promises{$key} = Promise.start( {
-              @!values[$idx] = self!decode-double( $!encoded-document, $i);
+              $!data{$key} = self!decode-double( $!encoded-document, $i);
             }
           );
         }
@@ -882,7 +843,7 @@ package BSON {
           $!index += C-INT32-SIZE + $nbr-bytes;
 
           %!promises{$key} = Promise.start( {
-             @!values[$idx] = decode-string( $!encoded-document, $i);
+              $!data{$key} = decode-string( $!encoded-document, $i);
             }
           );
         }
@@ -897,7 +858,7 @@ package BSON {
           %!promises{$key} = Promise.start( {
               my BSON::Document $d .= new;
               $d.decode(Buf.new($!encoded-document[$i ..^ ($i + $doc-size)]));
-              @!values[$idx] = $d;
+              $!data{$key} = $d;
             }
           );
         }
@@ -913,7 +874,7 @@ package BSON {
           %!promises{$key} = Promise.start( {
               my BSON::Document $d .= new;
               $d.decode(Buf.new($!encoded-document[$i ..^ ($i + $doc-size)]));
-              @!values[$idx] = [$d.values];
+              $!data{$key} = [$d.values];
             }
           );
         }
@@ -933,7 +894,7 @@ package BSON {
           $!index += C-INT32-SIZE + 1 + $nbr-bytes;
 
           %!promises{$key} = Promise.start( {
-              @!values[$idx] = self!decode-binary(
+              $!data{$key} = self!decode-binary(
                 $!encoded-document,
                 $i,
                 $nbr-bytes
@@ -950,7 +911,7 @@ package BSON {
           $!index += 12;
 
           %!promises{$key} = Promise.start( {
-              @!values[$idx] = BSON::ObjectId.new(
+              $!data{$key} = BSON::ObjectId.new(
                 :bytes($!encoded-document[$i ..^ ($i + 12)])
               );
             }
@@ -965,7 +926,7 @@ package BSON {
           $!index++;
 
           %!promises{$key} = Promise.start( {
-              @!values[$idx] = $!encoded-document[$i] ~~ 0x00 ?? False !! True;
+              $!data{$key} = $!encoded-document[$i] ~~ 0x00 ?? False !! True;
             }
           );
         }
@@ -977,7 +938,7 @@ package BSON {
           $!index += BSON::C-INT64-SIZE;
 
           %!promises{$key} = Promise.start( {
-              @!values[$idx] = DateTime.new(
+              $!data{$key} = DateTime.new(
                 decode-int64( $!encoded-document, $i),
                 :timezone($*TZ)
               );
@@ -986,7 +947,7 @@ package BSON {
         }
 
         when BSON::C-NULL {
-          %!promises{$key} = Promise.start( { @!values[$idx] = Any; } );
+          %!promises{$key} = Promise.start( { $!data{$key} = Any; } );
         }
 
         when BSON::C-REGEX {
@@ -1005,7 +966,7 @@ package BSON {
           $!index++;
 
           %!promises{$key} = Promise.start( {
-              @!values[$idx] = BSON::Regex.new(
+              $!data{$key} = BSON::Regex.new(
                 :regex(decode-cstring( $!encoded-document, $i1)),
                 :options(decode-cstring( $!encoded-document, $i2))
               );
@@ -1029,7 +990,7 @@ package BSON {
           $!index += (C-INT32-SIZE + $js-size);
 
           %!promises{$key} = Promise.start( {
-              @!values[$idx] = BSON::Javascript.new(
+              $!data{$key} = BSON::Javascript.new(
                 :javascript(decode-string( $!encoded-document, $i))
               );
             }
@@ -1050,7 +1011,7 @@ package BSON {
           %!promises{$key} = Promise.start( {
               my BSON::Document $d .= new;
               $d.decode(Buf.new($!encoded-document[$i2 ..^ ($i2 + $js-size)]));
-              @!values[$idx] = BSON::Javascript.new(
+              $!data{$key} = BSON::Javascript.new(
                 :javascript(decode-string( $!encoded-document, $i1)),
                 :scope($d)
               );
@@ -1066,7 +1027,7 @@ package BSON {
           $!index += C-INT32-SIZE;
 
           %!promises{$key} = Promise.start( {
-              @!values[$idx] = decode-int32( $!encoded-document, $i);
+              $!data{$key} = decode-int32( $!encoded-document, $i);
             }
           );
         }
@@ -1079,7 +1040,7 @@ package BSON {
           $!index += C-INT64-SIZE;
 
           %!promises{$key} = Promise.start( {
-              @!values[$idx] = decode-int64( $!encoded-document, $i);
+              $!data{$key} = decode-int64( $!encoded-document, $i);
             }
           );
         }
