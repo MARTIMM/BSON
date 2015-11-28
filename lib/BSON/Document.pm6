@@ -146,7 +146,7 @@ package BSON {
     #---------------------------------------------------------------------------
     multi method ASSIGN-KEY ( Str:D $key, Array:D $new) {
 
-say "Asign-key($?LINE): $key => ", $new.WHAT;
+#say "Asign-key($?LINE): $key => ", $new.WHAT;
 
       my Str $k = $key;
       my Array $v = $new;
@@ -168,7 +168,7 @@ say "Asign-key($?LINE): $key => ", $new.WHAT;
 
     multi method ASSIGN-KEY ( Str:D $key, List:D $new) {
 
-say "Asign-key($?LINE): $key => ", $new.WHAT, ', ', $new[0].WHAT;
+#say "Asign-key($?LINE): $key => ", $new.WHAT, ', ', $new[0].WHAT;
 
       my Str $k = $key;
       my BSON::Document $v .= new($new);
@@ -190,7 +190,7 @@ say "Asign-key($?LINE): $key => ", $new.WHAT, ', ', $new[0].WHAT;
 
     multi method ASSIGN-KEY ( Str:D $key, Any $new) {
 
-say "Asign-key($?LINE): $key => ", $new.WHAT;
+#say "Asign-key($?LINE): $key => ", $new.WHAT;
 
       my Str $k = $key;
       my $v = $new;
@@ -331,10 +331,10 @@ say "Asign-key($?LINE): $key => ", $new.WHAT;
 
         %!promises = ();
       }
-my $i = 0;
-for @!encoded-entries -> $ee {
-  say "@!keys[$i++]: ", $ee;
-}
+#my $i = 0;
+#for @!encoded-entries -> $ee {
+#  say "@!keys[$i++]: ", $ee;
+#}
 
       $!encoded-document = [~] @!encoded-entries;
 
@@ -369,7 +369,8 @@ for @!encoded-entries -> $ee {
     # element ::= type-code e_name some-encoding
     #
     method !encode-element ( Pair:D $p --> Buf ) {
-say "EE: ", ", {$p.key} => {$p.value//'(Any)'}: ", $p.value.WHAT;
+
+      my Buf $b;
 
       given $p.value {
 
@@ -377,7 +378,7 @@ say "EE: ", ", {$p.key} => {$p.value//'(Any)'}: ", $p.value.WHAT;
           # Double precision
           # "\x01" e_name Num
           #
-          return [~] Buf.new(BSON::C-DOUBLE),
+          $b = [~] Buf.new(BSON::C-DOUBLE),
                      encode-e-name($p.key),
                      self!encode-double($p.value);
         }
@@ -386,7 +387,7 @@ say "EE: ", ", {$p.key} => {$p.value//'(Any)'}: ", $p.value.WHAT;
           # UTF-8 string
           # "\x02" e_name string
           #
-          return [~] Buf.new(BSON::C-STRING),
+          $b = [~] Buf.new(BSON::C-STRING),
                      encode-e-name($p.key),
                      encode-string($p.value);
         }
@@ -398,10 +399,10 @@ say "EE: ", ", {$p.key} => {$p.value//'(Any)'}: ", $p.value.WHAT;
           # "\x03" e_name document
           #
           my Pair @pairs = $p.value;
-say "Pair {$p.key} => {$p.value}: ", [~] Buf.new(BSON::C-DOCUMENT),
-                     encode-e-name($p.key),
-                     self!encode-document(@pairs);
-          return [~] Buf.new(BSON::C-DOCUMENT),
+#say "Pair {$p.key} => {$p.value}: ", [~] Buf.new(BSON::C-DOCUMENT),
+#                     encode-e-name($p.key),
+#                     self!encode-document(@pairs);
+          $b = [~] Buf.new(BSON::C-DOCUMENT),
                      encode-e-name($p.key),
                      self!encode-document(@pairs);
         }
@@ -411,7 +412,7 @@ say "Pair {$p.key} => {$p.value}: ", [~] Buf.new(BSON::C-DOCUMENT),
           # Embedded document
           # "\x03" e_name document
           #
-          return [~] Buf.new(C-DOCUMENT),
+          $b = [~] Buf.new(C-DOCUMENT),
                      encode-e-name($p.key),
                      self!encode-document($p.value);
         }
@@ -420,7 +421,7 @@ say "Pair {$p.key} => {$p.value}: ", [~] Buf.new(BSON::C-DOCUMENT),
           # Embedded document
           # "\x03" e_name document
           #
-          return [~] Buf.new(BSON::C-DOCUMENT),
+          $b = [~] Buf.new(BSON::C-DOCUMENT),
                      encode-e-name($p.key),
                      .encode;
         }
@@ -444,7 +445,7 @@ say "Pair {$p.key} => {$p.value}: ", [~] Buf.new(BSON::C-DOCUMENT),
           my BSON::Document $d .= new(
             (('0' ...^ $p.value.elems.Str) Z=> $p.value).List
           );
-          return [~] Buf.new(BSON::C-ARRAY), encode-e-name($p.key), $d.encode;
+          $b = [~] Buf.new(BSON::C-ARRAY), encode-e-name($p.key), $d.encode;
         }
 
         when BSON::Binary {
@@ -452,7 +453,7 @@ say "Pair {$p.key} => {$p.value}: ", [~] Buf.new(BSON::C-DOCUMENT),
           # "\x05" e_name int32 subtype byte*
           # subtype is '\x00' for the moment (Generic binary subtype)
           #
-          my Buf $b = [~] Buf.new(BSON::C-BINARY), encode-e-name($p.key);
+          $b = [~] Buf.new(BSON::C-BINARY), encode-e-name($p.key);
 
           if .has-binary-data {
             $b ~= encode-int32(.binary-data.elems);
@@ -464,15 +465,13 @@ say "Pair {$p.key} => {$p.value}: ", [~] Buf.new(BSON::C-DOCUMENT),
             $b ~= encode-int32(0);
             $b ~= Buf.new(.binary-type);
           }
-
-          $b;
         }
 
        when BSON::ObjectId {
           # ObjectId
           # "\x07" e_name (byte*12)
           #
-          return Buf.new(BSON::C-OBJECTID) ~ encode-e-name($p.key) ~ .oid;
+          $b = Buf.new(BSON::C-OBJECTID) ~ encode-e-name($p.key) ~ .oid;
         }
 
         when Bool {
@@ -483,7 +482,7 @@ say "Pair {$p.key} => {$p.value}: ", [~] Buf.new(BSON::C-DOCUMENT),
             # Boolean "true"
             # "\x08" e_name "\x01
             #
-            return [~] Buf.new(BSON::C-BOOLEAN),
+            $b = [~] Buf.new(BSON::C-BOOLEAN),
                        encode-e-name($p.key),
                        Buf.new(0x01);
           }
@@ -491,7 +490,7 @@ say "Pair {$p.key} => {$p.value}: ", [~] Buf.new(BSON::C-DOCUMENT),
             # Boolean "false"
             # "\x08" e_name "\x00
             #
-            return [~] Buf.new(BSON::C-BOOLEAN),
+            $b = [~] Buf.new(BSON::C-BOOLEAN),
                        encode-e-name($p.key),
                        Buf.new(0x00);
           }
@@ -501,7 +500,7 @@ say "Pair {$p.key} => {$p.value}: ", [~] Buf.new(BSON::C-DOCUMENT),
           # UTC dateime
           # "\x09" e_name int64
           #
-          return [~] Buf.new(BSON::C-DATETIME),
+          $b = [~] Buf.new(BSON::C-DATETIME),
                      encode-e-name($p.key),
                      encode-int64(.posix);
         }
@@ -510,14 +509,14 @@ say "Pair {$p.key} => {$p.value}: ", [~] Buf.new(BSON::C-DOCUMENT),
           # Nil == Undefined value == typed object
           # "\x0A" e_name
           #
-          return Buf.new(BSON::C-NULL) ~ encode-e-name($p.key);
+          $b = Buf.new(BSON::C-NULL) ~ encode-e-name($p.key);
         }
 
         when BSON::Regex {
           # Regular expression
           # "\x0B" e_name cstring cstring
           #
-          return [~] Buf.new(BSON::C-REGEX),
+          $b = [~] Buf.new(BSON::C-REGEX),
                      encode-e-name($p.key),
                      encode-cstring(.regex),
                      encode-cstring(.options);
@@ -549,13 +548,13 @@ say "Pair {$p.key} => {$p.value}: ", [~] Buf.new(BSON::C-DOCUMENT),
 
             if .has-scope {
               my Buf $doc = .scope.encode;
-              return [~] Buf.new(BSON::C-JAVASCRIPT-SCOPE),
+              $b = [~] Buf.new(BSON::C-JAVASCRIPT-SCOPE),
                          encode-e-name($p.key),
                          $js, $doc;
             }
 
             else {
-              return [~] Buf.new(BSON::C-JAVASCRIPT), encode-e-name($p.key), $js;
+              $b = [~] Buf.new(BSON::C-JAVASCRIPT), encode-e-name($p.key), $js;
             }
           }
 
@@ -573,14 +572,14 @@ say "Pair {$p.key} => {$p.value}: ", [~] Buf.new(BSON::C-DOCUMENT),
           # '\x12' e_name int64
           #
           if -0xffffffff < $p.value < 0xffffffff {
-            return [~] Buf.new(BSON::C-INT32),
+            $b = [~] Buf.new(BSON::C-INT32),
                        encode-e-name($p.key),
                        encode-int32($p.value)
                        ;
           }
 
           elsif -0x7fffffff_ffffffff < $p.value < 0x7fffffff_ffffffff {
-            return [~] Buf.new(BSON::C-INT64),
+            $b = [~] Buf.new(BSON::C-INT64),
                        encode-e-name($p.key),
                        encode-int64($p.value)
                        ;
@@ -613,19 +612,17 @@ say "Pair {$p.key} => {$p.value}: ", [~] Buf.new(BSON::C-DOCUMENT),
         #
         when Buf {
           my BSON::Binary $bbin .= new(:data($_));
-          my Buf $b = [~] Buf.new(BSON::C-BINARY), encode-e-name($p.key);
+          $b = [~] Buf.new(BSON::C-BINARY), encode-e-name($p.key);
           $b ~= encode-int32(.binary-data.elems);
           $b ~= Buf.new(.binary-type);
           $b ~= .binary-data;
-
-          $b;
         }
 
         default {
           if .can('encode') and .can('bson-code') {
             my $code = .bson-code;
 
-            return [~] Buf.new($code),
+            $b = [~] Buf.new($code),
                        encode-e-name($p.key),
                        .encode;
           }
@@ -638,6 +635,10 @@ say "Pair {$p.key} => {$p.value}: ", [~] Buf.new(BSON::C-DOCUMENT),
           }
         }
       }
+      
+say "\nEE: ", ", {$p.key} => {$p.value//'(Any)'}: ", $p.value.WHAT, ', ', $b;
+
+      $b;
     }
 
     #---------------------------------------------------------------------------
