@@ -96,10 +96,10 @@ package BSON {
 
       %!promises = ();
     }
-    
+
     #---------------------------------------------------------------------------
     method find-key ( Str:D $key --> Int ) {
-    
+
       my Int $idx;
       loop ( my $i = 0; $i < @!keys.elems; $i++) {
         if @!keys[$i] eq $key {
@@ -107,7 +107,7 @@ package BSON {
           last;
         }
       }
-      
+
       $idx;
     }
 
@@ -120,7 +120,7 @@ package BSON {
       if (my Int $idx = self.find-key($key)).defined {
         $value = @!values[$idx];
       }
-      
+
       $value;
     }
 
@@ -155,14 +155,14 @@ say "Asign-key($?LINE): $key => ", $new.WHAT;
       if $idx.defined {
         %!promises{$k}:delete;
       }
-      
+
       else {
         $idx = @!keys.elems;
       }
-      
+
       @!keys[$idx] = $k;
       @!values[$idx] = $v;
-      
+
       %!promises{$k} = Promise.start({ self!encode-element: ($k => $v); });
     }
 
@@ -177,14 +177,14 @@ say "Asign-key($?LINE): $key => ", $new.WHAT, ', ', $new[0].WHAT;
       if $idx.defined {
         %!promises{$k}:delete;
       }
-      
+
       else {
         $idx = @!keys.elems;
       }
-      
+
       @!keys[$idx] = $k;
       @!values[$idx] = $v;
-      
+
       %!promises{$k} = Promise.start({ self!encode-element: ($k => $v); });
     }
 
@@ -199,11 +199,11 @@ say "Asign-key($?LINE): $key => ", $new.WHAT;
       if $idx.defined {
         %!promises{$k}:delete;
       }
-      
+
       else {
         $idx = @!keys.elems;
       }
-      
+
       @!keys[$idx] = $k;
       @!values[$idx] = $v;
 
@@ -339,8 +339,8 @@ for @!encoded-entries -> $ee {
       $!encoded-document = [~] @!encoded-entries;
 
       my Buf $b = [~] encode-int32($!encoded-document.elems + 5),
-          $!encoded-document,
-          Buf.new(0x00);
+                      $!encoded-document,
+                      Buf.new(0x00);
 
       return $b;
     }
@@ -369,6 +369,7 @@ for @!encoded-entries -> $ee {
     # element ::= type-code e_name some-encoding
     #
     method !encode-element ( Pair:D $p --> Buf ) {
+say "EE: ", ", {$p.key} => {$p.value//'(Any)'}: ", $p.value.WHAT;
 
       given $p.value {
 
@@ -389,6 +390,7 @@ for @!encoded-entries -> $ee {
                      encode-e-name($p.key),
                      encode-string($p.value);
         }
+
         # Converting a pair same way as a hash:
         #
         when Pair {
@@ -396,6 +398,9 @@ for @!encoded-entries -> $ee {
           # "\x03" e_name document
           #
           my Pair @pairs = $p.value;
+say "Pair {$p.key} => {$p.value}: ", [~] Buf.new(BSON::C-DOCUMENT),
+                     encode-e-name($p.key),
+                     self!encode-document(@pairs);
           return [~] Buf.new(BSON::C-DOCUMENT),
                      encode-e-name($p.key),
                      self!encode-document(@pairs);
