@@ -41,7 +41,9 @@ subtest {
 
     CATCH {
       default {
-        ok .message ~~ ms/'Cannot' 'use' 'binding'/, $_;
+        my $s = ~$_;
+        $s ~~ s:g/\n//;
+        ok .message ~~ ms/'Cannot' 'use' 'binding'/, $s;
       }
     }
   }
@@ -83,7 +85,9 @@ subtest {
 
     CATCH {
       default {
-        ok .message ~~ ms/'Cannot' 'use' 'binding'/, $_;
+        my $s = ~$_;
+        $s ~~ s:g/\n//;
+        ok .message ~~ ms/'Cannot' 'use' 'binding'/, $s;
       }
     }
   }

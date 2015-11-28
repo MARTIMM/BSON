@@ -146,7 +146,7 @@ package BSON {
     #---------------------------------------------------------------------------
     multi method ASSIGN-KEY ( Str:D $key, Array:D $new) {
 
-#say "Asign-key($?LINE): $key => ", $new.WHAT;
+say "Asign-key($?LINE): $key => ", $new.WHAT;
 
       my Str $k = $key;
       my Array $v = $new;
@@ -168,7 +168,7 @@ package BSON {
 
     multi method ASSIGN-KEY ( Str:D $key, List:D $new) {
 
-#say "Asign-key($?LINE): $key => ", $new.WHAT, ', ', $new[0].WHAT;
+say "Asign-key($?LINE): $key => ", $new.WHAT, ', ', $new[0].WHAT;
 
       my Str $k = $key;
       my BSON::Document $v .= new($new);
@@ -190,7 +190,7 @@ package BSON {
 
     multi method ASSIGN-KEY ( Str:D $key, Any $new) {
 
-#say "Asign-key($?LINE): $key => ", $new.WHAT;
+say "Asign-key($?LINE): $key => ", $new.WHAT;
 
       my Str $k = $key;
       my $v = $new;
@@ -331,6 +331,10 @@ package BSON {
 
         %!promises = ();
       }
+my $i = 0;
+for @!encoded-entries -> $ee {
+  say "@!keys[$i++]: ", $ee;
+}
 
       $!encoded-document = [~] @!encoded-entries;
 
