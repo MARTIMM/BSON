@@ -48,6 +48,16 @@ package BSON {
     }
   }
 
+  class X::NYS is Exception {
+    has $.operation;                      # Operation encode, decode
+    has $.type;                           # Type to encode/decode
+
+    method message () {
+      return "\n$!operation\() error: BSON type '$!type' is not (yet) supported\n";
+    }
+  }
+
+
   #-----------------------------------------------------------------------------
   class Document does Associative does Positional {
 
@@ -62,9 +72,18 @@ package BSON {
 
     has Promise %!promises;
 
+    has Bool $.autovivify is rw = False;
+
     #---------------------------------------------------------------------------
     #
     multi method new ( List $pairs = () ) {
+      self.bless(:$pairs);
+    }
+
+    # No default value! is handled by new() above
+    #
+    multi method new ( Pair $p ) {
+      my List $pairs = $p.List;
       self.bless(:$pairs);
     }
 
@@ -77,6 +96,14 @@ package BSON {
 
     #---------------------------------------------------------------------------
     submethod BUILD ( List :$pairs! ) {
+
+      @!keys = ();
+      @!values = ();
+
+      $!encoded-document = Nil;
+      @!encoded-entries = ();
+
+      %!promises = ();
 
       # self{x} = y will end up at ASSIGN-KEY
       #
@@ -92,7 +119,7 @@ package BSON {
       @!values = ();
 
       $!encoded-document = Nil;
-      @!encoded-entries = Nil;
+      @!encoded-entries = ();
 
       %!promises = ();
     }
@@ -117,8 +144,20 @@ package BSON {
     method AT-KEY ( Str $key --> Any ) {
 
       my $value;
-      if (my Int $idx = self.find-key($key)).defined {
+      my Int $idx = self.find-key($key);
+      if $idx.defined {
         $value = @!values[$idx];
+      }
+
+      # No key found so its undefined, check if we must make a new entry
+      #
+      elsif $!autovivify {
+
+#say "At-key($?LINE): $key => ", $value.WHAT, ", autovivify: $!autovivify;";
+
+        $value = BSON::Document.new;
+        $value.autovivify = True;
+        self{$key} = $value;
       }
 
       $value;
@@ -186,6 +225,34 @@ package BSON {
       @!values[$idx] = $v;
 
       %!promises{$k} = Promise.start({ self!encode-element: ($k => $v); });
+    }
+
+    multi method ASSIGN-KEY ( Str:D $key, Pair $new) {
+
+#say "Asign-key($?LINE): $key => ", $new.WHAT;
+
+      my Str $k = $key;
+      my BSON::Document $v .= new: ($new);
+
+      my Int $idx = self.find-key($k);
+      if $idx.defined {
+        %!promises{$k}:delete;
+      }
+
+      else {
+        $idx = @!keys.elems;
+      }
+
+      @!keys[$idx] = $k;
+      @!values[$idx] = $v;
+
+      %!promises{$k} = Promise.start({ self!encode-element: ($k => $v); });
+    }
+
+    multi method ASSIGN-KEY ( Str:D $key, Seq $new) {
+
+#say "Asign-key($?LINE): $key => ", $new.WHAT;
+      self.ASSIGN-KEY( $key, $new.List);
     }
 
     multi method ASSIGN-KEY ( Str:D $key, Any $new) {
@@ -313,16 +380,18 @@ package BSON {
     #
     method encode ( --> Buf ) {
 
+#say "Nbr promises: ", %!promises.elems;
+
       if %!promises.elems {
         loop ( my $idx = 0; $idx < @!keys.elems; $idx++) {
           my $key = @!keys[$idx];
           if %!promises{$key}:exists {
             try {
-              @!encoded-entries[$idx] = await %!promises{$key};
-
+              @!encoded-entries[$idx] = %!promises{$key}.result;
+say "Pr: $idx, $key, ", @!values[$idx].WHAT, ', ', @!encoded-entries[$idx];
               CATCH {
                 default {
-                  say "Error: $_";
+                  say "Error: ", %!promises{$key}.cause;
                 }
               }
             }
@@ -331,20 +400,31 @@ package BSON {
 
         %!promises = ();
       }
+
+#say "Nbr encoded entries: ", @!encoded-entries.elems;
 #my $i = 0;
 #for @!encoded-entries -> $ee {
 #  say "@!keys[$i++]: ", $ee;
 #}
 
-      $!encoded-document = [~] @!encoded-entries;
+      my Buf $b;
+      if @!encoded-entries.elems {
+        $!encoded-document = [~] @!encoded-entries;
+        $b = [~] encode-int32($!encoded-document.elems + 5),
+                 $!encoded-document,
+                 Buf.new(0x00);
+      }
 
-      my Buf $b = [~] encode-int32($!encoded-document.elems + 5),
-                      $!encoded-document,
-                      Buf.new(0x00);
+      else {
+        $b = [~] encode-int32(5), Buf.new(0x00);
+      }
+
+say "Encoded ($?LINE): ", $b;
 
       return $b;
     }
 
+#`{{
     #---------------------------------------------------------------------------
     method !encode-document ( Pair:D @p --> Buf ) {
       my Buf $b = self!encode-e-list(@p);
@@ -361,6 +441,7 @@ package BSON {
 
       return $b;
     }
+}}
 
     #---------------------------------------------------------------------------
     # Encode a key value pair. Called from the insertion methods above when a
@@ -392,6 +473,7 @@ package BSON {
                      encode-string($p.value);
         }
 
+#`{{
         # Converting a pair same way as a hash:
         #
         when Pair {
@@ -407,7 +489,6 @@ package BSON {
                      self!encode-document(@pairs);
         }
 
-#`{{
         when Hash {
           # Embedded document
           # "\x03" e_name document
@@ -424,6 +505,7 @@ package BSON {
           $b = [~] Buf.new(BSON::C-DOCUMENT),
                      encode-e-name($p.key),
                      .encode;
+say "Encoded doc ($?LINE): ", $b;
         }
 
         when Array {
@@ -628,15 +710,15 @@ package BSON {
           }
 
           else {
-            die X::BSON::NYS.new(
+            die X::NYS.new(
               :operation('encode'),
               :type($_ ~ '(' ~ ($_.^name // 'Unknown') ~ ')')
             );
           }
         }
       }
-      
-say "\nEE: ", ", {$p.key} => {$p.value//'(Any)'}: ", $p.value.WHAT, ', ', $b;
+
+#say "\nEE: ", ", {$p.key} => {$p.value//'(Any)'}: ", $p.value.WHAT, ', ', $b;
 
       $b;
     }

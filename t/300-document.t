@@ -5,6 +5,15 @@ use BSON::Document;
 #-------------------------------------------------------------------------------
 subtest {
 
+  my BSON::Document $d .= new;
+  $d.encode;
+
+}, "Empty document";
+
+
+#-------------------------------------------------------------------------------
+subtest {
+
   my BSON::Document $d .= new: ('a' ... 'z') Z=> 120..145;
   is $d.^name, 'BSON::Document', 'Isa ok';
 
@@ -106,7 +115,7 @@ subtest {
   is ($d.values)[*-1], 145, "Last value is 145";
   is ($d.keys)[3], 'd', "4th key is 'd'";
   is ($d.values)[3], 123, '4th value is 123';
-  
+
 }, "Test document, other";
 
 #-------------------------------------------------------------------------------
@@ -155,17 +164,48 @@ subtest {
     }
   }
 
+}, "Document nesting 1";
+
+#-------------------------------------------------------------------------------
+subtest {
+
   # Try nesting with k => v
   #
-  $d .= new;
+  my BSON::Document $d .= new;
   $d<abcdef> = a1 => 10, bb => 11;
   is $d<abcdef><a1>, 10, "sub document \$d<abcdef><a1> = $d<abcdef><a1>";
 
   $d<abcdef><b1> = q => 255;
   is $d<abcdef><b1><q>, 255,
      "sub document \$d<abcdef><b1><q> = $d<abcdef><b1><q>";
+  $d.encode;
 
-}, "Document nesting";
+
+  $d .= new;
+  $d<a> = v1 => v2 => 'v3';
+  is $d<a><v1><v2>, 'v3', "\$d<a><v1><v2> = $d<a><v1><v2>";
+  $d<a><v1><w3> = 110;
+  is $d<a><v1><w3>, 110, "\$d<a><v1><w3> = $d<a><v1><w3>";
+  $d.encode;
+
+
+  $d .= new;
+  $d.autovivify = True;
+  $d<p><q> = c => 2.3.Num;
+  $d<a><b><c><d><e><f><g><h><i><j><h><i><j> = ('a' ... 'z') Z=> 120..145;
+  is $d<a><b><c><d><e><f><g><h><i><j><h><i><j><a>,
+     120,
+     "Very deep ...<j><a> = $d<a><b><c><d><e><f><g><h><i><j><h><i><j><a>";
+  is $d<a><b><c><d><e><f><g><h><i><j><h><i><j><b>,
+     121,
+     "Very deep ...<j><b> = $d<a><b><c><d><e><f><g><h><i><j><h><i><j><b>";
+  is $d<a><b><c><d><e><f><g><h><i><j><h><i><j>.^name,
+     'BSON::Document',
+     "Document at ...<j> = {$d<a><b><c><d><e><f><g><h><i><j><h><i><j>.^name}";
+  $d.encode;
+
+
+}, "Document nesting 2";
 
 #-------------------------------------------------------------------------------
 # Cleanup
