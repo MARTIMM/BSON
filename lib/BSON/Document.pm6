@@ -74,6 +74,9 @@ package BSON {
 
     has Bool $.autovivify is rw = False;
 
+    my Channel $document-ready-to-encode;
+    my Bool $toplevel = False;
+
     #---------------------------------------------------------------------------
     #
     multi method new ( List $pairs = () ) {
@@ -96,6 +99,11 @@ package BSON {
 
     #---------------------------------------------------------------------------
     submethod BUILD ( List :$pairs! ) {
+
+      if ! ? $document-ready-to-encode {
+        $document-ready-to-encode .= new;
+        $toplevel = True;
+      }
 
       @!keys = ();
       @!values = ();
@@ -152,12 +160,11 @@ package BSON {
       # No key found so its undefined, check if we must make a new entry
       #
       elsif $!autovivify {
-
 #say "At-key($?LINE): $key => ", $value.WHAT, ", autovivify: $!autovivify;";
-
         $value = BSON::Document.new;
         $value.autovivify = True;
         self{$key} = $value;
+say "At-key($?LINE): $key => ", $value.WHAT;
       }
 
       $value;
@@ -257,7 +264,7 @@ package BSON {
 
     multi method ASSIGN-KEY ( Str:D $key, Any $new) {
 
-#say "Asign-key($?LINE): $key => ", $new.WHAT;
+say "Asign-key($?LINE)({self.WHERE}): $key => ", $new.WHAT;
 
       my Str $k = $key;
       my $v = $new;
@@ -380,7 +387,8 @@ package BSON {
     #
     method encode ( --> Buf ) {
 
-#say "Nbr promises: ", %!promises.elems;
+#say "Nbr promises({self.WHERE}): ", %!promises.elems;
+      $document-ready-to-encode.send('encode') if $toplevel;
 
       if %!promises.elems {
         loop ( my $idx = 0; $idx < @!keys.elems; $idx++) {
@@ -388,7 +396,9 @@ package BSON {
           if %!promises{$key}:exists {
             try {
               @!encoded-entries[$idx] = %!promises{$key}.result;
-say "Pr: $idx, $key, ", @!values[$idx].WHAT, ', ', @!encoded-entries[$idx];
+#say "Pr({self.WHERE}): $idx, $key, ",
+    @!values[$idx].WHAT, ', ',
+    @!encoded-entries[$idx];
               CATCH {
                 default {
                   say "Error: ", %!promises{$key}.cause;
@@ -401,10 +411,10 @@ say "Pr: $idx, $key, ", @!values[$idx].WHAT, ', ', @!encoded-entries[$idx];
         %!promises = ();
       }
 
-#say "Nbr encoded entries: ", @!encoded-entries.elems;
+say "Nbr encoded entries({self.WHERE}): ", @!encoded-entries.elems;
 #my $i = 0;
 #for @!encoded-entries -> $ee {
-#  say "@!keys[$i++]: ", $ee;
+#  say "({self.WHERE}): @!keys[$i++]: ", $ee;
 #}
 
       my Buf $b;
@@ -419,7 +429,7 @@ say "Pr: $idx, $key, ", @!values[$idx].WHAT, ', ', @!encoded-entries[$idx];
         $b = [~] encode-int32(5), Buf.new(0x00);
       }
 
-say "Encoded ($?LINE): ", $b;
+#say "({self.WHERE}). Encoded ($?LINE): ", $b;
 
       return $b;
     }
@@ -502,10 +512,18 @@ say "Encoded ($?LINE): ", $b;
           # Embedded document
           # "\x03" e_name document
           #
+          # When there is a deep nesting of docments it is possible that the
+          # encoding of it below is finished before AT-KEY or ASSIGN-KEY on that
+          # same document is called to add a new key resulting effectively
+          # in a pruned tree. Trick is to wait for a signal from the channel
+          # before starting it.
+          #
+          my $cmd = $document-ready-to-encode.receive;
+say "Command received: $cmd";
           $b = [~] Buf.new(BSON::C-DOCUMENT),
                      encode-e-name($p.key),
                      .encode;
-say "Encoded doc ($?LINE): ", $b;
+#say "Encoded doc ($?LINE): ", $b;
         }
 
         when Array {
@@ -884,7 +902,7 @@ say "Encoded doc ($?LINE): ", $b;
     # Decoding document
     #---------------------------------------------------------------------------
     method decode ( Buf $data --> Nil ) {
-
+say "Start decode: ", $data;
       $!encoded-document = $data;
 
       @!keys = ();
@@ -899,7 +917,9 @@ say "Encoded doc ($?LINE): ", $b;
       self!decode-document;
       if %!promises.elems {
         try {
+say "Now wait in {self}";
           await %!promises.values;
+say "Done";
 
           CATCH {
             default {
@@ -919,6 +939,7 @@ say "Encoded doc ($?LINE): ", $b;
       $!index += C-INT32-SIZE;
 
       while $!encoded-document[$!index] !~~ 0x00 {
+say "Index at $!index ({self})";
         self!decode-element;
       }
 
@@ -946,6 +967,8 @@ say "Encoded doc ($?LINE): ", $b;
       my Int $idx = @!keys.elems;
       @!keys[$idx] = $key;              # index on new location == push()
       my Int $size;
+
+say "Decode element, $bson-code, $idx, $key";
 
       given $bson-code {
 
@@ -982,13 +1005,14 @@ say "Encoded doc ($?LINE): ", $b;
         # Nested document
         #
         when BSON::C-DOCUMENT {
-
           my Int $i = $!index;
           my Int $doc-size = decode-int32( $!encoded-document, $i);
           $!index += $doc-size;
+say "Decode doc $i, $!index, $doc-size";
           %!promises{$key} = Promise.start( {
               my BSON::Document $d .= new;
               $d.decode(Buf.new($!encoded-document[$i ..^ ($i + $doc-size)]));
+say "Doc: $d";
               @!values[$idx] = $d;
             }
           );
