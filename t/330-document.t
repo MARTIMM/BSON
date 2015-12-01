@@ -146,15 +146,18 @@ subtest {
   is-deeply $etst, $b, 'Buf compare';
 
   my BSON::Document $d2 .= new;
-  $d2.autovivify = True;
   $d2.decode($b);
-say "Decoded...";
-  is $d2<a><b><c><d><e><f1><g><h><i><j><h><i><j><a>,
-     120,
-     "Very deep ...<j><a> = $d<a><b><c><d><e><f1><g><h><i><j><h><i><j><a>";
-  is $d2<a><b><c><d><e><f2><g><h><i><j><h><i><j><a>,
-     120,
-     "Very deep ...<j><a> = $d<a><b><c><d><e><f2><g><h><i><j><h><i><j><a>";
+
+  is $d2<a><b><c><d><e><f1><g><h><i><j><h><i><j><c>,
+     122,
+     "Very deep ...<j><c> = $d<a><b><c><d><e><f1><g><h><i><j><h><i><j><c>";
+  is $d2<a><b><c><d><e><f2><g><h><i><j><h><i><j><c>,
+     122,
+     "Very deep ...<j><c> = $d<a><b><c><d><e><f2><g><h><i><j><h><i><j><c>";
+
+  my $b2 = $d2.encode;
+  is-deeply $etst, $b, 'Buf compare of encoded decode';
+  
 
 }, "Autovivication";
 
@@ -162,7 +165,7 @@ say "Decoded...";
 #-------------------------------------------------------------------------------
 # Cleanup
 #
-done-testing();
+done-testing;
 exit(0);
 
 

@@ -6,7 +6,14 @@ use BSON::Document;
 subtest {
 
   my BSON::Document $d .= new;
-  $d.encode;
+  my Buf $b = $d.encode;
+  
+  is $b, Buf.new( 0x05, 0x00 xx 4), 'Empty doc encoded ok';
+
+  $d .= new;
+  $d.decode($b);
+  
+  is $d.elems, 0, 'No items in decoded doc';
 
 }, "Empty document";
 
