@@ -73,16 +73,19 @@ package BSON {
     has Promise %!promises;
 
     has Bool $.autovivify is rw = False;
+    has Bool $.accept-hash is rw = False;
 
     my Channel $document-ready-to-encode;
     my Bool $toplevel = False;
 
     #---------------------------------------------------------------------------
+    # Make new document and initialize with a list of pairs
     #
     multi method new ( List $pairs = () ) {
       self.bless(:$pairs);
     }
 
+    # Make new document and initialize with a pair
     # No default value! is handled by new() above
     #
     multi method new ( Pair $p ) {
@@ -90,6 +93,7 @@ package BSON {
       self.bless(:$pairs);
     }
 
+    # Make new document and initialize with a sequence of pairs
     # No default value! is handled by new() above
     #
     multi method new ( Seq $p ) {
@@ -97,8 +101,15 @@ package BSON {
       self.bless(:$pairs);
     }
 
+    # Make new document and initialize with a byte array. This will call
+    # decode.
+    #
+    multi method new ( Buf $b ) {
+      self.bless(:buf($b));
+    }
+
     #---------------------------------------------------------------------------
-    submethod BUILD ( List :$pairs! ) {
+    multi submethod BUILD ( List :$pairs! ) {
 
       if ! ? $document-ready-to-encode {
         $document-ready-to-encode .= new;
@@ -118,6 +129,26 @@ package BSON {
       for @$pairs -> $pair {
         self{$pair.key} = $pair.value;
       }
+    }
+
+    multi submethod BUILD ( Buf :$buf! ) {
+
+      if ! ? $document-ready-to-encode {
+        $document-ready-to-encode .= new;
+        $toplevel = True;
+      }
+
+      @!keys = ();
+      @!values = ();
+
+      $!encoded-document = Nil;
+      @!encoded-entries = ();
+
+      %!promises = ();
+
+      # Decode buffer data
+      #
+      self.decode($buf);
     }
 
     #---------------------------------------------------------------------------
@@ -182,6 +213,7 @@ package BSON {
       elsif $!autovivify {
 #say "At-key($?LINE): $key => ", $value.WHAT, ", autovivify: $!autovivify;";
         $value = BSON::Document.new;
+        $value.accept-hash = $!accept-hash;
         $value.autovivify = True;
         self{$key} = $value;
 #say "At-key($?LINE): $key => ", $value.WHAT;
@@ -238,6 +270,7 @@ package BSON {
 
       my Str $k = $key;
       my BSON::Document $v .= new($new);
+      $v.accept-hash = $!accept-hash;
 
       my Int $idx = self.find-key($k);
       if $idx.defined {
@@ -260,6 +293,7 @@ package BSON {
 
       my Str $k = $key;
       my BSON::Document $v .= new: ($new);
+      $v.accept-hash = $!accept-hash;
 
       my Int $idx = self.find-key($k);
       if $idx.defined {
@@ -274,6 +308,20 @@ package BSON {
       @!values[$idx] = $v;
 
       %!promises{$k} = Promise.start({ self!encode-element: ($k => $v); });
+    }
+
+    multi method ASSIGN-KEY ( Str:D $key, Hash $new) {
+
+#say "Asign-key($?LINE): $key => ", $new.WHAT;
+
+      if ! $!accept-hash {
+        die X::Parse.new(
+          :operation("\$d<$key> = {$new.perl}")
+          :error("Cannot use hash values.\nSet accept-hash if you really want to")
+        );
+      }
+
+      self.ASSIGN-KEY( $key, $new.List);
     }
 
     multi method ASSIGN-KEY ( Str:D $key, Seq $new) {
@@ -566,6 +614,7 @@ package BSON {
           my BSON::Document $d .= new(
             (('0' ...^ $p.value.elems.Str) Z=> $p.value).List
           );
+          $d.accept-hash = $!accept-hash;
           $b = [~] Buf.new(BSON::C-ARRAY), encode-e-name($p.key), $d.encode;
         }
 
@@ -1057,6 +1106,7 @@ package BSON {
           # when waiting for it.
           #
           my BSON::Document $d .= new;
+          $d.accept-hash = $!accept-hash;
           $d.decode(Buf.new($!encoded-document[$i ..^ ($i + $doc-size)]));
           @!values[$idx] = $d;
 
@@ -1080,6 +1130,7 @@ package BSON {
 
           %!promises{$key} = Promise.start( {
               my BSON::Document $d .= new;
+              $d.accept-hash = $!accept-hash;
 say "New array document for $key, $i, $doc-size, $d";
               $d.decode(Buf.new($!encoded-document[$i ..^ ($i + $doc-size)]));
               @!values[$idx] = [$d.values];
@@ -1272,6 +1323,7 @@ say "New array document for $key, $i, $doc-size, $d";
 
           %!promises{$key} = Promise.start( {
               my BSON::Document $d .= new;
+              $d.accept-hash = $!accept-hash;
               $d.decode(Buf.new($!encoded-document[$i2 ..^ ($i2 + $js-size)]));
               @!values[$idx] = BSON::Javascript.new(
                 :javascript(decode-string( $!encoded-document, $i1)),

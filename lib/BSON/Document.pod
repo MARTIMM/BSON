@@ -1,0 +1,56 @@
+#!/usr/bin/env perl6
+#
+use v6;
+
+# Running the pod file will create a pdf using wkhtmltopdf
+#
+my Str $pod = "$*PROGRAM";
+my Str $pdf = $pod;
+$pdf ~~ s/\. <-[.]>+ $/.pdf/;
+shell( "perl6 --doc=HTML '$pod' | wkhtmltopdf - '$pdf'");
+
+#-------------------------------------------------------------------------------
+
+=begin pod
+
+=TITLE class BSON::Document
+
+=SUBTITLE BSON Encodable and Decodable document
+
+Defined as
+
+  package BSON { class Document { ... } }
+
+Use as
+
+  use BSON::Document;
+
+  # Document usage
+  #
+  my BSON::Document $d .= new;
+  $d<name> = 'Jose';
+  $d<address> = street => '24th', city => 'NY';
+
+  # Automatic generating 
+  $d.autovivify = True;
+  $d<a><b><c><d><e> = 10;
+
+  my Buf $b = $d.encode;
+  my BSON::Document $d2 .= new;
+  $d2.decode($b);
+
+  my Buf $b2 = $d2.encode;
+  my BSON::Document $d2 .= new($b2);
+
+
+
+=head2 method get-users
+
+Defined as
+
+  method get-users ( --> Hash )
+
+Get information about all users
+
+=end pod
+

@@ -7,16 +7,42 @@ subtest {
 
   my BSON::Document $d .= new;
   my Buf $b = $d.encode;
-  
+
   is $b, Buf.new( 0x05, 0x00 xx 4), 'Empty doc encoded ok';
 
   $d .= new;
   $d.decode($b);
-  
-  is $d.elems, 0, 'No items in decoded doc';
+
+  $d<a> = 11;
+  my Buf $b2 = $d.encode;
+  my BSON::Document $d2 .= new($b2);
+  is $d2.elems, 1, 'One item in decoded doc';
+  is $d2<a>, 11, "Item is $d2<a>";
 
 }, "Empty document";
 
+
+#-------------------------------------------------------------------------------
+subtest {
+
+  my BSON::Document $d .= new;
+  try {
+    $d<q> = {a => 20};
+    is $d<q><a>, 20, "Hash value $d<q><a>";
+
+    CATCH {
+      default {
+        ok .message ~~ ms/'Cannot' 'use' 'hash' 'values'/,
+           'Cannot use hashes';
+      }
+    }
+  }
+  
+  $d.accept-hash = True;
+  $d<q> = {a => 20};
+  is $d<q><a>, 20, "Hash value $d<q><a>";
+  
+}, "Ban the hash";
 
 #-------------------------------------------------------------------------------
 subtest {
