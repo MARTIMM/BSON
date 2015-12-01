@@ -16,8 +16,8 @@ When installing MongoDB, BSON will be installed automatically as a dependency.
 
 ## VERSION PERL AND MOARVM
 
-* Perl6 version ```2015.11-5-g08a804c```
-* MoarVM version ```2015.11```
+* Perl6 version ```2015.11-143-g7046681```
+* MoarVM version ```2015.11-19-g623eadf```
 
 
 ## SYNOPSIS

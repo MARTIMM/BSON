@@ -48,6 +48,16 @@ package BSON {
     }
   }
 
+  class X::NYS is Exception {
+    has $.operation;                      # Operation encode, decode
+    has $.type;                           # Type to encode/decode
+
+    method message () {
+      return "\n$!operation\() error: BSON type '$!type' is not (yet) supported\n";
+    }
+  }
+
+
   #-----------------------------------------------------------------------------
   class Document does Associative does Positional {
 
@@ -62,9 +72,21 @@ package BSON {
 
     has Promise %!promises;
 
+    has Bool $.autovivify is rw = False;
+
+    my Channel $document-ready-to-encode;
+    my Bool $toplevel = False;
+
     #---------------------------------------------------------------------------
     #
     multi method new ( List $pairs = () ) {
+      self.bless(:$pairs);
+    }
+
+    # No default value! is handled by new() above
+    #
+    multi method new ( Pair $p ) {
+      my List $pairs = $p.List;
       self.bless(:$pairs);
     }
 
@@ -78,11 +100,44 @@ package BSON {
     #---------------------------------------------------------------------------
     submethod BUILD ( List :$pairs! ) {
 
+      if ! ? $document-ready-to-encode {
+        $document-ready-to-encode .= new;
+        $toplevel = True;
+      }
+
+      @!keys = ();
+      @!values = ();
+
+      $!encoded-document = Nil;
+      @!encoded-entries = ();
+
+      %!promises = ();
+
       # self{x} = y will end up at ASSIGN-KEY
       #
       for @$pairs -> $pair {
         self{$pair.key} = $pair.value;
       }
+    }
+
+    #---------------------------------------------------------------------------
+    method perl ( --> Str ) {
+      [~] "\n  ", self,
+          "\n  Keys(", @!keys.elems, "): ", @!keys.join(', '),
+          "\n  Values(", @!values.elems, "): ", @!values.join(', '),
+          "\n  Encoded Entries:", (map { "\n    ", $_.List.fmt('0x%02x'); }, @!encoded-entries),
+#          "\n  Encoded Document:\n", $!encoded-document
+          ;
+    }
+
+    #---------------------------------------------------------------------------
+    submethod WHAT ( --> Str ) {
+      "(BSON::Document)";
+    }
+
+    #---------------------------------------------------------------------------
+    submethod Str ( --> Str ) {
+      "BSON::Document<{self.WHERE}>";
     }
 
     #---------------------------------------------------------------------------
@@ -92,14 +147,14 @@ package BSON {
       @!values = ();
 
       $!encoded-document = Nil;
-      @!encoded-entries = Nil;
+      @!encoded-entries = ();
 
       %!promises = ();
     }
-    
+
     #---------------------------------------------------------------------------
     method find-key ( Str:D $key --> Int ) {
-    
+
       my Int $idx;
       loop ( my $i = 0; $i < @!keys.elems; $i++) {
         if @!keys[$i] eq $key {
@@ -107,7 +162,7 @@ package BSON {
           last;
         }
       }
-      
+
       $idx;
     }
 
@@ -117,10 +172,21 @@ package BSON {
     method AT-KEY ( Str $key --> Any ) {
 
       my $value;
-      if (my Int $idx = self.find-key($key)).defined {
+      my Int $idx = self.find-key($key);
+      if $idx.defined {
         $value = @!values[$idx];
       }
-      
+
+      # No key found so its undefined, check if we must make a new entry
+      #
+      elsif $!autovivify {
+#say "At-key($?LINE): $key => ", $value.WHAT, ", autovivify: $!autovivify;";
+        $value = BSON::Document.new;
+        $value.autovivify = True;
+        self{$key} = $value;
+#say "At-key($?LINE): $key => ", $value.WHAT;
+      }
+
       $value;
     }
 
@@ -155,14 +221,14 @@ package BSON {
       if $idx.defined {
         %!promises{$k}:delete;
       }
-      
+
       else {
         $idx = @!keys.elems;
       }
-      
+
       @!keys[$idx] = $k;
       @!values[$idx] = $v;
-      
+
       %!promises{$k} = Promise.start({ self!encode-element: ($k => $v); });
     }
 
@@ -177,20 +243,48 @@ package BSON {
       if $idx.defined {
         %!promises{$k}:delete;
       }
-      
+
       else {
         $idx = @!keys.elems;
       }
-      
+
       @!keys[$idx] = $k;
       @!values[$idx] = $v;
-      
+
       %!promises{$k} = Promise.start({ self!encode-element: ($k => $v); });
+    }
+
+    multi method ASSIGN-KEY ( Str:D $key, Pair $new) {
+
+#say "Asign-key($?LINE): $key => ", $new.WHAT;
+
+      my Str $k = $key;
+      my BSON::Document $v .= new: ($new);
+
+      my Int $idx = self.find-key($k);
+      if $idx.defined {
+        %!promises{$k}:delete;
+      }
+
+      else {
+        $idx = @!keys.elems;
+      }
+
+      @!keys[$idx] = $k;
+      @!values[$idx] = $v;
+
+      %!promises{$k} = Promise.start({ self!encode-element: ($k => $v); });
+    }
+
+    multi method ASSIGN-KEY ( Str:D $key, Seq $new) {
+
+#say "Asign-key($?LINE): $key => ", $new.WHAT;
+      self.ASSIGN-KEY( $key, $new.List);
     }
 
     multi method ASSIGN-KEY ( Str:D $key, Any $new) {
 
-#say "Asign-key($?LINE): $key => ", $new.WHAT;
+#say "Asign-key($?LINE)({self.WHERE}): $key => ", $new.WHAT;
 
       my Str $k = $key;
       my $v = $new;
@@ -199,11 +293,11 @@ package BSON {
       if $idx.defined {
         %!promises{$k}:delete;
       }
-      
+
       else {
         $idx = @!keys.elems;
       }
-      
+
       @!keys[$idx] = $k;
       @!values[$idx] = $v;
 
@@ -273,7 +367,7 @@ package BSON {
     # Must be defined because of Positional and Associative sources of of()
     #---------------------------------------------------------------------------
     method of ( ) {
-      Mu;
+      BSON::Document;
     }
 
     #---------------------------------------------------------------------------
@@ -313,18 +407,24 @@ package BSON {
     #
     method encode ( --> Buf ) {
 
-      if %!promises.elems {
-        loop ( my $idx = 0; $idx < @!keys.elems; $idx++) {
-          my $key = @!keys[$idx];
-          if %!promises{$key}:exists {
-            try {
-              @!encoded-entries[$idx] = await %!promises{$key};
+#say "Nbr promises({self.WHERE}): ", %!promises.elems;
+      $document-ready-to-encode.send('encode') if $toplevel;
 
-              CATCH {
-                default {
-                  say "Error: $_";
-                }
-              }
+      if %!promises.elems {
+        try {
+          loop ( my $idx = 0; $idx < @!keys.elems; $idx++) {
+            my $key = @!keys[$idx];
+            if %!promises{$key}:exists {
+              @!encoded-entries[$idx] = %!promises{$key}.result;
+#say "Pr({self.WHERE}): $idx, $key, ",
+    @!values[$idx].WHAT, ', ',
+    @!encoded-entries[$idx];
+            }
+          }
+
+          CATCH {
+            default {
+              say "Error encoding: ", $_; #%!promises{$key}.cause;
             }
           }
         }
@@ -332,15 +432,30 @@ package BSON {
         %!promises = ();
       }
 
-      $!encoded-document = [~] @!encoded-entries;
+#say "Nbr encoded entries({self.WHERE}): ", @!encoded-entries.elems;
+#my $i = 0;
+#for @!encoded-entries -> $ee {
+#  say "({self.WHERE}): @!keys[$i++]: ", $ee;
+#}
 
-      my Buf $b = [~] encode-int32($!encoded-document.elems + 5),
-          $!encoded-document,
-          Buf.new(0x00);
+      my Buf $b;
+      if @!encoded-entries.elems {
+        $!encoded-document = [~] @!encoded-entries;
+        $b = [~] encode-int32($!encoded-document.elems + 5),
+                 $!encoded-document,
+                 Buf.new(0x00);
+      }
+
+      else {
+        $b = [~] encode-int32(5), Buf.new(0x00);
+      }
+
+#say "({self.WHERE}). Encoded ($?LINE): ", $b;
 
       return $b;
     }
 
+#`{{
     #---------------------------------------------------------------------------
     method !encode-document ( Pair:D @p --> Buf ) {
       my Buf $b = self!encode-e-list(@p);
@@ -357,6 +472,7 @@ package BSON {
 
       return $b;
     }
+}}
 
     #---------------------------------------------------------------------------
     # Encode a key value pair. Called from the insertion methods above when a
@@ -366,13 +482,15 @@ package BSON {
     #
     method !encode-element ( Pair:D $p --> Buf ) {
 
+      my Buf $b;
+
       given $p.value {
 
         when Num {
           # Double precision
           # "\x01" e_name Num
           #
-          return [~] Buf.new(BSON::C-DOUBLE),
+          $b = [~] Buf.new(BSON::C-DOUBLE),
                      encode-e-name($p.key),
                      self!encode-double($p.value);
         }
@@ -381,10 +499,12 @@ package BSON {
           # UTF-8 string
           # "\x02" e_name string
           #
-          return [~] Buf.new(BSON::C-STRING),
+          $b = [~] Buf.new(BSON::C-STRING),
                      encode-e-name($p.key),
                      encode-string($p.value);
         }
+
+#`{{
         # Converting a pair same way as a hash:
         #
         when Pair {
@@ -392,17 +512,19 @@ package BSON {
           # "\x03" e_name document
           #
           my Pair @pairs = $p.value;
-          return [~] Buf.new(BSON::C-DOCUMENT),
+#say "Pair {$p.key} => {$p.value}: ", [~] Buf.new(BSON::C-DOCUMENT),
+#                     encode-e-name($p.key),
+#                     self!encode-document(@pairs);
+          $b = [~] Buf.new(BSON::C-DOCUMENT),
                      encode-e-name($p.key),
                      self!encode-document(@pairs);
         }
 
-#`{{
         when Hash {
           # Embedded document
           # "\x03" e_name document
           #
-          return [~] Buf.new(C-DOCUMENT),
+          $b = [~] Buf.new(C-DOCUMENT),
                      encode-e-name($p.key),
                      self!encode-document($p.value);
         }
@@ -411,9 +533,18 @@ package BSON {
           # Embedded document
           # "\x03" e_name document
           #
-          return [~] Buf.new(BSON::C-DOCUMENT),
+          # When there is a deep nesting of docments it is possible that the
+          # encoding of it below is finished before AT-KEY or ASSIGN-KEY on that
+          # same document is called to add a new key resulting effectively
+          # in a pruned tree. Trick is to wait for a signal from the channel
+          # before starting it.
+          #
+          my $cmd = $document-ready-to-encode.receive;
+#say "Command received: $cmd";
+          $b = [~] Buf.new(BSON::C-DOCUMENT),
                      encode-e-name($p.key),
                      .encode;
+#say "Encoded doc ($?LINE): ", $b;
         }
 
         when Array {
@@ -435,7 +566,7 @@ package BSON {
           my BSON::Document $d .= new(
             (('0' ...^ $p.value.elems.Str) Z=> $p.value).List
           );
-          return [~] Buf.new(BSON::C-ARRAY), encode-e-name($p.key), $d.encode;
+          $b = [~] Buf.new(BSON::C-ARRAY), encode-e-name($p.key), $d.encode;
         }
 
         when BSON::Binary {
@@ -443,7 +574,7 @@ package BSON {
           # "\x05" e_name int32 subtype byte*
           # subtype is '\x00' for the moment (Generic binary subtype)
           #
-          my Buf $b = [~] Buf.new(BSON::C-BINARY), encode-e-name($p.key);
+          $b = [~] Buf.new(BSON::C-BINARY), encode-e-name($p.key);
 
           if .has-binary-data {
             $b ~= encode-int32(.binary-data.elems);
@@ -455,15 +586,13 @@ package BSON {
             $b ~= encode-int32(0);
             $b ~= Buf.new(.binary-type);
           }
-
-          $b;
         }
 
        when BSON::ObjectId {
           # ObjectId
           # "\x07" e_name (byte*12)
           #
-          return Buf.new(BSON::C-OBJECTID) ~ encode-e-name($p.key) ~ .oid;
+          $b = Buf.new(BSON::C-OBJECTID) ~ encode-e-name($p.key) ~ .oid;
         }
 
         when Bool {
@@ -474,7 +603,7 @@ package BSON {
             # Boolean "true"
             # "\x08" e_name "\x01
             #
-            return [~] Buf.new(BSON::C-BOOLEAN),
+            $b = [~] Buf.new(BSON::C-BOOLEAN),
                        encode-e-name($p.key),
                        Buf.new(0x01);
           }
@@ -482,7 +611,7 @@ package BSON {
             # Boolean "false"
             # "\x08" e_name "\x00
             #
-            return [~] Buf.new(BSON::C-BOOLEAN),
+            $b = [~] Buf.new(BSON::C-BOOLEAN),
                        encode-e-name($p.key),
                        Buf.new(0x00);
           }
@@ -492,7 +621,7 @@ package BSON {
           # UTC dateime
           # "\x09" e_name int64
           #
-          return [~] Buf.new(BSON::C-DATETIME),
+          $b = [~] Buf.new(BSON::C-DATETIME),
                      encode-e-name($p.key),
                      encode-int64(.posix);
         }
@@ -501,14 +630,14 @@ package BSON {
           # Nil == Undefined value == typed object
           # "\x0A" e_name
           #
-          return Buf.new(BSON::C-NULL) ~ encode-e-name($p.key);
+          $b = Buf.new(BSON::C-NULL) ~ encode-e-name($p.key);
         }
 
         when BSON::Regex {
           # Regular expression
           # "\x0B" e_name cstring cstring
           #
-          return [~] Buf.new(BSON::C-REGEX),
+          $b = [~] Buf.new(BSON::C-REGEX),
                      encode-e-name($p.key),
                      encode-cstring(.regex),
                      encode-cstring(.options);
@@ -540,13 +669,13 @@ package BSON {
 
             if .has-scope {
               my Buf $doc = .scope.encode;
-              return [~] Buf.new(BSON::C-JAVASCRIPT-SCOPE),
+              $b = [~] Buf.new(BSON::C-JAVASCRIPT-SCOPE),
                          encode-e-name($p.key),
                          $js, $doc;
             }
 
             else {
-              return [~] Buf.new(BSON::C-JAVASCRIPT), encode-e-name($p.key), $js;
+              $b = [~] Buf.new(BSON::C-JAVASCRIPT), encode-e-name($p.key), $js;
             }
           }
 
@@ -564,14 +693,14 @@ package BSON {
           # '\x12' e_name int64
           #
           if -0xffffffff < $p.value < 0xffffffff {
-            return [~] Buf.new(BSON::C-INT32),
+            $b = [~] Buf.new(BSON::C-INT32),
                        encode-e-name($p.key),
                        encode-int32($p.value)
                        ;
           }
 
           elsif -0x7fffffff_ffffffff < $p.value < 0x7fffffff_ffffffff {
-            return [~] Buf.new(BSON::C-INT64),
+            $b = [~] Buf.new(BSON::C-INT64),
                        encode-e-name($p.key),
                        encode-int64($p.value)
                        ;
@@ -604,31 +733,33 @@ package BSON {
         #
         when Buf {
           my BSON::Binary $bbin .= new(:data($_));
-          my Buf $b = [~] Buf.new(BSON::C-BINARY), encode-e-name($p.key);
+          $b = [~] Buf.new(BSON::C-BINARY), encode-e-name($p.key);
           $b ~= encode-int32(.binary-data.elems);
           $b ~= Buf.new(.binary-type);
           $b ~= .binary-data;
-
-          $b;
         }
 
         default {
           if .can('encode') and .can('bson-code') {
             my $code = .bson-code;
 
-            return [~] Buf.new($code),
+            $b = [~] Buf.new($code),
                        encode-e-name($p.key),
                        .encode;
           }
 
           else {
-            die X::BSON::NYS.new(
+            die X::NYS.new(
               :operation('encode'),
               :type($_ ~ '(' ~ ($_.^name // 'Unknown') ~ ')')
             );
           }
         }
       }
+
+#say "\nEE: ", ", {$p.key} => {$p.value//'(Any)'}: ", $p.value.WHAT, ', ', $b;
+
+      $b;
     }
 
     #---------------------------------------------------------------------------
@@ -797,6 +928,7 @@ package BSON {
 
       @!keys = ();
       @!values = ();
+      @!encoded-entries = ();
 
       # Document decoding start: init index
       #
@@ -805,16 +937,28 @@ package BSON {
       # Decode the document, then wait for any started parallel tracks
       #
       self!decode-document;
+
       if %!promises.elems {
         try {
-          await %!promises.values;
+          loop ( my $idx = 0; $idx < @!keys.elems; $idx++) {
+            my $key = @!keys[$idx];
+            if %!promises{$key}:exists {
+
+              # Return the Buffer slices in each entry so it can be
+              # concatenated again when encoding
+              #
+              @!encoded-entries[$idx] = %!promises{$key}.result;
+            }
+          }
 
           CATCH {
             default {
-              say $_;
+              say "Error decoding: ", $_;
             }
           }
         }
+
+        %!promises = ();
       }
     }
 
@@ -839,6 +983,10 @@ package BSON {
     #---------------------------------------------------------------------------
     method !decode-element ( --> Nil ) {
 
+      # Decode start point
+      #
+      my $decode-start = $!index;
+
       # Get the value type of next pair
       #
       my $bson-code = $!encoded-document[$!index++];
@@ -862,10 +1010,16 @@ package BSON {
         when BSON::C-DOUBLE {
 
           my Int $i = $!index;
-          $!index += C-DOUBLE-SIZE;
+          $!index += BSON::C-DOUBLE-SIZE;
 
           %!promises{$key} = Promise.start( {
               @!values[$idx] = self!decode-double( $!encoded-document, $i);
+
+              Buf.new(
+                $!encoded-document[
+                  $decode-start ..^ ($i + BSON::C-DOUBLE-SIZE)
+                ]
+              );
             }
           );
         }
@@ -879,10 +1033,15 @@ package BSON {
 
           # Step over the size field and the null terminated string
           #
-          $!index += C-INT32-SIZE + $nbr-bytes;
+          $!index += BSON::C-INT32-SIZE + $nbr-bytes;
 
           %!promises{$key} = Promise.start( {
-             @!values[$idx] = decode-string( $!encoded-document, $i);
+              @!values[$idx] = decode-string( $!encoded-document, $i);
+              Buf.new(
+                $!encoded-document[
+                  $decode-start ..^ ($i + BSON::C-INT32-SIZE + $nbr-bytes)
+                ]
+              );
             }
           );
         }
@@ -890,14 +1049,23 @@ package BSON {
         # Nested document
         #
         when BSON::C-DOCUMENT {
-
           my Int $i = $!index;
           my Int $doc-size = decode-int32( $!encoded-document, $i);
           $!index += $doc-size;
+
+          # Keep this decoding out of the promise routine. It gets problems
+          # when waiting for it.
+          #
+          my BSON::Document $d .= new;
+          $d.decode(Buf.new($!encoded-document[$i ..^ ($i + $doc-size)]));
+          @!values[$idx] = $d;
+
           %!promises{$key} = Promise.start( {
-              my BSON::Document $d .= new;
-              $d.decode(Buf.new($!encoded-document[$i ..^ ($i + $doc-size)]));
-              @!values[$idx] = $d;
+              Buf.new(
+                $!encoded-document[
+                  $decode-start ..^ ($i + $doc-size)
+                ]
+              );
             }
           );
         }
@@ -912,8 +1080,15 @@ package BSON {
 
           %!promises{$key} = Promise.start( {
               my BSON::Document $d .= new;
+say "New array document for $key, $i, $doc-size, $d";
               $d.decode(Buf.new($!encoded-document[$i ..^ ($i + $doc-size)]));
               @!values[$idx] = [$d.values];
+
+              Buf.new(
+                $!encoded-document[
+                  $decode-start ..^ ($i + $doc-size)
+                ]
+              );
             }
           );
         }
@@ -938,6 +1113,12 @@ package BSON {
                 $i,
                 $nbr-bytes
               );
+
+              Buf.new(
+                $!encoded-document[
+                  $decode-start ..^ ($i + 1 + $nbr-bytes)
+                ]
+              );
             }
           );
         }
@@ -953,6 +1134,12 @@ package BSON {
               @!values[$idx] = BSON::ObjectId.new(
                 :bytes($!encoded-document[$i ..^ ($i + 12)])
               );
+
+              Buf.new(
+                $!encoded-document[
+                  $decode-start ..^ ($i + 12)
+                ]
+              );
             }
           );
         }
@@ -966,6 +1153,12 @@ package BSON {
 
           %!promises{$key} = Promise.start( {
               @!values[$idx] = $!encoded-document[$i] ~~ 0x00 ?? False !! True;
+
+              Buf.new(
+                $!encoded-document[
+                  $decode-start .. ($i + 1)
+                ]
+              );
             }
           );
         }
@@ -981,12 +1174,28 @@ package BSON {
                 decode-int64( $!encoded-document, $i),
                 :timezone($*TZ)
               );
+
+              Buf.new(
+                $!encoded-document[
+                  $decode-start ..^ ($i + BSON::C-INT64-SIZE)
+                ]
+              );
             }
           );
         }
 
         when BSON::C-NULL {
-          %!promises{$key} = Promise.start( { @!values[$idx] = Any; } );
+          %!promises{$key} = Promise.start( {
+              @!values[$idx] = Any;
+
+              my $i = $!index;
+              Buf.new(
+                $!encoded-document[
+                  $decode-start ..^ $i
+                ]
+              );
+            }
+          );
         }
 
         when BSON::C-REGEX {
@@ -1003,11 +1212,18 @@ package BSON {
             $!index++;
           }
           $!index++;
+          my $i3 = $!index;
 
           %!promises{$key} = Promise.start( {
               @!values[$idx] = BSON::Regex.new(
                 :regex(decode-cstring( $!encoded-document, $i1)),
                 :options(decode-cstring( $!encoded-document, $i2))
+              );
+
+              Buf.new(
+                $!encoded-document[
+                  $decode-start ..^ $i3
+                ]
               );
             }
           );
@@ -1026,11 +1242,17 @@ package BSON {
 
           # Step over size field and the javascript text
           #
-          $!index += (C-INT32-SIZE + $js-size);
+          $!index += (BSON::C-INT32-SIZE + $js-size);
 
           %!promises{$key} = Promise.start( {
               @!values[$idx] = BSON::Javascript.new(
                 :javascript(decode-string( $!encoded-document, $i))
+              );
+
+              Buf.new(
+                $!encoded-document[
+                  $decode-start ..^ ($i + BSON::C-INT32-SIZE + $js-size)
+                ]
               );
             }
           );
@@ -1045,7 +1267,8 @@ package BSON {
           my Int $i2 = $!index + C-INT32-SIZE + $js-size;
           my Int $js-scope-size = decode-int32( $!encoded-document, $i2);
 
-          $!index += (C-INT32-SIZE + $js-size + $js-scope-size);
+          $!index += (BSON::C-INT32-SIZE + $js-size + $js-scope-size);
+          my Int $i3 = $!index;
 
           %!promises{$key} = Promise.start( {
               my BSON::Document $d .= new;
@@ -1053,6 +1276,12 @@ package BSON {
               @!values[$idx] = BSON::Javascript.new(
                 :javascript(decode-string( $!encoded-document, $i1)),
                 :scope($d)
+              );
+
+              Buf.new(
+                $!encoded-document[
+                  $decode-start ..^ $i3
+                ]
               );
             }
           );
@@ -1063,10 +1292,16 @@ package BSON {
         when BSON::C-INT32 {
 
           my Int $i = $!index;
-          $!index += C-INT32-SIZE;
+          $!index += BSON::C-INT32-SIZE;
 
           %!promises{$key} = Promise.start( {
               @!values[$idx] = decode-int32( $!encoded-document, $i);
+
+              Buf.new(
+                $!encoded-document[
+                  $decode-start ..^ ($i + BSON::C-INT32-SIZE)
+                ]
+              );
             }
           );
         }
@@ -1076,10 +1311,16 @@ package BSON {
         when BSON::C-INT64 {
 
           my Int $i = $!index;
-          $!index += C-INT64-SIZE;
+          $!index += BSON::C-INT64-SIZE;
 
           %!promises{$key} = Promise.start( {
               @!values[$idx] = decode-int64( $!encoded-document, $i);
+
+              Buf.new(
+                $!encoded-document[
+                  $decode-start ..^ ($i + BSON::C-INT64-SIZE)
+                ]
+              );
             }
           );
         }
