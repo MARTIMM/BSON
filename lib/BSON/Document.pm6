@@ -81,7 +81,7 @@ package BSON {
     #---------------------------------------------------------------------------
     # Make new document and initialize with a list of pairs
     #
-    multi method new ( List $pairs = () ) {
+    multi method new ( List $pairs ) {
       self.bless(:$pairs);
     }
 
@@ -106,6 +106,22 @@ package BSON {
     #
     multi method new ( Buf $b ) {
       self.bless(:buf($b));
+    }
+
+    # Other cases. No arguments will init empty document. Named values
+    # are associative thingies in a Capture and therefore throw an exception.
+    #
+    multi method new ( |capture ) {
+      if ? capture.keys {
+        die X::Parse.new(
+          :operation("new: key => value")
+          :error( "Cannot use hash values on init.\n",
+                  "Set accept-hash and use assignments later"
+                )
+        );
+      }
+
+      self.bless(:pairs(List.new()));
     }
 
     #---------------------------------------------------------------------------
@@ -1131,7 +1147,7 @@ package BSON {
           %!promises{$key} = Promise.start( {
               my BSON::Document $d .= new;
               $d.accept-hash = $!accept-hash;
-say "New array document for $key, $i, $doc-size, $d";
+#say "New array document for $key, $i, $doc-size, $d";
               $d.decode(Buf.new($!encoded-document[$i ..^ ($i + $doc-size)]));
               @!values[$idx] = [$d.values];
 

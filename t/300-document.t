@@ -6,21 +6,55 @@ use BSON::Document;
 subtest {
 
   my BSON::Document $d .= new;
+  is $d.^name, 'BSON::Document', 'Isa ok';
   my Buf $b = $d.encode;
 
   is $b, Buf.new( 0x05, 0x00 xx 4), 'Empty doc encoded ok';
 
   $d .= new;
   $d.decode($b);
-
-  $d<a> = 11;
-  my Buf $b2 = $d.encode;
-  my BSON::Document $d2 .= new($b2);
-  is $d2.elems, 1, 'One item in decoded doc';
-  is $d2<a>, 11, "Item is $d2<a>";
-
 }, "Empty document";
 
+
+#-------------------------------------------------------------------------------
+subtest {
+
+  # Init via Seq
+  #
+  my BSON::Document $d .= new: ('a' ... 'z') Z=> 120..145;
+
+  is $d<a>, 120, "\$d<a> = $d<a>";
+  is $d<b>, 121, "\$d<b> = $d<b>";
+  is $d.elems, 26, "{$d.elems} elements";
+
+  # Add one element, encode and decode using new(Buf)
+  #
+  $d<aaa> = 11;
+  my Buf $b2 = $d.encode;
+  my BSON::Document $d2 .= new($b2);
+  is $d2.elems, 27, "{$d.elems} elements in decoded doc";
+  is $d2<aaa>, 11, "Item is $d2<aaa>";
+
+  # Init via list
+  #
+  $d .= new: (ppp => 100, qqq => ( d => 110, e => 120));
+  is $d<ppp>, 100, "\$d<ppp> = $d<ppp>";
+  is $d<qqq><d>, 110, "\$d<qqq><d> = $d<qqq><d>";
+
+  # Init via hash inhibited
+  #
+  try {
+    $d .= new: ppp => 100, qqq => ( d => 110, e => 120);
+
+    CATCH {
+      default {
+        ok .message ~~ ms/'Cannot' 'use' 'hash' 'values 'on' 'init''/,
+           'Cannot use hashes on init';
+      }
+    }
+  }
+
+}, "Initialize document";
 
 #-------------------------------------------------------------------------------
 subtest {
@@ -42,18 +76,11 @@ subtest {
   $d<q> = {a => 20};
   is $d<q><a>, 20, "Hash value $d<q><a>";
   
+  $d.autovivify = True;
+  $d<e><f><g> = {b => 30};
+  is $d<e><f><g><b>, 30, "Autovivified hash value $d<e><f><g><b>";
+  
 }, "Ban the hash";
-
-#-------------------------------------------------------------------------------
-subtest {
-
-  my BSON::Document $d .= new: ('a' ... 'z') Z=> 120..145;
-  is $d.^name, 'BSON::Document', 'Isa ok';
-
-  is $d<a>, 120, "\$d<a> = $d<a>";
-  is $d<b>, 121, "\$d<b> = $d<b>";
-
-}, "Initialize document";
 
 #-------------------------------------------------------------------------------
 subtest {
