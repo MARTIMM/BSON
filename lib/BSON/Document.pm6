@@ -39,7 +39,7 @@ package BSON {
   constant C-DOUBLE-SIZE        = 8;
 
   #-----------------------------------------------------------------------------
-  class X::Parse is Exception {
+  class X::Parse-document is Exception {
     has $.operation;                      # Operation method
     has $.error;                          # Parse error
 
@@ -56,7 +56,6 @@ package BSON {
       return "\n$!operation\() error: BSON type '$!type' is not (yet) supported\n";
     }
   }
-
 
   #-----------------------------------------------------------------------------
   class Document does Associative does Positional {
@@ -113,7 +112,7 @@ package BSON {
     #
     multi method new ( |capture ) {
       if ? capture.keys {
-        die X::Parse.new(
+        die X::Parse-document.new(
           :operation("new: key => value")
           :error( "Cannot use hash values on init.\n",
                   "Set accept-hash and use assignments later"
@@ -127,18 +126,7 @@ package BSON {
     #---------------------------------------------------------------------------
     multi submethod BUILD ( List :$pairs! ) {
 
-      if ! ? $document-ready-to-encode {
-        $document-ready-to-encode .= new;
-        $toplevel = True;
-      }
-
-      @!keys = ();
-      @!values = ();
-
-      $!encoded-document = Nil;
-      @!encoded-entries = ();
-
-      %!promises = ();
+      self!initialize;
 
       # self{x} = y will end up at ASSIGN-KEY
       #
@@ -149,6 +137,16 @@ package BSON {
 
     multi submethod BUILD ( Buf :$buf! ) {
 
+      self!initialize;
+
+      # Decode buffer data
+      #
+      self.decode($buf);
+    }
+
+    #---------------------------------------------------------------------------
+    method !initialize (  ) {
+    
       if ! ? $document-ready-to-encode {
         $document-ready-to-encode .= new;
         $toplevel = True;
@@ -157,23 +155,21 @@ package BSON {
       @!keys = ();
       @!values = ();
 
-      $!encoded-document = Nil;
+      $!encoded-document = Buf.new();
       @!encoded-entries = ();
 
       %!promises = ();
-
-      # Decode buffer data
-      #
-      self.decode($buf);
     }
 
     #---------------------------------------------------------------------------
     method perl ( --> Str ) {
       [~] "\n  ", self,
+          "\n  Autivivify: $!autovivify",
+          "\n  Accept hash: $!accept-hash",
           "\n  Keys(", @!keys.elems, "): ", @!keys.join(', '),
           "\n  Values(", @!values.elems, "): ", @!values.join(', '),
-          "\n  Encoded Entries:", (map { "\n    ", $_.List.fmt('0x%02x'); }, @!encoded-entries),
-#          "\n  Encoded Document:\n", $!encoded-document
+          "\n  Encoded Entries(", @!encoded-entries.elems, "):",
+             (map { "\n   - " ~ $_.>>.fmt('0x%02x'); }, @!encoded-entries),
           ;
     }
 
@@ -258,7 +254,7 @@ package BSON {
     }
 
     #---------------------------------------------------------------------------
-    multi method ASSIGN-KEY ( Str:D $key, Array:D $new) {
+    multi method ASSIGN-KEY ( Str:D $key, Array:D $new --> Nil ) {
 
 #say "Asign-key($?LINE): $key => ", $new.WHAT;
 
@@ -280,7 +276,7 @@ package BSON {
       %!promises{$k} = Promise.start({ self!encode-element: ($k => $v); });
     }
 
-    multi method ASSIGN-KEY ( Str:D $key, List:D $new) {
+    multi method ASSIGN-KEY ( Str:D $key, List:D $new --> Nil ) {
 
 #say "Asign-key($?LINE): $key => ", $new.WHAT, ', ', $new[0].WHAT;
 
@@ -303,7 +299,7 @@ package BSON {
       %!promises{$k} = Promise.start({ self!encode-element: ($k => $v); });
     }
 
-    multi method ASSIGN-KEY ( Str:D $key, Pair $new) {
+    multi method ASSIGN-KEY ( Str:D $key, Pair $new --> Nil ) {
 
 #say "Asign-key($?LINE): $key => ", $new.WHAT;
 
@@ -326,12 +322,12 @@ package BSON {
       %!promises{$k} = Promise.start({ self!encode-element: ($k => $v); });
     }
 
-    multi method ASSIGN-KEY ( Str:D $key, Hash $new) {
+    multi method ASSIGN-KEY ( Str:D $key, Hash $new --> Nil ) {
 
 #say "Asign-key($?LINE): $key => ", $new.WHAT;
 
       if ! $!accept-hash {
-        die X::Parse.new(
+        die X::Parse-document.new(
           :operation("\$d<$key> = {$new.perl}")
           :error("Cannot use hash values.\nSet accept-hash if you really want to")
         );
@@ -340,13 +336,13 @@ package BSON {
       self.ASSIGN-KEY( $key, $new.List);
     }
 
-    multi method ASSIGN-KEY ( Str:D $key, Seq $new) {
+    multi method ASSIGN-KEY ( Str:D $key, Seq $new --> Nil ) {
 
 #say "Asign-key($?LINE): $key => ", $new.WHAT;
       self.ASSIGN-KEY( $key, $new.List);
     }
 
-    multi method ASSIGN-KEY ( Str:D $key, Any $new) {
+    multi method ASSIGN-KEY ( Str:D $key, Any $new --> Nil ) {
 
 #say "Asign-key($?LINE)({self.WHERE}): $key => ", $new.WHAT;
 
@@ -374,7 +370,7 @@ package BSON {
     #
     method BIND-KEY ( Str $key, \new ) {
 
-      die X::Parse.new(
+      die X::Parse-document.new(
         :operation("\$d<$key> := {new}")
         :error("Cannot use binding")
       );
@@ -403,7 +399,7 @@ package BSON {
     }
 
     #---------------------------------------------------------------------------
-    method ASSIGN-POS ( Index $idx, $new! ) {
+    method ASSIGN-POS ( Index $idx, $new! --> Nil ) {
 
       # If index is at a higher position then the last one then only extend
       # one place (like a push) with a generated key name such as key21 when
@@ -421,7 +417,7 @@ package BSON {
     #
     method BIND-POS ( Index $idx, \new ) {
 
-      die X::Parse.new(
+      die X::Parse-document.new(
         :operation("\$d[$idx] := {new}")
         :error("Cannot use binding")
       );
@@ -435,6 +431,11 @@ package BSON {
     }
 
     #---------------------------------------------------------------------------
+    method CALL-ME ( |capture ) {
+      say "Call me capture: ", capture.perl;
+    }
+
+    #---------------------------------------------------------------------------
     # And some extra methods
     #---------------------------------------------------------------------------
     method elems ( --> Int ) {
@@ -442,6 +443,7 @@ package BSON {
       @!keys.elems;
     }
 
+    #---------------------------------------------------------------------------
     method kv ( --> List ) {
 
       my @kv-list;
@@ -475,23 +477,23 @@ package BSON {
       $document-ready-to-encode.send('encode') if $toplevel;
 
       if %!promises.elems {
-        try {
+#        try {
           loop ( my $idx = 0; $idx < @!keys.elems; $idx++) {
             my $key = @!keys[$idx];
             if %!promises{$key}:exists {
               @!encoded-entries[$idx] = %!promises{$key}.result;
 #say "Pr({self.WHERE}): $idx, $key, ",
-    @!values[$idx].WHAT, ', ',
-    @!encoded-entries[$idx];
+#    @!values[$idx].WHAT, ', ',
+#    @!encoded-entries[$idx];
             }
           }
 
-          CATCH {
-            default {
-              say "Error encoding: ", $_; #%!promises{$key}.cause;
-            }
-          }
-        }
+#          CATCH {
+#            default {
+#              say "Error encoding: ", $_; #%!promises{$key}.cause;
+#            }
+#          }
+#        }
 
         %!promises = ();
       }
@@ -519,25 +521,6 @@ package BSON {
       return $b;
     }
 
-#`{{
-    #---------------------------------------------------------------------------
-    method !encode-document ( Pair:D @p --> Buf ) {
-      my Buf $b = self!encode-e-list(@p);
-      return [~] encode-int32($b.elems + 5), $b, Buf.new(0x00);
-    }
-
-    #---------------------------------------------------------------------------
-    method !encode-e-list ( Pair:D @p --> Buf ) {
-      my Buf $b = Buf.new();
-
-      for @p -> $p {
-        $b ~= self!encode-element($p);
-      }
-
-      return $b;
-    }
-}}
-
     #---------------------------------------------------------------------------
     # Encode a key value pair. Called from the insertion methods above when a
     # key value pair is inserted.
@@ -556,7 +539,7 @@ package BSON {
           #
           $b = [~] Buf.new(BSON::C-DOUBLE),
                      encode-e-name($p.key),
-                     self!encode-double($p.value);
+                     encode-double($p.value);
         }
 
         when Str {
@@ -745,10 +728,10 @@ package BSON {
           }
 
           else {
-            die X::BSON::ImProperUse.new( :operation('encode'),
-                                          :type('javascript 0x0D/0x0F'),
-                                          :emsg('cannot send empty code')
-                                        );
+            die X::Parse-document.new(
+              :operation('encode Javscript'),
+              :error('cannot send empty code')
+            );
           }
         }
 
@@ -774,10 +757,10 @@ package BSON {
           else {
             my $reason = 'small' if $p.value < -0x7fffffff_ffffffff;
             $reason = 'large' if $p.value > 0x7fffffff_ffffffff;
-            die X::BSON::ImProperUse.new( :operation('encode'),
-                                          :type('integer 0x10/0x12'),
-                                          :emsg("cannot encode too $reason number")
-                                        );
+            die X::Parse-document.new(
+              :operation('encode Int'),
+              :error("Number too $reason")
+            );
           }
         }
 
@@ -834,8 +817,8 @@ package BSON {
 
     #---------------------------------------------------------------------------
     sub encode-cstring ( Str:D $s --> Buf ) {
-      die X::BSON::Parse.new(
-        :operation('encode-cstring'),
+      die X::Parse-document.new(
+        :operation('encode-cstring()'),
         :error('Forbidden 0x00 sequence in $s')
       ) if $s ~~ /\x00/;
 
@@ -870,7 +853,7 @@ package BSON {
     }
 
     #---------------------------------------------------------------------------
-    method !encode-double ( Num:D $r is copy --> Buf ) {
+    sub encode-double ( Num:D $r is copy --> Buf ) {
 
       # Make array starting with bson code 0x01 and the key name
       my Buf $a = Buf.new(); # Buf.new(0x01) ~ encode-e-name($key-name);
@@ -1004,7 +987,7 @@ package BSON {
       self!decode-document;
 
       if %!promises.elems {
-        try {
+#        try {
           loop ( my $idx = 0; $idx < @!keys.elems; $idx++) {
             my $key = @!keys[$idx];
             if %!promises{$key}:exists {
@@ -1016,12 +999,12 @@ package BSON {
             }
           }
 
-          CATCH {
-            default {
-              say "Error decoding: ", $_;
-            }
-          }
-        }
+#          CATCH {
+#            default {
+#              say "Error decoding: ", $_;
+#            }
+#          }
+#        }
 
         %!promises = ();
       }
@@ -1038,11 +1021,18 @@ package BSON {
       while $!encoded-document[$!index] !~~ 0x00 {
         self!decode-element;
       }
+      
+      $!index++;
 
       # Check size of document with final byte location
       #
-      die "Size of document $doc-size does not match with index at $!index(+1)"
-        if $doc-size != $!index + 1;
+      die X::Parse-document.new(
+        :operation<decode-document()>,
+        :error(
+          [~] 'Size of document(', $doc-size,
+              ') does not match with index(', $!index, ')'
+        )
+      ) if $doc-size != $!index;
     }
 
     #---------------------------------------------------------------------------
@@ -1078,7 +1068,7 @@ package BSON {
           $!index += BSON::C-DOUBLE-SIZE;
 
           %!promises{$key} = Promise.start( {
-              @!values[$idx] = self!decode-double( $!encoded-document, $i);
+              @!values[$idx] = decode-double( $!encoded-document, $i);
 
               Buf.new(
                 $!encoded-document[
@@ -1147,7 +1137,7 @@ package BSON {
           %!promises{$key} = Promise.start( {
               my BSON::Document $d .= new;
               $d.accept-hash = $!accept-hash;
-#say "New array document for $key, $i, $doc-size, $d";
+
               $d.decode(Buf.new($!encoded-document[$i ..^ ($i + $doc-size)]));
               @!values[$idx] = [$d.values];
 
@@ -1175,7 +1165,7 @@ package BSON {
           $!index += C-INT32-SIZE + 1 + $nbr-bytes;
 
           %!promises{$key} = Promise.start( {
-              @!values[$idx] = self!decode-binary(
+              @!values[$idx] = decode-binary(
                 $!encoded-document,
                 $i,
                 $nbr-bytes
@@ -1397,7 +1387,10 @@ package BSON {
           # We must stop because we do not know what the length should be of
           # this particular structure.
           #
-          die "BSON code '{.fmt('0x%02x')}' not supported";
+          die X::Parse-document.new(
+            :operation<decode-element()>,
+            :error("BSON code '{.fmt('0x%02x')}' not supported")
+          );
         }
       }
     }
@@ -1417,7 +1410,10 @@ package BSON {
         @a.push($b[$index++]);
       }
 
-      die X::BSON::Parse.new(
+      # This takes only place if there are no 0x0 characters found until the
+      # end of the buffer which is almost never.
+      #
+      die X::Parse-document.new(
         :operation<decode-cstring>,
         :error('Missing trailing 0x00')
       ) unless $index < $l and $b[$index++] ~~ 0x00;
@@ -1433,12 +1429,12 @@ package BSON {
 
       # Check if there are enaugh letters left
       #
-      die X::BSON::Parse.new(
+      die X::Parse-document.new(
         :operation<decode-string>,
         :error('Not enaugh characters left')
       ) unless ($b.elems - $size) > $index;
 
-      die X::BSON::Parse.new(
+      die X::Parse-document.new(
         :operation<decode-string>,
         :error('Missing trailing 0x00')
       ) unless $b[$end-string-at] ~~ 0x00;
@@ -1451,7 +1447,7 @@ package BSON {
 
       # Check if there are enaugh letters left
       #
-      die X::BSON::Parse.new(
+      die X::Parse-document.new(
         :operation<decode-int32>,
         :error('Not enaugh characters left')
       ) if $b.elems - $index < 4;
@@ -1476,7 +1472,7 @@ package BSON {
     sub decode-int64 ( Buf:D $b, Int:D $index --> Int ) {
       # Check if there are enaugh letters left
       #
-      die X::BSON::Parse.new(
+      die X::Parse-document.new(
         :operation<decode-int64>,
         :error('Not enaugh characters left')
       ) if $b.elems - $index < 8;
@@ -1494,7 +1490,7 @@ package BSON {
     # http://en.wikipedia.org/wiki/Double-precision_floating-point_format#Endianness
     # until better times come.
     #
-    method !decode-double ( Buf:D $b, Int:D $index --> Num ) {
+    sub decode-double ( Buf:D $b, Int:D $index --> Num ) {
 
       # Test special cases
       #
@@ -1566,7 +1562,7 @@ package BSON {
     }
 
     #---------------------------------------------------------------------------
-    method !decode-binary (
+    sub decode-binary (
       Buf:D $b, Int:D $index is copy, Int:D $nbr-bytes
       --> BSON::Binary
     ) {
@@ -1589,12 +1585,19 @@ package BSON {
 
         when BSON::C-BINARY-OLD {
           # Binary (Old - deprecated)
-          die 'Code (0x02) Deprecated binary data';
+          die X::Parse-document.new(
+            :operantion<decode Binary>,
+            :error('Code (0x02) Deprecated binary data')
+          );
         }
 
         when BSON::C-UUID-OLD {
           # UUID (Old - deprecated)
           die 'UUID(0x03) Deprecated binary data';
+          die X::Parse-document.new(
+            :operantion<decode Binary>,
+            :error('UUID(0x03) Deprecated binary data')
+          );
         }
 
         when BSON::C-UUID {
@@ -1602,14 +1605,18 @@ package BSON {
           # http://en.wikipedia.org/wiki/Universally_unique_identifier the
           # universally unique identifier is a 128-bit (16 byte) value.
           #
-          die 'UUID(0x04) Binary string parse error'
-            unless $nbr-bytes ~~ BSON::C-UUID-SIZE;
+          die X::Parse-document.new(
+            :operation('decode Binary'),
+            :error('UUID(0x04) Length mismatch')
+          ) unless $nbr-bytes ~~ BSON::C-UUID-SIZE;
         }
 
         when BSON::C-MD5 {
           # MD5. This is a 16 byte number (32 character hex string)
-          die 'MD5(0x05) Binary string parse error'
-            unless $nbr-bytes ~~ BSON::C-MD5-SIZE;
+          die X::Parse-document.new(
+            :operation('decode Binary'),
+            :error('MD5(0x05) Length mismatch')
+          ) unless $nbr-bytes ~~ BSON::C-MD5-SIZE;
         }
 
         when 0x80 {
