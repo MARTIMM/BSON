@@ -377,6 +377,45 @@ subtest {
     }
   }
 
+  try {
+    my $b = Buf.new(
+      0x0B, 0x00, 0x00, 0x00,           # 11 bytes
+        0xa0,                           # Unimplemented BSON code
+        0x62, 0x00,                     # 'b'
+        0x01, 0x01, 0x00, 0x00,         # integer
+      0x00
+    );
+
+    my BSON::Document $d .= new($b);
+
+    CATCH {
+      when X::Parse-document {
+        ok .message ~~ ms/'BSON code \'0xa0\' not supported'/,
+           'BSON code \'0xa0\' not supported';
+      }
+    }
+  }
+
+  try {
+    my $b = Buf.new(
+      0x0F, 0x00, 0x00, 0x00,           # 15 bytes
+        BSON::C-STRING,                 # 0x02
+        0x62, 0x00,                     # 'b'
+        0x03, 0x00, 0x00, 0x00,         # 3 bytes total
+        0x61, 0x62, 0x63,               # Missing 0x00 at the end
+      0x00
+    );
+
+    my BSON::Document $d .= new($b);
+
+    CATCH {
+      when X::Parse-document {
+        ok .message ~~ ms/'Missing trailing 0x00'/, 'Missing trailing 0x00';
+      }
+    }
+  }
+
+
 
 #  my BSON::Document $d .= new;
 #  $d( 1, 2, 'test', ( ('a' ... 'd') Z=> 20 .. 13), :w<fd>);

@@ -1431,7 +1431,7 @@ package BSON {
       die X::Parse-document.new(
         :operation<decode-string>,
         :error('Missing trailing 0x00')
-      ) unless $b[$end-string-at] ~~ 0x00;
+      ) unless $b[$end-string-at] == 0x00;
 
       return Buf.new($b[$index+4 ..^ $end-string-at]).decode;
     }
