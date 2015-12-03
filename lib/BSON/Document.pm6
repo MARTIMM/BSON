@@ -53,7 +53,7 @@ package BSON {
     has $.type;                           # Type to encode/decode
 
     method message () {
-      return "\n$!operation\() error: BSON type '$!type' is not (yet) supported\n";
+      return "\n$!operation error: Type '$!type' is not (yet) supported\n";
     }
   }
 
@@ -146,7 +146,7 @@ package BSON {
 
     #---------------------------------------------------------------------------
     method !initialize (  ) {
-    
+
       if ! ? $document-ready-to-encode {
         $document-ready-to-encode .= new;
         $toplevel = True;
@@ -790,17 +790,11 @@ package BSON {
         default {
           if .can('encode') and .can('bson-code') {
             my $code = .bson-code;
-
-            $b = [~] Buf.new($code),
-                       encode-e-name($p.key),
-                       .encode;
+            $b = [~] Buf.new($code), encode-e-name($p.key), .encode;
           }
 
           else {
-            die X::NYS.new(
-              :operation('encode'),
-              :type($_ ~ '(' ~ ($_.^name // 'Unknown') ~ ')')
-            );
+            die X::NYS.new( :operation('encode-element()'), :type($_));
           }
         }
       }
@@ -1021,7 +1015,7 @@ package BSON {
       while $!encoded-document[$!index] !~~ 0x00 {
         self!decode-element;
       }
-      
+
       $!index++;
 
       # Check size of document with final byte location

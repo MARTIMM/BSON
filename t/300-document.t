@@ -350,7 +350,7 @@ subtest {
         0x01, 0x01, 0x00, 0x00,         # integer
       0x00
     );
-    
+
     my BSON::Document $d .= new($b);
 
     CATCH {
@@ -361,21 +361,22 @@ subtest {
     }
   }
 
-#`{{
   try {
+    class A { }
+    my A $a .= new;
+
     my BSON::Document $d .= new;
-    $d{"Double\0test"} = 1.2.Num;
+    $d{"A"} = $a;
     $d.encode;
 
     CATCH {
-.say;
-      when X::Parse-document {
-        ok .message ~~ m/'Forbidden 0x00 sequence in'/,
-           "Forbidden 0x00 sequence in 'Double\0test'";
+      when X::NYS {
+        ok .message ~~ m/'encode-element() error: Type \'A<' \d+ '>\' is not (yet) supported'/,
+           'encode-element() error: Type \'A<...>\' is not (yet) supported';
       }
     }
   }
-}}
+
 
 #  my BSON::Document $d .= new;
 #  $d( 1, 2, 'test', ( ('a' ... 'd') Z=> 20 .. 13), :w<fd>);
