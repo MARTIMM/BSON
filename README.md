@@ -111,6 +111,10 @@ See [semantic versioning](http://semver.org/). Please note point 4. on
 that page: *Major version zero (0.y.z) is for initial development. Anything may
 change at any time. The public API should not be considered stable*.
 
+* 0.9.14
+  * All dies are now throwing excpetions X::Parse-document or X::NYS in
+    BSON::Document.
+  * More tests are added.
 * 0.9.13
   * Document with encoding and decoding running in parallel. Much slower than
     direct hashes but keeps input order.
