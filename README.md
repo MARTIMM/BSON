@@ -111,6 +111,9 @@ See [semantic versioning](http://semver.org/). Please note point 4. on
 that page: *Major version zero (0.y.z) is for initial development. Anything may
 change at any time. The public API should not be considered stable*.
 
+* 0.9.16
+  * move around things
+  * some subs exported
 * 0.9.15
   * ```@*INC``` is gone, ```use lib``` is the way. A lot of changes done by
     zoffixznet.
