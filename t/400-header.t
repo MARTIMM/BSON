@@ -33,6 +33,11 @@ subtest {
 #  my BSON::Document $d
 }, "Header encode/decode";
 
+#-------------------------------------------------------------------------------
+subtest {
+  my BSON::Document $d .= new: ( doc => 'info');
+  $d does BSON::Header;
+
   my Buf $hand-made-buf .= new(
     0x29, 0x00, 0x00, 0x00,             # size 41 bytes
     0x01, 0x00, 0x00, 0x00,             # Req id = 1
@@ -54,7 +59,7 @@ subtest {
   is $rd<documents>[0].elems, 0, 'Empty document';
 
 #  my BSON::Document $d
-}, "Header decode";
+}, "query/reply";
 
 #-------------------------------------------------------------------------------
 # Cleanup
