@@ -265,10 +265,11 @@ say "I: $index, $doc-size";
         my BSON::Document $document .= new(
           Buf.new($b[$index ..^ ($index + $doc-size)])
         );
+        $index += $doc-size;
         $reply-document<documents>.push($document);
       }
 
-      $index += 3 * BSON::C-INT32-SIZE + 8 + $doc-size;
+      $index += 3 * BSON::C-INT32-SIZE + 8;
 say "B: $index, ", $b.elems;
 
       # Every response byte must be consumed
