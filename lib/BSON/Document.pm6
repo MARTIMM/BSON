@@ -171,7 +171,7 @@ package BSON {#:ver<0.9.16> {
 #             (map { $_.^name eq 'BSON::Document' ?? '=Document=' !! $_}, @!values).join(', '),
           "\n  Encoded Entries(", @!encoded-entries.elems, "):",
              (map { "\n   - " ~ $_.>>.fmt('0x%02x'); }, @!encoded-entries),
-          ;
+          "\n";
     }
 
     #---------------------------------------------------------------------------

@@ -254,13 +254,13 @@ package BSON {
 
       $index += 3 * BSON::C-INT32-SIZE + 8;
 
-say "Repl doc: ", $reply-document<number-returned>;
+#say "Repl doc: ", $reply-document<number-returned>;
 
       # Extract documents from message.
       #
       for ^$reply-document<number-returned> {
         my $doc-size = decode-int32( $b, $index);
-say "I: $index, $doc-size";
+#say "I: $index, $doc-size";
 #        $index += 4;
         my BSON::Document $document .= new(
           Buf.new($b[$index ..^ ($index + $doc-size)])
@@ -270,7 +270,7 @@ say "I: $index, $doc-size";
       }
 
       $index += 3 * BSON::C-INT32-SIZE + 8;
-say "B: $index, ", $b.elems;
+#say "B: $index, ", $b.elems;
 
       # Every response byte must be consumed
       #
