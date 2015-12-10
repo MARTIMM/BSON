@@ -260,7 +260,7 @@ say "Repl doc: ", $reply-document<number-returned>;
       #
       for ^$reply-document<number-returned> {
         my $doc-size = decode-int32( $b, $index);
-say "I $index, $doc-size";
+say "I: $index, $doc-size";
 #        $index += 4;
         my BSON::Document $document .= new(
           Buf.new($b[$index ..^ ($index + $doc-size)])
@@ -268,7 +268,7 @@ say "I $index, $doc-size";
         $reply-document<documents>.push($document);
       }
 
-      $index += 3 * BSON::C-INT32-SIZE + 8;
+      $index += 3 * BSON::C-INT32-SIZE + 8 + $doc-size;
 say "B: $index, ", $b.elems;
 
       # Every response byte must be consumed
