@@ -123,6 +123,7 @@ package BSON {
 
       # the only allowed message returned from database is C-OP-REPLY
       #
+# I trust the server to send a C-OP-REPLY so no check done
 #      die [~] 'Unexpected OP_code (', $msg-header<op_code>, ')'
 #         unless $msg-header<op_code> == C-OP-REPLY;
 
@@ -180,28 +181,72 @@ package BSON {
       #
       return self.encode-message-header( $query-buffer.elems, BSON::C-OP-QUERY)
              ~ $query-buffer;
+    }
 
+    #---------------------------------------------------------------------------
+    #
+    multi method encode-get-more (
+      Str:D $full-collection-name, Buf:D $cursor-id
+      --> Buf
+    ) (
+      # http://www.mongodb.org/display/DOCS/Mongo+Wire+Protocol#MongoWireProtocol-OPGETMORE
+
+      my Buf $get-more-buffer = [~]
+
+        # int32 ZERO
+        # 0 - reserved for future use
+        #
+        encode-int32(0),
+
+        # cstring fullCollectionName
+        # "dbname.collectionname"
+        #
+        encode-cstring($full-collection-name),
+
+        # int32 numberToReturn
+        # number of documents to return
+        #
+        encode-int32(0),
+
+        # int64 cursorID
+        # cursorID from the C-OP-REPLY
+        #
+        $cursor-id;
+
+      # MsgHeader header
+      # standard message header
+      # (watch out for inconsistent OP_code and messsage name)
+      #
+      return self.encode-message-header(
+        $get-more-buffer.elems, BSON::C-OP-GET-MORE
+      );
 #`{{
+      my Buf $msg-header = self!enc-msg-header(
+        $B-OP-GETMORE.elems, BSON::C-OP-GET-MORE
+      );
+
       # send message and wait for response
       #
-      my Buf $B-OP-REPLY = $collection.database.connection._send(
-        $msg-header ~ $query-buffer, True
+      my Buf $B-OP-REPLY = $cursor.collection.database.connection.send(
+        $msg-header ~ $B-OP-GETMORE, True
       );
 
       # parse response
       #
-      my BSON::Document $reply-document = self!OP-REPLY($B-OP-REPLY);
+      my Hash $H-OP-REPLY = self!OP-REPLY($B-OP-REPLY);
 
       if $debug {
-        say 'OP-QUERY:', $reply-document.perl;
+        say 'OP-GETMORE:', $H-OP-REPLY.perl;
       }
 
       # TODO check if requestID matches responseTo
 
+      # TODO check if cursorID matches (if present)
+
       # return response back to cursor
       #
-      return $reply-document;
-}}
+      return $H-OP-REPLY;
+}}      
     }
 
     #---------------------------------------------------------------------------
