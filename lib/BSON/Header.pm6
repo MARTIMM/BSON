@@ -219,7 +219,7 @@ package BSON {
       #
       return self.encode-message-header(
         $get-more-buffer.elems, BSON::C-OP-GET-MORE
-      );
+      ) ~ $get-more-buffer;
 #`{{
       my Buf $msg-header = self!enc-msg-header(
         $B-OP-GETMORE.elems, BSON::C-OP-GET-MORE
