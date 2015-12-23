@@ -188,7 +188,7 @@ package BSON {
     multi method encode-get-more (
       Str:D $full-collection-name, Buf:D $cursor-id
       --> Buf
-    ) (
+    ) {
       # http://www.mongodb.org/display/DOCS/Mongo+Wire+Protocol#MongoWireProtocol-OPGETMORE
 
       my Buf $get-more-buffer = [~]
@@ -211,7 +211,8 @@ package BSON {
         # int64 cursorID
         # cursorID from the C-OP-REPLY
         #
-        $cursor-id;
+        $cursor-id
+      ;
 
       # MsgHeader header
       # standard message header
