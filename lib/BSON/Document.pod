@@ -187,7 +187,7 @@ is $d[100], $d[2], "Location 100 is same as pointed by index 2";
 Modify or create locations using an index into the document. When locations
 exist, data at that location is overwritten by the new data. Non-existent
 locations are set as the next free location in the document and a key is
-generated using the index prefixed with 'key'.
+generated using the index prefixed with 'key' (depending on autovivify).
 
 =head1 ATTRIBUTES
 
