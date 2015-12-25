@@ -5,7 +5,7 @@ use BSON::Regex;
 use BSON::Javascript;
 use BSON::Binary;
 
-package BSON {#:ver<0.9.16> {
+package BSON:ver<0.9.16> {
 
   #-----------------------------------------------------------------------------
   # BSON type codes
