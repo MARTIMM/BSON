@@ -100,6 +100,7 @@ subtest {
   is $d.elems, 26, "26 pairs";
   is $d{'d'}, 3, "\$d\{'d'\} = $d{'d'}";
 
+  ok $d<a>:exists, 'First pair $d<a> exists';
   ok $d<q>:exists, '$d<q> exists';
   ok ! ($d<hsdgf>:exists), '$d<hsdgf> does not exist';
 
@@ -141,6 +142,7 @@ subtest {
   is $d<b>, $d[$d.find-key('b')],
      "Same values on key 'b'($d<b>) and found index {$d.find-key('b')}($d[1])";
 
+  ok $d[0]:exists, "First pair $d[0] exists";
 
   $d[1000] = 'text';
   is $d[26], 'text', "assign \$d[1000] = \$d[26] = '$d[26]'";
