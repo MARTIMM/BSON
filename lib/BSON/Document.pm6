@@ -130,7 +130,6 @@ package BSON:ver<0.9.16> {
     #---------------------------------------------------------------------------
     multi submethod BUILD ( List :$pairs!, :%h ) {
 
-
       self!initialize(:%h);
 
       # self{x} = y will end up at ASSIGN-KEY
