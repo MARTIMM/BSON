@@ -13,6 +13,8 @@ subtest {
 
   $d .= new;
   $d.decode($b);
+  is $d.elems, 0, "Zero elements/keys in decoded document";
+
 }, "Empty document";
 
 #-------------------------------------------------------------------------------
