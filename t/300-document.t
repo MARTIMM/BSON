@@ -15,7 +15,6 @@ subtest {
   $d.decode($b);
 }, "Empty document";
 
-
 #-------------------------------------------------------------------------------
 subtest {
 
@@ -72,7 +71,7 @@ subtest {
     }
   }
 
-  $d.accept-hash = True;
+  $d.accept-hash(True);
   $d<q> = {
     a => 120, b => 121, c => 122, d => 123, e => 124, f => 125, g => 126,
     h => 127, i => 128, j => 129, k => 130, l => 131, m => 132, n => 133,
@@ -80,10 +79,11 @@ subtest {
     v => 141, w => 142, x => 143, y => 144, z => 145
   };
   is $d<q><a>, 120, "Hash value $d<q><a>";
-#  my $x = $d<q>.keys.sort;
-#  nok $x eqv $d<q>.keys.List, 'Not same order';
+  my $x = $d<q>.keys.sort;
+  nok $x eqv $d<q>.keys.List, 'Not same order';
 
-  $d.autovivify = True;
+  $d.autovivify(True);
+
   $d<e><f><g> = {b => 30};
   is $d<e><f><g><b>, 30, "Autovivified hash value $d<e><f><g><b>";
 
@@ -249,8 +249,6 @@ subtest {
   $d<abcdef><b1> = q => 255;
   is $d<abcdef><b1><q>, 255,
      "sub document \$d<abcdef><b1><q> = $d<abcdef><b1><q>";
-  $d.encode;
-
 
   $d .= new;
   $d<a> = v1 => (v2 => 'v3');
@@ -258,9 +256,9 @@ subtest {
   $d<a><v1><w3> = 110;
   is $d<a><v1><w3>, 110, "\$d<a><v1><w3> = $d<a><v1><w3>";
 
-  $d<foo> = 'v3';
-  $d<bar> = 10;
-  $d.encode;
+#  $d<foo> = 'v3';
+#  $d<bar> = 10;
+#  $d.encode;
 
 #say $d.perl;
 #say $d<a><v1>.perl;

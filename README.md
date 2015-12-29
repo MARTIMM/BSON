@@ -16,8 +16,8 @@ When installing MongoDB, BSON will be installed automatically as a dependency.
 
 ## VERSION PERL AND MOARVM
 
-* Perl6 version ```2015.11-143-g7046681```
-* MoarVM version ```2015.11-19-g623eadf```
+* Perl6 version ```2015.12-1-g6452f8d``` implementing ```Perl 6.c```
+* MoarVM version ```2015.12```
 
 
 ## SYNOPSIS
@@ -112,10 +112,14 @@ that page: *Major version zero (0.y.z) is for initial development. Anything may
 change at any time. The public API should not be considered stable*.
 
 * 0.9.17
-  * bugfixes in BSON::Document
+  * Bugfixes in BSON::Document
+  * Changes caused by perl6 6.c. Z operator changes and datetime usage
+  * Ideas about parallel computing entries revised. Now only non-subdocuments
+    are calculated in parallel. Subducuments are calculated when encode() is
+    called.
 * 0.9.16
-  * move around things
-  * some subs exported
+  * Move around things
+  * Some subs exported
 * 0.9.15
   * ```@*INC``` is gone, ```use lib``` is the way. A lot of changes done by
     zoffixznet.
@@ -145,7 +149,8 @@ change at any time. The public API should not be considered stable*.
 * 0.9.8
   * Tests for binary data UUID and MD5
 * 0.9.7
-  * Factoring out Exception classes from BSON and EDC-Tools into BSON/Exception.pm6
+  * Factoring out Exception classes from BSON and EDC-Tools into
+    BSON/Exception.pm6
   * Bugfix in META.info
   * Parse errors throw exceptions.
 * 0.9.6
