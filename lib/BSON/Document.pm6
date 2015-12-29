@@ -5,7 +5,7 @@ use BSON::Regex;
 use BSON::Javascript;
 use BSON::Binary;
 
-package BSON {#:ver<0.9.16> {
+package BSON:ver<0.9.16> {
 
   #-----------------------------------------------------------------------------
   # BSON type codes
@@ -71,73 +71,79 @@ package BSON {#:ver<0.9.16> {
 
     has Promise %!promises;
 
-    has Bool $.autovivify is rw = False;
-    has Bool $.accept-hash is rw = False;
-
-    my Channel $document-ready-to-encode;
-    my Bool $toplevel = False;
+    # Keep this value global to the class. Any old or new object has the same
+    # settings
+    #
+    my Bool $autovivify = False;
+    my Bool $accept-hash = False;
 
     #---------------------------------------------------------------------------
     # Make new document and initialize with a list of pairs
     #
-    multi method new ( List $pairs ) {
-      self.bless(:$pairs);
+    multi method new ( List $pairs, *%h ) {
+      self.bless( :$pairs, :%h);
     }
 
     # Make new document and initialize with a pair
     # No default value! is handled by new() above
     #
-    multi method new ( Pair $p ) {
+    multi method new ( Pair $p, *%h ) {
       my List $pairs = $p.List;
-      self.bless(:$pairs);
+      self.bless( :$pairs, :%h);
     }
 
     # Make new document and initialize with a sequence of pairs
     # No default value! is handled by new() above
     #
-    multi method new ( Seq $p ) {
+    multi method new ( Seq $p, *%h ) {
       my List $pairs = $p.List;
-      self.bless(:$pairs);
+      self.bless( :$pairs, :%h);
     }
 
     # Make new document and initialize with a byte array. This will call
     # decode.
     #
-    multi method new ( Buf $b ) {
-      self.bless(:buf($b));
+    multi method new ( Buf $b, *%h ) {
+      self.bless( :buf($b), :%h);
     }
 
     # Other cases. No arguments will init empty document. Named values
     # are associative thingies in a Capture and therefore throw an exception.
     #
     multi method new ( |capture ) {
-      if ? capture.keys {
+
+#      unless capture.keys and capture<capture-group> 
+#        or capture.elems == 0 {
+      if capture.keys {
         die X::Parse-document.new(
           :operation("new: key => value")
-          :error( "Cannot use hash values on init.\n",
-                  "Set accept-hash and use assignments later"
-                )
+          :error(
+            "Cannot use hash values on init.\n",
+            "Set accept-hash and use assignments later"
+          )
         );
       }
 
-      self.bless(:pairs(List.new()));
+      self.bless( :pairs(List.new()), :h({}));
     }
 
     #---------------------------------------------------------------------------
-    multi submethod BUILD ( List :$pairs! ) {
+    multi submethod BUILD ( List :$pairs!, :%h ) {
 
-      self!initialize;
+
+      self!initialize(:%h);
 
       # self{x} = y will end up at ASSIGN-KEY
       #
       for @$pairs -> $pair {
+#say "Build: {$pair.key} => {$pair.value}, ", $pair.value.WHAT;
         self{$pair.key} = $pair.value;
       }
     }
 
-    multi submethod BUILD ( Buf :$buf! ) {
+    multi submethod BUILD ( Buf :$buf!, :%h ) {
 
-      self!initialize;
+      self!initialize(:%h);
 
       # Decode buffer data
       #
@@ -145,12 +151,7 @@ package BSON {#:ver<0.9.16> {
     }
 
     #---------------------------------------------------------------------------
-    method !initialize (  ) {
-
-      if ! ? $document-ready-to-encode {
-        $document-ready-to-encode .= new;
-        $toplevel = True;
-      }
+    method !initialize ( :%h ) {
 
       @!keys = ();
       @!values = ();
@@ -163,9 +164,11 @@ package BSON {#:ver<0.9.16> {
 
     #---------------------------------------------------------------------------
     method perl ( --> Str ) {
+#say "X: ", $autovivify, ', ', $accept-hash;
+
       [~] "\n  ", self,
-          "\n  Autivivify: $!autovivify",
-          "\n  Accept hash: $!accept-hash",
+          "\n  Autivivify: $autovivify",
+          "\n  Accept hash: $accept-hash",
           "\n  Keys(", @!keys.elems, "): ", @!keys.join(', '),
 #          "\n  Values(", @!values.elems, "): ",
 #             (map { $_.^name eq 'BSON::Document' ?? '=Document=' !! $_}, @!values).join(', '),
@@ -185,6 +188,18 @@ package BSON {#:ver<0.9.16> {
     }
 
     #---------------------------------------------------------------------------
+    submethod autovivify ( Bool $avvf = True ) {
+      $autovivify = $avvf;
+    }
+
+    #---------------------------------------------------------------------------
+    submethod accept-hash ( Bool $acch = True ) {
+      $accept-hash = $acch;
+    }
+
+
+#`{{
+    #---------------------------------------------------------------------------
     submethod DESTROY ( ) {
 
       @!keys = ();
@@ -195,6 +210,7 @@ package BSON {#:ver<0.9.16> {
 
       %!promises = ();
     }
+}}
 
     #---------------------------------------------------------------------------
     method find-key ( Str:D $key --> Int ) {
@@ -214,6 +230,7 @@ package BSON {#:ver<0.9.16> {
     # Associative role methods
     #---------------------------------------------------------------------------
     method AT-KEY ( Str $key --> Any ) {
+#note "At-key($?LINE): $key, $autovivify";
 
       my $value;
       my Int $idx = self.find-key($key);
@@ -223,11 +240,8 @@ package BSON {#:ver<0.9.16> {
 
       # No key found so its undefined, check if we must make a new entry
       #
-      elsif $!autovivify {
-#say "At-key($?LINE): $key => ", $value.WHAT, ", autovivify: $!autovivify;";
+      elsif $autovivify {
         $value = BSON::Document.new;
-        $value.accept-hash = $!accept-hash;
-        $value.autovivify = True;
         self{$key} = $value;
 #say "At-key($?LINE): $key => ", $value.WHAT;
       }
@@ -237,8 +251,7 @@ package BSON {#:ver<0.9.16> {
 
     #---------------------------------------------------------------------------
     method EXISTS-KEY ( Str $key --> Bool ) {
-
-      ? self.find-key($key);
+      self.find-key($key).defined;
     }
 
     #---------------------------------------------------------------------------
@@ -277,13 +290,12 @@ package BSON {#:ver<0.9.16> {
       %!promises{$k} = Promise.start({ self!encode-element: ($k => $v); });
     }
 
-    multi method ASSIGN-KEY ( Str:D $key, List:D $new --> Nil ) {
+    multi method ASSIGN-KEY ( Str:D $key, BSON::Document:D $new --> Nil ) {
 
-#say "Asign-key($?LINE): $key => ", $new.WHAT, ', ', $new[0].WHAT;
+#say "Asign-key($?LINE): $key => ", $new.WHAT;
 
       my Str $k = $key;
-      my BSON::Document $v .= new($new);
-      $v.accept-hash = $!accept-hash;
+      my BSON::Document $v = $new;
 
       my Int $idx = self.find-key($k);
       if $idx.defined {
@@ -297,7 +309,34 @@ package BSON {#:ver<0.9.16> {
       @!keys[$idx] = $k;
       @!values[$idx] = $v;
 
-      %!promises{$k} = Promise.start({ self!encode-element: ($k => $v); });
+#      %!promises{$k} = Promise.start({ self!encode-element: ($k => $v); });
+    }
+
+    multi method ASSIGN-KEY ( Str:D $key, List:D $new --> Nil ) {
+
+#note "Asign-key($?LINE): $key => ", $new.WHAT, ', ', $new[0].WHAT,
+    ', ', $autovivify;
+
+      my BSON::Document $v .= new;
+      for @$new -> $pair {
+        $v{$pair.key} = $pair.value;
+      }
+
+      my Str $k = $key;
+      my Int $idx = self.find-key($k);
+      if $idx.defined {
+        %!promises{$k}:delete;
+      }
+
+      else {
+        $idx = @!keys.elems;
+      }
+
+      @!keys[$idx] = $k;
+      @!values[$idx] = $v;
+
+#      %!promises{$k} = Promise.start({ self!encode-element: ($k => $v); });
+#      @!encoded-entries[$idx] = self!encode-element: ($k => $v);
     }
 
     multi method ASSIGN-KEY ( Str:D $key, Pair $new --> Nil ) {
@@ -305,8 +344,9 @@ package BSON {#:ver<0.9.16> {
 #say "Asign-key($?LINE): $key => ", $new.WHAT;
 
       my Str $k = $key;
-      my BSON::Document $v .= new: ($new);
-      $v.accept-hash = $!accept-hash;
+      my BSON::Document $v .= new;
+
+      $v{$new.key} = $new.value;
 
       my Int $idx = self.find-key($k);
       if $idx.defined {
@@ -320,14 +360,15 @@ package BSON {#:ver<0.9.16> {
       @!keys[$idx] = $k;
       @!values[$idx] = $v;
 
-      %!promises{$k} = Promise.start({ self!encode-element: ($k => $v); });
+#      %!promises{$k} = Promise.start({ self!encode-element: ($k => $v); });
+#      @!encoded-entries[$idx] = self!encode-element: ($k => $v);
     }
 
     multi method ASSIGN-KEY ( Str:D $key, Hash $new --> Nil ) {
 
 #say "Asign-key($?LINE): $key => ", $new.WHAT;
 
-      if ! $!accept-hash {
+      if ! $accept-hash {
         die X::Parse-document.new(
           :operation("\$d<$key> = {$new.perl}")
           :error("Cannot use hash values.\nSet accept-hash if you really want to")
@@ -345,7 +386,7 @@ package BSON {#:ver<0.9.16> {
 
     multi method ASSIGN-KEY ( Str:D $key, Any $new --> Nil ) {
 
-#say "Asign-key($?LINE)({self.WHERE}): $key => ", $new.WHAT;
+#say "Asign-key($?LINE): $key => ", $new.WHAT;
 
       my Str $k = $key;
       my $v = $new;
@@ -433,7 +474,7 @@ package BSON {#:ver<0.9.16> {
 
     #---------------------------------------------------------------------------
     method CALL-ME ( |capture ) {
-      say "Call me capture: ", capture.perl;
+#      say "Call me capture: ", capture.perl;
     }
 
     #---------------------------------------------------------------------------
@@ -470,40 +511,36 @@ package BSON {#:ver<0.9.16> {
     #---------------------------------------------------------------------------
     # Encoding document
     #---------------------------------------------------------------------------
-    # Called from user to get encoded document
+    # Called from user to get encoded document or by a request from an
+    # encoding Document to encode a subdocument.
     #
     method encode ( --> Buf ) {
 
-#say "Nbr promises({self.WHERE}): ", %!promises.elems;
-      $document-ready-to-encode.send('encode') if $toplevel;
+      loop ( my $idx = 0; $idx < @!keys.elems; $idx++) {
+        my $key = @!keys[$idx];
 
-      if %!promises.elems {
-#        try {
-          loop ( my $idx = 0; $idx < @!keys.elems; $idx++) {
-            my $key = @!keys[$idx];
-            if %!promises{$key}:exists {
-              @!encoded-entries[$idx] = %!promises{$key}.result;
-#say "Pr({self.WHERE}): $idx, $key, ",
-#    @!values[$idx].WHAT, ', ',
-#    @!encoded-entries[$idx];
-            }
-          }
+        # Test if a promise is created to calculate stuff in parallel
+        #
+        if %!promises{$key}:exists {
+          @!encoded-entries[$idx] = %!promises{$key}.result;
+        }
 
-#          CATCH {
-#            default {
-#              say "Error encoding: ", $_; #%!promises{$key}.cause;
-#            }
-#          }
-#        }
+        # Test if a value is a document. These are never done in parallel
+        # Subdocuments entries are also calculated in parallel but also
+        # except for subdocuments. When encodng a Document here it calls
+        # its own encode() which will gather the data. This happens depth
+        # first so ends up here returning the complete encoded subdocument.
+        #
+        elsif @!values[$idx] ~~ BSON::Document {
+          @!encoded-entries[$idx] =
+            self!encode-element: (@!keys[$idx] => @!values[$idx]);
+        }
 
-        %!promises = ();
+        # else {}. Other values might be calculated before and are to be
+        # found in @!encoded-entries.
       }
 
-#say "Nbr encoded entries({self.WHERE}): ", @!encoded-entries.elems;
-#my $i = 0;
-#for @!encoded-entries -> $ee {
-#  say "({self.WHERE}): @!keys[$i++]: ", $ee;
-#}
+      %!promises = ();
 
       my Buf $b;
       if @!encoded-entries.elems {
@@ -517,8 +554,6 @@ package BSON {#:ver<0.9.16> {
         $b = [~] encode-int32(5), Buf.new(0x00);
       }
 
-#say "({self.WHERE}). Encoded ($?LINE): ", $b;
-
       return $b;
     }
 
@@ -529,6 +564,7 @@ package BSON {#:ver<0.9.16> {
     # element ::= type-code e_name some-encoding
     #
     method !encode-element ( Pair:D $p --> Buf ) {
+#say "Encode element ", $p.perl, ', ', $p.key.WHAT, ', ', $p.value.WHAT;
 
       my Buf $b;
 
@@ -539,8 +575,8 @@ package BSON {#:ver<0.9.16> {
           # "\x01" e_name Num
           #
           $b = [~] Buf.new(BSON::C-DOUBLE),
-                     encode-e-name($p.key),
-                     encode-double($p.value);
+                   encode-e-name($p.key),
+                   encode-double($p.value);
         }
 
         when Str {
@@ -548,51 +584,16 @@ package BSON {#:ver<0.9.16> {
           # "\x02" e_name string
           #
           $b = [~] Buf.new(BSON::C-STRING),
-                     encode-e-name($p.key),
-                     encode-string($p.value);
+                   encode-e-name($p.key),
+                   encode-string($p.value);
         }
 
-#`{{
-        # Converting a pair same way as a hash:
-        #
-        when Pair {
-          # Embedded document
-          # "\x03" e_name document
-          #
-          my Pair @pairs = $p.value;
-#say "Pair {$p.key} => {$p.value}: ", [~] Buf.new(BSON::C-DOCUMENT),
-#                     encode-e-name($p.key),
-#                     self!encode-document(@pairs);
-          $b = [~] Buf.new(BSON::C-DOCUMENT),
-                     encode-e-name($p.key),
-                     self!encode-document(@pairs);
-        }
-
-        when Hash {
-          # Embedded document
-          # "\x03" e_name document
-          #
-          $b = [~] Buf.new(C-DOCUMENT),
-                     encode-e-name($p.key),
-                     self!encode-document($p.value);
-        }
-}}
         when BSON::Document {
           # Embedded document
           # "\x03" e_name document
           #
-          # When there is a deep nesting of docments it is possible that the
-          # encoding of it below is finished before AT-KEY or ASSIGN-KEY on that
-          # same document is called to add a new key resulting effectively
-          # in a pruned tree. Trick is to wait for a signal from the channel
-          # before starting it.
-          #
-          my $cmd = $document-ready-to-encode.receive;
-#say "Command received: $cmd";
-          $b = [~] Buf.new(BSON::C-DOCUMENT),
-                     encode-e-name($p.key),
-                     .encode;
-#say "Encoded doc ($?LINE): ", $b;
+          $b = [~] Buf.new(BSON::C-DOCUMENT), encode-e-name($p.key), .encode;
+#note "Encoded doc ($?LINE): ", $b;
         }
 
         when Array {
@@ -606,15 +607,12 @@ package BSON {#:ver<0.9.16> {
           # would be encoded as the document {'0': 'red', '1': 'blue'}.
           # The keys must be in ascending numerical order.
           #
-          # Simple assigning .kv to %hash wouldn't work because the order
-          # of items can go wrong. Mongo doesn't process it very well if e.g.
-          # { 1 => 'abc', 0 => 'def' } was encoded instead of
-          # { 0 => 'def', 1 => 'abc' }.
-          #
-          my BSON::Document $d .= new(
-            (('0' ...^ $p.value.elems.Str) Z=> $p.value).List
+#other try:  my $pairs = (for $a.kv -> $k, $v { "$k" => $v });
+          my BSON::Document $d .= new( ( (
+              ^$p.value.elems ==> map {"$_"}) Z=> $p.value.list
+            )
           );
-          $d.accept-hash = $!accept-hash;
+
           $b = [~] Buf.new(BSON::C-ARRAY), encode-e-name($p.key), $d.encode;
         }
 
@@ -653,16 +651,16 @@ package BSON {#:ver<0.9.16> {
             # "\x08" e_name "\x01
             #
             $b = [~] Buf.new(BSON::C-BOOLEAN),
-                       encode-e-name($p.key),
-                       Buf.new(0x01);
+                     encode-e-name($p.key),
+                     Buf.new(0x01);
           }
           else {
             # Boolean "false"
             # "\x08" e_name "\x00
             #
             $b = [~] Buf.new(BSON::C-BOOLEAN),
-                       encode-e-name($p.key),
-                       Buf.new(0x00);
+                     encode-e-name($p.key),
+                     Buf.new(0x00);
           }
         }
 
@@ -671,8 +669,8 @@ package BSON {#:ver<0.9.16> {
           # "\x09" e_name int64
           #
           $b = [~] Buf.new(BSON::C-DATETIME),
-                     encode-e-name($p.key),
-                     encode-int64(.posix);
+                   encode-e-name($p.key),
+                   encode-int64(.posix);
         }
 
         when not .defined {
@@ -687,9 +685,9 @@ package BSON {#:ver<0.9.16> {
           # "\x0B" e_name cstring cstring
           #
           $b = [~] Buf.new(BSON::C-REGEX),
-                     encode-e-name($p.key),
-                     encode-cstring(.regex),
-                     encode-cstring(.options);
+                   encode-e-name($p.key),
+                   encode-cstring(.regex),
+                   encode-cstring(.options);
         }
 
 #`{{
@@ -719,8 +717,8 @@ package BSON {#:ver<0.9.16> {
             if .has-scope {
               my Buf $doc = .scope.encode;
               $b = [~] Buf.new(BSON::C-JAVASCRIPT-SCOPE),
-                         encode-e-name($p.key),
-                         $js, $doc;
+                       encode-e-name($p.key),
+                       $js, $doc;
             }
 
             else {
@@ -743,16 +741,14 @@ package BSON {#:ver<0.9.16> {
           #
           if -0xffffffff < $p.value < 0xffffffff {
             $b = [~] Buf.new(BSON::C-INT32),
-                       encode-e-name($p.key),
-                       encode-int32($p.value)
-                       ;
+                     encode-e-name($p.key),
+                     encode-int32($p.value);
           }
 
           elsif -0x7fffffff_ffffffff < $p.value < 0x7fffffff_ffffffff {
             $b = [~] Buf.new(BSON::C-INT64),
-                       encode-e-name($p.key),
-                       encode-int64($p.value)
-                       ;
+                     encode-e-name($p.key),
+                     encode-int64($p.value);
           }
 
           else {
@@ -835,7 +831,7 @@ package BSON {#:ver<0.9.16> {
     }
 
     #---------------------------------------------------------------------------
-    sub encode-int64 ( Int:D $i --> Buf ) {
+    sub encode-int64 ( Int:D $i --> Buf ) is export {
       # No tests for too large/small numbers because it is called from
       # enc-element normally where it is checked
       #
@@ -1107,7 +1103,6 @@ package BSON {#:ver<0.9.16> {
           # when waiting for it.
           #
           my BSON::Document $d .= new;
-          $d.accept-hash = $!accept-hash;
           $d.decode(Buf.new($!encoded-document[$i ..^ ($i + $doc-size)]));
           @!values[$idx] = $d;
 
@@ -1131,7 +1126,6 @@ package BSON {#:ver<0.9.16> {
 
           %!promises{$key} = Promise.start( {
               my BSON::Document $d .= new;
-              $d.accept-hash = $!accept-hash;
 
               $d.decode(Buf.new($!encoded-document[$i ..^ ($i + $doc-size)]));
               @!values[$idx] = [$d.values];
@@ -1324,7 +1318,6 @@ package BSON {#:ver<0.9.16> {
 
           %!promises{$key} = Promise.start( {
               my BSON::Document $d .= new;
-              $d.accept-hash = $!accept-hash;
               $d.decode(Buf.new($!encoded-document[$i2 ..^ ($i2 + $js-size)]));
               @!values[$idx] = BSON::Javascript.new(
                 :javascript(decode-string( $!encoded-document, $i1)),
