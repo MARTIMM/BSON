@@ -18,7 +18,6 @@
     "BSON::Double":             "lib/BSON/Double.pm6",
     "BSON::EDCTools":           "lib/BSON/EDCTools.pm6",
     "BSON::Exception":          "lib/BSON/Exception.pm6",
-    "BSON::Header":             "lib/BSON/Header.pm6",
     "BSON::Javascript-old":     "lib/BSON/Javascript-old.pm6",
     "BSON::Javascript":         "lib/BSON/Javascript.pm6",
     "BSON::ObjectId-old":       "lib/BSON/ObjectId-old.pm6",
