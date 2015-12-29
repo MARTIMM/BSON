@@ -268,28 +268,9 @@ package BSON:ver<0.9.16> {
     }
 
     #---------------------------------------------------------------------------
-    multi method ASSIGN-KEY ( Str:D $key, Array:D $new --> Nil ) {
-
-#say "Asign-key($?LINE): $key => ", $new.WHAT;
-
-      my Str $k = $key;
-      my Array $v = $new;
-
-      my Int $idx = self.find-key($k);
-      if $idx.defined {
-        %!promises{$k}:delete;
-      }
-
-      else {
-        $idx = @!keys.elems;
-      }
-
-      @!keys[$idx] = $k;
-      @!values[$idx] = $v;
-
-      %!promises{$k} = Promise.start({ self!encode-element: ($k => $v); });
-    }
-
+    # All assignments of values which become or already are BSON::Documents
+    # will not be encoded in parallel.
+    #
     multi method ASSIGN-KEY ( Str:D $key, BSON::Document:D $new --> Nil ) {
 
 #say "Asign-key($?LINE): $key => ", $new.WHAT;
@@ -308,18 +289,23 @@ package BSON:ver<0.9.16> {
 
       @!keys[$idx] = $k;
       @!values[$idx] = $v;
-
-#      %!promises{$k} = Promise.start({ self!encode-element: ($k => $v); });
     }
 
     multi method ASSIGN-KEY ( Str:D $key, List:D $new --> Nil ) {
 
-#note "Asign-key($?LINE): $key => ", $new.WHAT, ', ', $new[0].WHAT,
-    ', ', $autovivify;
-
+#note "Asign-key($?LINE): $key => ", $new.WHAT, ', ', $new[0].WHAT;
       my BSON::Document $v .= new;
       for @$new -> $pair {
-        $v{$pair.key} = $pair.value;
+        if $pair ~~ Pair {
+          $v{$pair.key} = $pair.value;
+        }
+
+        else {
+          die X::Parse-document.new(
+            :operation("\$d<$key> = ({$pair.perl}, ...)")
+            :error("Can only use lists of Pair")
+          );
+        }
       }
 
       my Str $k = $key;
@@ -334,9 +320,6 @@ package BSON:ver<0.9.16> {
 
       @!keys[$idx] = $k;
       @!values[$idx] = $v;
-
-#      %!promises{$k} = Promise.start({ self!encode-element: ($k => $v); });
-#      @!encoded-entries[$idx] = self!encode-element: ($k => $v);
     }
 
     multi method ASSIGN-KEY ( Str:D $key, Pair $new --> Nil ) {
@@ -359,11 +342,10 @@ package BSON:ver<0.9.16> {
 
       @!keys[$idx] = $k;
       @!values[$idx] = $v;
-
-#      %!promises{$k} = Promise.start({ self!encode-element: ($k => $v); });
-#      @!encoded-entries[$idx] = self!encode-element: ($k => $v);
     }
 
+    # Hashes and sequences are reprocessed as lists
+    #
     multi method ASSIGN-KEY ( Str:D $key, Hash $new --> Nil ) {
 
 #say "Asign-key($?LINE): $key => ", $new.WHAT;
@@ -384,6 +366,35 @@ package BSON:ver<0.9.16> {
       self.ASSIGN-KEY( $key, $new.List);
     }
 
+    # Array will become a document but is not nested into subdocs and can
+    # be calculated in parallel.
+    #
+    multi method ASSIGN-KEY ( Str:D $key, Array:D $new --> Nil ) {
+
+# TODO Test pushes and pops
+
+#say "Asign-key($?LINE): $key => ", $new.WHAT;
+
+      my Str $k = $key;
+      my Array $v = $new;
+
+      my Int $idx = self.find-key($k);
+      if $idx.defined {
+        %!promises{$k}:delete;
+      }
+
+      else {
+        $idx = @!keys.elems;
+      }
+
+      @!keys[$idx] = $k;
+      @!values[$idx] = $v;
+
+      %!promises{$k} = Promise.start({ self!encode-element: ($k => $v); });
+    }
+
+    # All other values are calculated in parallel
+    #
     multi method ASSIGN-KEY ( Str:D $key, Any $new --> Nil ) {
 
 #say "Asign-key($?LINE): $key => ", $new.WHAT;
