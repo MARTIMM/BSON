@@ -617,12 +617,8 @@ package BSON:ver<0.9.16> {
           # would be encoded as the document {'0': 'red', '1': 'blue'}.
           # The keys must be in ascending numerical order.
           #
-#other try:  my $pairs = (for $a.kv -> $k, $v { "$k" => $v });
-          my BSON::Document $d .= new( ( (
-              ^$p.value.elems ==> map {"$_"}) Z=> $p.value.list
-            )
-          );
-
+          my $pairs = (for .kv -> $k, $v { "$k" => $v });
+          my BSON::Document $d .= new($pairs);
           $b = [~] Buf.new(BSON::C-ARRAY), encode-e-name($p.key), $d.encode;
         }
 
