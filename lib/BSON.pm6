@@ -7,7 +7,7 @@ use BSON::Double;
 use BSON::EDCTools;
 use BSON::Exception;
 
-package BSON:ver<0.9.17> {
+package BSON:ver<0.9.18> {
 
   class Bson {
     constant $BSON_BOOL = 0x08;

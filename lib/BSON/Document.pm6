@@ -5,7 +5,7 @@ use BSON::Regex;
 use BSON::Javascript;
 use BSON::Binary;
 
-package BSON:ver<0.9.16> {
+package BSON:ver<0.9.18> {
 
   #-----------------------------------------------------------------------------
   # BSON type codes
@@ -135,7 +135,6 @@ package BSON:ver<0.9.16> {
       # self{x} = y will end up at ASSIGN-KEY
       #
       for @$pairs -> $pair {
-#say "Build: {$pair.key} => {$pair.value}, ", $pair.value.WHAT;
         self{$pair.key} = $pair.value;
       }
     }
@@ -163,7 +162,6 @@ package BSON:ver<0.9.16> {
 
     #---------------------------------------------------------------------------
     method perl ( --> Str ) {
-#say "X: ", $autovivify, ', ', $accept-hash;
 
       [~] "\n  ", self,
           "\n  Autivivify: $autovivify",
@@ -984,24 +982,18 @@ package BSON:ver<0.9.16> {
       self!decode-document;
 
       if %!promises.elems {
-#        try {
-          loop ( my $idx = 0; $idx < @!keys.elems; $idx++) {
-            my $key = @!keys[$idx];
-            if %!promises{$key}:exists {
+        loop ( my $idx = 0; $idx < @!keys.elems; $idx++) {
+          my $key = @!keys[$idx];
+#say "Prom from $key, $idx, {%!promises{$key}:exists}";
 
-              # Return the Buffer slices in each entry so it can be
-              # concatenated again when encoding
-              #
-              @!encoded-entries[$idx] = %!promises{$key}.result;
-            }
+          if %!promises{$key}:exists {
+
+            # Return the Buffer slices in each entry so it can be
+            # concatenated again when encoding
+            #
+            @!encoded-entries[$idx] = %!promises{$key}.result;
           }
-
-#          CATCH {
-#            default {
-#              say "Error decoding: ", $_;
-#            }
-#          }
-#        }
+        }
 
         %!promises = ();
       }
@@ -1063,9 +1055,11 @@ package BSON:ver<0.9.16> {
 
           my Int $i = $!index;
           $!index += BSON::C-DOUBLE-SIZE;
+#say "DBL Subbuf: ", $!encoded-document.subbuf( $i, BSON::C-DOUBLE-SIZE);
 
           %!promises{$key} = Promise.start( {
               @!values[$idx] = decode-double( $!encoded-document, $i);
+#say "DBL: $key, $idx = @!values[$idx]";
 
               Buf.new(
                 $!encoded-document[
@@ -1486,6 +1480,8 @@ package BSON:ver<0.9.16> {
     #
     sub decode-double ( Buf:D $b, Int:D $index --> Num ) {
 
+#say "Dbl 0: ", $b.subbuf( $index, 8);
+
       # Test special cases
       #
       # 0x 0000 0000 0000 0000 = 0
@@ -1498,39 +1494,43 @@ package BSON:ver<0.9.16> {
       # 0x fff8 0000 0000 0000 <= nan <= 0x ffff ffff ffff ffff
       #
       my Bool $six-byte-zeros = True;
+
       for ^6 -> $i {
-        if ? $b[$i] {
+        if ? $b[$index + $i] {
           $six-byte-zeros = False;
           last;
         }
       }
+#say "Dbl 1: $six-byte-zeros";
 
       my Num $value;
-      if $six-byte-zeros and $b[6] == 0 {
-        if $b[7] == 0 {
+      if $six-byte-zeros and $b[$index + 6] == 0 {
+        if $b[$index + 7] == 0 {
           $value .= new(0);
         }
 
-        elsif $b[7] == 0x80 {
+        elsif $b[$index + 7] == 0x80 {
           $value .= new(-0);
         }
       }
 
-      elsif $six-byte-zeros and $b[6] == 0xF0 {
-        if $b[7] == 0x7F {
+      elsif $six-byte-zeros and $b[$index + 6] == 0xF0 {
+        if $b[$index + 7] == 0x7F {
           $value .= new(Inf);
         }
 
-        elsif $b[7] == 0xFF {
+        elsif $b[$index + 7] == 0xFF {
           $value .= new(-Inf);
         }
       }
 
-      elsif $b[7] == 0x7F and (0xf0 <= $b[6] <= 0xf7 or 0xf8 <= $b[6] <= 0xff) {
+      elsif $b[$index + 7] == 0x7F and (0xf0 <= $b[$index + 6] <= 0xf7
+            or 0xf8 <= $b[$index + 6] <= 0xff) {
         $value .= new(NaN);
       }
 
-      elsif $b[7] == 0xFF and (0xf0 <= $b[6] <= 0xf7 or 0xf8 <= $b[6] <= 0xff) {
+      elsif $b[$index + 7] == 0xFF and (0xf0 <= $b[$index + 6] <= 0xf7
+            or 0xf8 <= $b[$index + 6] <= 0xff) {
         $value .= new(NaN);
       }
 
