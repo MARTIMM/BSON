@@ -230,7 +230,7 @@ Defined as
 
   method perl ( --> Str )
 
-Return some information about the object.
+Return some information about the object and its structure.
 
 =head2 method WHAT
 
@@ -355,6 +355,14 @@ say $d.kv;
 # Outputs: [a 120 b 121 c 122 d 123 ... x 143 y 144 z 145]
 
 =end code
+
+=head2 method pairs
+
+Defined as
+
+  method pairs ( --> List )
+
+Return a list of pairs in the same order as entered.
 
 =head2 method keys
 

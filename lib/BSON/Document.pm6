@@ -163,9 +163,11 @@ package BSON:ver<0.9.19> {
     }
 
     #---------------------------------------------------------------------------
-    method perl ( --> Str ) {
+    method perl ( Int $indent = 1 --> Str ) {
+      $indent = 1 if $indent < 1;
 
-      [~] "\n  ", self,
+      my Str $perl = '';
+#`{{      [~] "\n  ",
           "\n  Autivivify: $autovivify",
           "\n  Accept hash: $accept-hash",
           "\n  Keys(", @!keys.elems, "): ", @!keys.join(', '),
@@ -174,11 +176,53 @@ package BSON:ver<0.9.19> {
           "\n  Encoded Entries(", @!encoded-entries.elems, "):",
              (map { "\n   - " ~ $_.>>.fmt('0x%02x'); }, @!encoded-entries),
           "\n";
+}}
+
+#TODO test for loop references. ILLEGAL!
+
+      self!str-pairs( $indent, self.pairs);
     }
 
     #---------------------------------------------------------------------------
-    submethod WHAT ( --> Str ) {
-      "(BSON::Document)";
+    method !str-pairs ( Int $indent, List $items --> Str ) {
+      my Str $perl = "Document (\n";
+      for @$items -> $item {
+        my $value;
+        if $item.can('key') {
+          my $key = $item.key;
+say "I: $key";
+
+          $value = $item.value;
+          $perl ~= '  ' x $indent ~ "$key => ";
+        }
+        
+        else {
+          $value = $item;
+        }
+say "V: ", $value.WHAT;
+
+        if $value ~~ BSON::Document {
+          $perl ~= $value.perl($indent + 1);
+        }
+
+        elsif $value ~~ List {
+          $perl ~= "Array [\n";
+          self!str-pairs( $indent + 1, @$value);
+          $perl ~= '  ' x $indent ~ "]\n";
+        }
+
+        else {
+          $perl ~= "$value\n";
+        }
+say "P: $perl";
+      }
+
+      $perl ~= '  ' x ($indent - 1) ~ ")\n";
+    }
+
+    #---------------------------------------------------------------------------
+    submethod WHAT ( --> BSON::Document ) {
+      BSON::Document;
     }
 
     #---------------------------------------------------------------------------
@@ -504,6 +548,17 @@ package BSON:ver<0.9.19> {
       }
 
       @kv-list;
+    }
+
+    #---------------------------------------------------------------------------
+    method pairs ( --> List ) {
+
+      my @pair-list;
+      loop ( my $i = 0; $i < @!keys.elems; $i++) {
+        @pair-list.push: ( @!keys[$i] => @!values[$i]);
+      }
+
+      @pair-list;
     }
 
     #---------------------------------------------------------------------------
