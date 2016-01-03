@@ -135,6 +135,8 @@ package BSON:ver<0.9.18> {
       # self{x} = y will end up at ASSIGN-KEY
       #
       for @$pairs -> $pair {
+#TODO better error messages when accessing $pair
+#say "P: ", $pair;
         self{$pair.key} = $pair.value;
       }
     }
@@ -643,7 +645,7 @@ package BSON:ver<0.9.18> {
           # ObjectId
           # "\x07" e_name (byte*12)
           #
-          $b = Buf.new(BSON::C-OBJECTID) ~ encode-e-name($p.key) ~ .oid;
+          $b = [~] Buf.new(BSON::C-OBJECTID), encode-e-name($p.key), .oid;
         }
 
         when Bool {
@@ -782,10 +784,11 @@ package BSON:ver<0.9.18> {
         #
         when Buf {
           my BSON::Binary $bbin .= new(:data($_));
-          $b = [~] Buf.new(BSON::C-BINARY), encode-e-name($p.key);
-          $b ~= encode-int32(.binary-data.elems);
-          $b ~= Buf.new(.binary-type);
-          $b ~= .binary-data;
+          $b = [~] Buf.new(BSON::C-BINARY),
+                   encode-e-name($p.key),
+                   encode-int32(.binary-data.elems),
+                   Buf.new(.binary-type),
+                   .binary-data;
         }
 
         default {
@@ -1061,10 +1064,11 @@ package BSON:ver<0.9.18> {
               @!values[$idx] = decode-double( $!encoded-document, $i);
 #say "DBL: $key, $idx = @!values[$idx]";
 
-              Buf.new(
-                $!encoded-document[
-                  $decode-start ..^ ($i + BSON::C-DOUBLE-SIZE)
-                ]
+              # Return total section of binary data
+              #
+              $!encoded-document.subbuf(
+                $decode-start ..^               # At bson code
+                ($i + BSON::C-DOUBLE-SIZE)      # $i is at code + key further
               );
             }
           );
@@ -1083,10 +1087,9 @@ package BSON:ver<0.9.18> {
 
           %!promises{$key} = Promise.start( {
               @!values[$idx] = decode-string( $!encoded-document, $i);
-              Buf.new(
-                $!encoded-document[
-                  $decode-start ..^ ($i + BSON::C-INT32-SIZE + $nbr-bytes)
-                ]
+              $!encoded-document.subbuf(
+                $decode-start ..^
+                ($i + BSON::C-INT32-SIZE + $nbr-bytes)
               );
             }
           );
@@ -1103,15 +1106,11 @@ package BSON:ver<0.9.18> {
           # when waiting for it.
           #
           my BSON::Document $d .= new;
-          $d.decode(Buf.new($!encoded-document[$i ..^ ($i + $doc-size)]));
+          $d.decode($!encoded-document.subbuf($i ..^ ($i + $doc-size)));
           @!values[$idx] = $d;
 
           %!promises{$key} = Promise.start( {
-              Buf.new(
-                $!encoded-document[
-                  $decode-start ..^ ($i + $doc-size)
-                ]
-              );
+              $!encoded-document.subbuf( $decode-start ..^ ($i + $doc-size));
             }
           );
         }
@@ -1127,14 +1126,10 @@ package BSON:ver<0.9.18> {
           %!promises{$key} = Promise.start( {
               my BSON::Document $d .= new;
 
-              $d.decode(Buf.new($!encoded-document[$i ..^ ($i + $doc-size)]));
+              $d.decode($!encoded-document.subbuf($i ..^ ($i + $doc-size)));
               @!values[$idx] = [$d.values];
 
-              Buf.new(
-                $!encoded-document[
-                  $decode-start ..^ ($i + $doc-size)
-                ]
-              );
+              $!encoded-document.subbuf( $decode-start ..^ ($i + $doc-size));
             }
           );
         }
@@ -1160,10 +1155,8 @@ package BSON:ver<0.9.18> {
                 $nbr-bytes
               );
 
-              Buf.new(
-                $!encoded-document[
-                  $decode-start ..^ ($i + 1 + $nbr-bytes)
-                ]
+              $!encoded-document.subbuf(
+                $decode-start ..^ ($i + 1 + $nbr-bytes)
               );
             }
           );
@@ -1181,11 +1174,7 @@ package BSON:ver<0.9.18> {
                 :bytes($!encoded-document[$i ..^ ($i + 12)])
               );
 
-              Buf.new(
-                $!encoded-document[
-                  $decode-start ..^ ($i + 12)
-                ]
-              );
+              $!encoded-document.subbuf($decode-start ..^ ($i + 12));
             }
           );
         }
@@ -1199,12 +1188,7 @@ package BSON:ver<0.9.18> {
 
           %!promises{$key} = Promise.start( {
               @!values[$idx] = $!encoded-document[$i] ~~ 0x00 ?? False !! True;
-
-              Buf.new(
-                $!encoded-document[
-                  $decode-start .. ($i + 1)
-                ]
-              );
+              $!encoded-document.subbuf($decode-start .. ($i + 1));
             }
           );
         }
@@ -1221,10 +1205,8 @@ package BSON:ver<0.9.18> {
                 :timezone($*TZ)
               );
 
-              Buf.new(
-                $!encoded-document[
-                  $decode-start ..^ ($i + BSON::C-INT64-SIZE)
-                ]
+              $!encoded-document.subbuf(
+                $decode-start ..^ ($i + BSON::C-INT64-SIZE)
               );
             }
           );
@@ -1233,13 +1215,8 @@ package BSON:ver<0.9.18> {
         when BSON::C-NULL {
           %!promises{$key} = Promise.start( {
               @!values[$idx] = Any;
-
               my $i = $!index;
-              Buf.new(
-                $!encoded-document[
-                  $decode-start ..^ $i
-                ]
-              );
+              $!encoded-document.subbuf($decode-start ..^ $i);
             }
           );
         }
@@ -1266,11 +1243,7 @@ package BSON:ver<0.9.18> {
                 :options(decode-cstring( $!encoded-document, $i2))
               );
 
-              Buf.new(
-                $!encoded-document[
-                  $decode-start ..^ $i3
-                ]
-              );
+              $!encoded-document.subbuf($decode-start ..^ $i3);
             }
           );
         }
@@ -1295,10 +1268,8 @@ package BSON:ver<0.9.18> {
                 :javascript(decode-string( $!encoded-document, $i))
               );
 
-              Buf.new(
-                $!encoded-document[
-                  $decode-start ..^ ($i + BSON::C-INT32-SIZE + $js-size)
-                ]
+              $!encoded-document.subbuf(
+                $decode-start ..^ ($i + BSON::C-INT32-SIZE + $js-size)
               );
             }
           );
@@ -1324,11 +1295,7 @@ package BSON:ver<0.9.18> {
                 :scope($d)
               );
 
-              Buf.new(
-                $!encoded-document[
-                  $decode-start ..^ $i3
-                ]
-              );
+              $!encoded-document.subbuf($decode-start ..^ $i3);
             }
           );
         }
@@ -1343,10 +1310,8 @@ package BSON:ver<0.9.18> {
           %!promises{$key} = Promise.start( {
               @!values[$idx] = decode-int32( $!encoded-document, $i);
 
-              Buf.new(
-                $!encoded-document[
-                  $decode-start ..^ ($i + BSON::C-INT32-SIZE)
-                ]
+              $!encoded-document.subbuf(
+                $decode-start ..^ ($i + BSON::C-INT32-SIZE)
               );
             }
           );
@@ -1362,10 +1327,8 @@ package BSON:ver<0.9.18> {
           %!promises{$key} = Promise.start( {
               @!values[$idx] = decode-int64( $!encoded-document, $i);
 
-              Buf.new(
-                $!encoded-document[
-                  $decode-start ..^ ($i + BSON::C-INT64-SIZE)
-                ]
+              $!encoded-document.subbuf(
+                $decode-start ..^ ($i + BSON::C-INT64-SIZE)
               );
             }
           );
