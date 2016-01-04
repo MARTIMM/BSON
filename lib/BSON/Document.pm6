@@ -5,7 +5,7 @@ use BSON::Regex;
 use BSON::Javascript;
 use BSON::Binary;
 
-package BSON:ver<0.9.19> {
+package BSON:ver<0.9.20> {
 
   #-----------------------------------------------------------------------------
   # BSON type codes
@@ -354,6 +354,7 @@ package BSON:ver<0.9.19> {
 
       my Int $idx = self.find-key($k);
       if $idx.defined {
+        %!promises{$k}.result;
         %!promises{$k}:delete;
       }
 
@@ -385,6 +386,7 @@ package BSON:ver<0.9.19> {
       my Str $k = $key;
       my Int $idx = self.find-key($k);
       if $idx.defined {
+        %!promises{$k}.result;
         %!promises{$k}:delete;
       }
 
@@ -407,6 +409,7 @@ package BSON:ver<0.9.19> {
 
       my Int $idx = self.find-key($k);
       if $idx.defined {
+        %!promises{$k}.result;
         %!promises{$k}:delete;
       }
 
@@ -454,6 +457,7 @@ package BSON:ver<0.9.19> {
 
       my Int $idx = self.find-key($k);
       if $idx.defined {
+        %!promises{$k}.result;
         %!promises{$k}:delete;
       }
 
@@ -478,6 +482,7 @@ package BSON:ver<0.9.19> {
 
       my Int $idx = self.find-key($k);
       if $idx.defined {
+        %!promises{$k}.result;
         %!promises{$k}:delete;
       }
 
