@@ -354,8 +354,10 @@ package BSON:ver<0.9.20> {
 
       my Int $idx = self.find-key($k);
       if $idx.defined {
-        %!promises{$k}.result;
-        %!promises{$k}:delete;
+        if %!promises{$k}.defined {
+          %!promises{$k}.result;
+          %!promises{$k}:delete;
+        }
       }
 
       else {
@@ -386,8 +388,10 @@ package BSON:ver<0.9.20> {
       my Str $k = $key;
       my Int $idx = self.find-key($k);
       if $idx.defined {
-        %!promises{$k}.result;
-        %!promises{$k}:delete;
+        if %!promises{$k}.defined {
+          %!promises{$k}.result;
+          %!promises{$k}:delete;
+        }
       }
 
       else {
@@ -409,8 +413,10 @@ package BSON:ver<0.9.20> {
 
       my Int $idx = self.find-key($k);
       if $idx.defined {
-        %!promises{$k}.result;
-        %!promises{$k}:delete;
+        if %!promises{$k}.defined {
+          %!promises{$k}.result;
+          %!promises{$k}:delete;
+        }
       }
 
       else {
@@ -457,8 +463,10 @@ package BSON:ver<0.9.20> {
 
       my Int $idx = self.find-key($k);
       if $idx.defined {
-        %!promises{$k}.result;
-        %!promises{$k}:delete;
+        if %!promises{$k}.defined {
+          %!promises{$k}.result;
+          %!promises{$k}:delete;
+        }
       }
 
       else {
@@ -482,8 +490,10 @@ package BSON:ver<0.9.20> {
 
       my Int $idx = self.find-key($k);
       if $idx.defined {
-        %!promises{$k}.result;
-        %!promises{$k}:delete;
+        if %!promises{$k}.defined {
+          %!promises{$k}.result;
+          %!promises{$k}:delete;
+        }
       }
 
       else {
