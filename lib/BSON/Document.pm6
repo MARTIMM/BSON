@@ -163,11 +163,11 @@ package BSON:ver<0.9.19> {
     }
 
     #---------------------------------------------------------------------------
-    method perl ( Int $indent = 1 --> Str ) {
-      $indent = 1 if $indent < 1;
+    method perl ( Int $indent = 0 --> Str ) {
+      $indent = 0 if $indent < 0;
 
-      my Str $perl = '';
-#`{{      [~] "\n  ",
+#`{{
+      my Str $perl = [~] "\n  ",
           "\n  Autivivify: $autovivify",
           "\n  Accept hash: $accept-hash",
           "\n  Keys(", @!keys.elems, "): ", @!keys.join(', '),
@@ -180,44 +180,75 @@ package BSON:ver<0.9.19> {
 
 #TODO test for loop references. ILLEGAL!
 
-      self!str-pairs( $indent, self.pairs);
+      my Str $perl = '  ' x $indent ~ "Document (\n";
+      $perl ~= self!str-pairs( $indent + 1, self.pairs);
+      $perl ~= '  ' x ($indent - 1) ~ ")\n";
+      return $perl;
     }
 
     #---------------------------------------------------------------------------
     method !str-pairs ( Int $indent, List $items --> Str ) {
-      my Str $perl = "Document (\n";
+      my Str $perl = '';
       for @$items -> $item {
+        my $key;
         my $value;
-        if $item.can('key') {
-          my $key = $item.key;
-say "I: $key";
 
+        if $item.can('key') {
+          $key = $item.key;
           $value = $item.value;
           $perl ~= '  ' x $indent ~ "$key => ";
         }
-        
+
         else {
           $value = $item;
         }
-say "V: ", $value.WHAT;
+
 
         if $value ~~ BSON::Document {
+          $perl ~= '  ' x $indent unless $key.defined;
           $perl ~= $value.perl($indent + 1);
         }
 
-        elsif $value ~~ List {
+        elsif $value ~~ Array {
+          $perl ~= '  ' x $indent unless $key.defined;
           $perl ~= "Array [\n";
-          self!str-pairs( $indent + 1, @$value);
+          $perl ~= self!str-pairs( $indent + 1, @$value);
           $perl ~= '  ' x $indent ~ "]\n";
         }
 
+        elsif $value ~~ List {
+          $perl ~= '  ' x $indent unless $key.defined;
+          $perl ~= "List (\n";
+          $perl ~= self!str-pairs( $indent + 1, @$value);
+          $perl ~= '  ' x $indent ~ ")\n";
+        }
+
+        elsif $value.^name eq 'ObjectID' {
+          $perl ~= '  ' x $indent unless $key.defined;
+          $perl ~= "ObjectID\n";
+        }
+
+        elsif $value.^name eq 'Binary' {
+          $perl ~= '  ' x $indent unless $key.defined;
+          $perl ~= "Binary\n";
+        }
+
+        elsif $value.^name eq 'Regex' {
+          $perl ~= '  ' x $indent unless $key.defined;
+          $perl ~= "Regex\n";
+        }
+
+        elsif $value.^name eq 'Javascript' {
+          $perl ~= '  ' x $indent unless $key.defined;
+          $perl ~= "Javascript\n";
+        }
+
         else {
+          $perl ~= '  ' x $indent unless $key.defined;
           $perl ~= "$value\n";
         }
-say "P: $perl";
       }
-
-      $perl ~= '  ' x ($indent - 1) ~ ")\n";
+      return $perl;
     }
 
     #---------------------------------------------------------------------------
@@ -528,7 +559,7 @@ say "P: $perl";
 
     #---------------------------------------------------------------------------
     method CALL-ME ( |capture ) {
-#      say "Call me capture: ", capture.perl;
+#say "Call me capture: ", capture.perl;
     }
 
     #---------------------------------------------------------------------------
@@ -658,7 +689,7 @@ say "P: $perl";
           # "\x03" e_name document
           #
           $b = [~] Buf.new(BSON::C-DOCUMENT), encode-e-name($p.key), .encode;
-#note "Encoded doc ($?LINE): ", $b;
+note "Encoded doc ($?LINE): ", $b;
         }
 
         when Array {
@@ -675,6 +706,7 @@ say "P: $perl";
           my $pairs = (for .kv -> $k, $v { "$k" => $v });
           my BSON::Document $d .= new($pairs);
           $b = [~] Buf.new(BSON::C-ARRAY), encode-e-name($p.key), $d.encode;
+note "Encoded array ($?LINE) $pairs -- {$p.key},{$p.value}: ", $b;
         }
 
         when BSON::Binary {
