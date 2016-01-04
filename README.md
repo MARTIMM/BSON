@@ -103,7 +103,8 @@ See also BSON/Document.pod
   any integer can be stored as large or small as you like. Int can be coded as
   described in version 0.8.4 and when larger or smaller then maybe it is
   possible the Int can be coded as a binary array of some type.
-
+* BUG. An array in a document which is modified later with push, pop or
+  otherwise will not be properly encoded.
 
 ## CHANGELOG
 
@@ -113,7 +114,7 @@ change at any time. The public API should not be considered stable*.
 
 *.0.9.19
   * Modified taking sections of buf using subbuf
-  *
+  * perl method modified showing structure of document
 * 0.9.18
   * Bugfixes in Double decoding
 * 0.9.17

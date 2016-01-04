@@ -605,6 +605,20 @@ package BSON:ver<0.9.19> {
     }
 
     #---------------------------------------------------------------------------
+    method modify-array ( Str $key, Str $operation, $data --> List ) {
+
+      my Int $idx = self.find-key($key);
+      if self{$key}:exists
+         and self{$key} ~~ Array
+         and self{$key}.can($operation) {
+
+        my $array = self{$key};
+        $array."$operation"($data);
+        self{$key} = $array;
+      }
+    }
+
+    #---------------------------------------------------------------------------
     # Encoding document
     #---------------------------------------------------------------------------
     # Called from user to get encoded document or by a request from an
@@ -689,7 +703,7 @@ package BSON:ver<0.9.19> {
           # "\x03" e_name document
           #
           $b = [~] Buf.new(BSON::C-DOCUMENT), encode-e-name($p.key), .encode;
-note "Encoded doc ($?LINE): ", $b;
+#note "Encoded doc ($?LINE): ", $b;
         }
 
         when Array {
@@ -706,7 +720,7 @@ note "Encoded doc ($?LINE): ", $b;
           my $pairs = (for .kv -> $k, $v { "$k" => $v });
           my BSON::Document $d .= new($pairs);
           $b = [~] Buf.new(BSON::C-ARRAY), encode-e-name($p.key), $d.encode;
-note "Encoded array ($?LINE) $pairs -- {$p.key},{$p.value}: ", $b;
+#note "Encoded array ($?LINE): ", $b;
         }
 
         when BSON::Binary {
