@@ -398,6 +398,21 @@ say $d.values;
 
 =end code
 
+=head2 method modify-array
+
+Defined as
+
+  method modify-array ( Str $key, Str $operation, $data --> List )
+
+Use as
+
+  BSON::Document $d .= new:(docs => []);
+  $d.modify-array( 'docs', 'push', (a => 1, b => 2));
+
+Modify an array in a document afterwards. This method is necessary to apply
+changes because when doing it directly like B<$d<docs>.push: (c => 2);> it
+wouldn't be encoded because the document object is not aware of these changes.
+
 =head2 method encode
 
 Defined as
