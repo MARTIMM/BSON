@@ -112,10 +112,13 @@ See [semantic versioning](http://semver.org/). Please note point 4. on
 that page: *Major version zero (0.y.z) is for initial development. Anything may
 change at any time. The public API should not be considered stable*.
 
+* 0.9.21
+  * Beautify perl() output
 *.0.9.20
   * Bugfix. When a entry is overwritten, the promise used for it to encode the
     entry was only deleted. It needs to be read first otherwise a thread is kept
     hanging around.
+  * Bugfix. Promise needs to be tested for definiteness before await and delete
 *.0.9.19
   * Modified taking sections of buf using subbuf
   * perl method modified showing structure of document

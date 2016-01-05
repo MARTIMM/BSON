@@ -11,7 +11,6 @@ package BSON {
     has Bool $.has-scope = False;
 
     #---------------------------------------------------------------------------
-    #
     submethod BUILD ( Str :$javascript, :$scope ) {
 
       # Store the attribute values. ? sets True if defined and filled.
@@ -21,6 +20,15 @@ package BSON {
 
       $!has-javascript = ?$!javascript;
       $!has-scope = ?$!scope if $scope.^name ~~ 'BSON::Document';
+    }
+
+    #---------------------------------------------------------------------------
+    method perl ( --> Str ) {
+      [~] "BSON::Javascript.new( ",
+          $!javascript ?? ":javascript('\n//\n$!javascript\n//\n'), " !! '',
+          $!scope ?? $!scope.perl !! '',
+          ')'
+      ;
     }
   }
 }

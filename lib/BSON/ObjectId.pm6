@@ -130,6 +130,13 @@ package BSON {
     }
 
     #---------------------------------------------------------------------------
+    method perl ( --> Str ) {
+      my Str $string = $!oid.list.fmt('%02x');
+      $string ~~ s:g/\s+//;
+      [~] 'BSON::ObjectId.new(', ":string('0x$string')", ')';
+    }
+
+    #---------------------------------------------------------------------------
     method !generate-oid ( ) {
 
       my @numbers = ();

@@ -5,7 +5,7 @@ use BSON::Regex;
 use BSON::Javascript;
 use BSON::Binary;
 
-package BSON:ver<0.9.20> {
+package BSON:ver<0.9.21> {
 
   #-----------------------------------------------------------------------------
   # BSON type codes
@@ -163,26 +163,15 @@ package BSON:ver<0.9.20> {
     }
 
     #---------------------------------------------------------------------------
-    method perl ( Int $indent = 0 --> Str ) {
+    method perl ( Int $indent = 0, Bool :$skip-indent = False --> Str ) {
       $indent = 0 if $indent < 0;
 
-#`{{
-      my Str $perl = [~] "\n  ",
-          "\n  Autivivify: $autovivify",
-          "\n  Accept hash: $accept-hash",
-          "\n  Keys(", @!keys.elems, "): ", @!keys.join(', '),
-#          "\n  Values(", @!values.elems, "): ",
-#             (map { $_.^name eq 'BSON::Document' ?? '=Document=' !! $_}, @!values).join(', '),
-          "\n  Encoded Entries(", @!encoded-entries.elems, "):",
-             (map { "\n   - " ~ $_.>>.fmt('0x%02x'); }, @!encoded-entries),
-          "\n";
-}}
-
-#TODO test for loop references. ILLEGAL!
-
-      my Str $perl = '  ' x $indent ~ "Document (\n";
+      my Str $perl = '';
+      $perl ~= '  ' x $indent unless $skip-indent;
+      $perl ~= "BSON::Document.new((\n";
       $perl ~= self!str-pairs( $indent + 1, self.pairs);
-      $perl ~= '  ' x ($indent - 1) ~ ")\n";
+      $perl ~= '  ' x ($indent - 1) ~ "))";
+      $perl ~= ($indent == 0 ?? ';' !! ',') ~ "\n";
       return $perl;
     }
 
@@ -195,57 +184,62 @@ package BSON:ver<0.9.20> {
 
         if $item.can('key') {
           $key = $item.key;
-          $value = $item.value;
+          $value = $item.value // 'Nil';
           $perl ~= '  ' x $indent ~ "$key => ";
         }
 
         else {
-          $value = $item;
+          $value = $item // 'Nil';
         }
 
 
         if $value ~~ BSON::Document {
           $perl ~= '  ' x $indent unless $key.defined;
-          $perl ~= $value.perl($indent + 1);
+          $perl ~= $value.perl( $indent + 1, :skip-indent($key.defined));
         }
 
         elsif $value ~~ Array {
           $perl ~= '  ' x $indent unless $key.defined;
-          $perl ~= "Array [\n";
+          $perl ~= "[\n";
           $perl ~= self!str-pairs( $indent + 1, @$value);
-          $perl ~= '  ' x $indent ~ "]\n";
+          $perl ~= '  ' x $indent ~ "],\n";
         }
 
         elsif $value ~~ List {
           $perl ~= '  ' x $indent unless $key.defined;
-          $perl ~= "List (\n";
+          $perl ~= "(\n";
           $perl ~= self!str-pairs( $indent + 1, @$value);
-          $perl ~= '  ' x $indent ~ ")\n";
+          $perl ~= '  ' x $indent ~ "),\n";
         }
 
-        elsif $value.^name eq 'ObjectID' {
+#        elsif $value.^name eq 'BSON::ObjectId' {
+#          $perl ~= '  ' x $indent unless $key.defined;
+#          $perl ~= $value.perl,\n";
+#        }
+
+        elsif $value.^name eq 'BSON::Binary' {
           $perl ~= '  ' x $indent unless $key.defined;
-          $perl ~= "ObjectID\n";
+          $perl ~= "BSON::Binary.new( ),\n";
         }
 
-        elsif $value.^name eq 'Binary' {
-          $perl ~= '  ' x $indent unless $key.defined;
-          $perl ~= "Binary\n";
-        }
+#        elsif $value.^name eq 'BSON::Regex' {
+#          $perl ~= '  ' x $indent unless $key.defined;
+#          $perl ~= "BSON::Regex.new( ),\n";
+#        }
 
-        elsif $value.^name eq 'Regex' {
-          $perl ~= '  ' x $indent unless $key.defined;
-          $perl ~= "Regex\n";
-        }
+#        elsif $value.^name eq 'BSON::Javascript' {
+#          $perl ~= '  ' x $indent unless $key.defined;
+#          $perl ~= "BSON::Javascript.new( ),\n";
+#        }
 
-        elsif $value.^name eq 'Javascript' {
+        elsif $value.can('perl') {
           $perl ~= '  ' x $indent unless $key.defined;
-          $perl ~= "Javascript\n";
+          $perl ~= $value.perl ~ ",\n";
         }
 
         else {
           $perl ~= '  ' x $indent unless $key.defined;
-          $perl ~= "$value\n";
+          $perl ~= "$value,\n";
         }
       }
       return $perl;
@@ -258,7 +252,7 @@ package BSON:ver<0.9.20> {
 
     #---------------------------------------------------------------------------
     submethod Str ( --> Str ) {
-      "BSON::Document<{self.WHERE}>";
+      self.perl;
     }
 
     #---------------------------------------------------------------------------
@@ -282,6 +276,7 @@ package BSON:ver<0.9.20> {
       $!encoded-document = Nil;
       @!encoded-entries = ();
 
+#await first?
       %!promises = ();
     }
 }}

@@ -25,7 +25,6 @@ package BSON {
       # MongoDB uses Perl 5! compatible regular expressions.
       # See also: http://docs.mongodb.org/manual/reference/operator/query/regex/
       #
-
 #`{{
 Wait until bug is fixed in perl6: Cannot use match here. Error is caused by
 reference of match to this class instead of the proper one.
@@ -37,6 +36,11 @@ reference of match to this class instead of the proper one.
 }}
       $!regex = $regex;
       $!options = $options;
+    }
+
+    #---------------------------------------------------------------------------
+    method perl ( --> Str ) {
+      "BSON::Regex.new( :regex('$!regex'), :options('$!options'))";
     }
   }
 }
