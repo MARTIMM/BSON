@@ -22,39 +22,10 @@ When installing MongoDB, BSON will be installed automatically as a dependency.
 
 ## SYNOPSIS
 
-The first example code is the original method of serializing data into a BSON
-structure. When used to save it lokally it is fine. However, because hashes are
-involved the structure cannot be used to communicate with a mongodb server. The
-hashes in perl6 do not keep the order as you will enter your data into the
-structure and the mongodb server needs the data in some order. E.g. when using
-commands, the command needs to be on the first key-value pair. Tricky
-manipulations must be performed to keep the input order such as using arrays of
-Pair.
-
-Because of this a BSON::Document class has been developed (see second
-example). This structure will keep the order and because of that there is no
-need for cumbersome operations. At the moment it is much slower than the hashed
-variant even with the encoding happening in the background and parallel.
-
-
-```
-use BSON;
-my $b = BSON::Bson.new;
-
-my Buf $encoded = $b.encode( {
-    "_id" => BSON::ObjectId.new("4e4987edfed4c16f8a56ed1d"),
-    "some string"   => "foo",
-    "some number"   => 123,
-    "some array"    => [ ],
-    "some hash"     => { },
-    "some bool"     => True,
-  }
-);
-
-my $decoded = $b.decode($encoded);
-```
-
-Using the BSON::Document
+A BSON::Document class has been developed. This structure will keep the order
+and because of that there is no need for cumbersome operations. At the moment it
+is much slower than the hashed variant even with the encoding happening in the
+background and parallel.
 
 ```
 use BSON::Document;
@@ -113,7 +84,13 @@ that page: *Major version zero (0.y.z) is for initial development. Anything may
 change at any time. The public API should not be considered stable*.
 
 * 0.9.21
-  * Beautify perl() output
+  * Beautify perl() output and added perl() methods to Binary, Javascript, Regex
+    and ObjectId.
+  * Cutting out old stuff now that Document is matured and MongoDB does not rely
+    on the old stuff anymore. Their accompanying test programs are removed too.
+  * Documentation for the other modules
+  * Factored out Buf encoding. Must be done via BSON::Binary
+  * Refactored encode/decode from Document to Binary and ObjectId
 *.0.9.20
   * Bugfix. When a entry is overwritten, the promise used for it to encode the
     entry was only deleted. It needs to be read first otherwise a thread is kept
