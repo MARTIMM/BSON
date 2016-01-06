@@ -170,7 +170,7 @@ package BSON:ver<0.9.21> {
       $perl ~= '  ' x $indent unless $skip-indent;
       $perl ~= "BSON::Document.new((\n";
       $perl ~= self!str-pairs( $indent + 1, self.pairs);
-      $perl ~= '  ' x ($indent - 1) ~ "))";
+      $perl ~= ('  ' x $indent) ~ "))";
       $perl ~= ($indent == 0 ?? ';' !! ',') ~ "\n";
       return $perl;
     }
@@ -193,53 +193,55 @@ package BSON:ver<0.9.21> {
         }
 
 
-        if $value ~~ BSON::Document {
-          $perl ~= '  ' x $indent unless $key.defined;
-          $perl ~= $value.perl( $indent + 1, :skip-indent($key.defined));
-        }
+        given $value {
+          when $value ~~ BSON::Document {
+            $perl ~= '  ' x $indent unless $key.defined;
+            $perl ~= $value.perl( $indent, :skip-indent($key.defined));
+          }
 
-        elsif $value ~~ Array {
-          $perl ~= '  ' x $indent unless $key.defined;
-          $perl ~= "[\n";
-          $perl ~= self!str-pairs( $indent + 1, @$value);
-          $perl ~= '  ' x $indent ~ "],\n";
-        }
+          when $value ~~ Array {
+            $perl ~= '  ' x $indent unless $key.defined;
+            $perl ~= "[\n";
+            $perl ~= self!str-pairs( $indent + 1, @$value);
+            $perl ~= '  ' x $indent ~ "],\n";
+          }
 
-        elsif $value ~~ List {
-          $perl ~= '  ' x $indent unless $key.defined;
-          $perl ~= "(\n";
-          $perl ~= self!str-pairs( $indent + 1, @$value);
-          $perl ~= '  ' x $indent ~ "),\n";
-        }
+          when $value ~~ List {
+            $perl ~= '  ' x $indent unless $key.defined;
+            $perl ~= "(\n";
+            $perl ~= self!str-pairs( $indent + 1, @$value);
+            $perl ~= '  ' x $indent ~ "),\n";
+          }
 
-#        elsif $value.^name eq 'BSON::ObjectId' {
-#          $perl ~= '  ' x $indent unless $key.defined;
-#          $perl ~= $value.perl,\n";
-#        }
+#          when $value.^name eq 'BSON::ObjectId' {
+#            $perl ~= '  ' x $indent unless $key.defined;
+#            $perl ~= $value.perl,\n";
+#          }
 
-        elsif $value.^name eq 'BSON::Binary' {
-          $perl ~= '  ' x $indent unless $key.defined;
-          $perl ~= "BSON::Binary.new( ),\n";
-        }
+          when $value.^name eq 'BSON::Binary' {
+            $perl ~= '  ' x $indent unless $key.defined;
+            $perl ~= $value.perl($indent) ~ ",\n";
+          }
 
-#        elsif $value.^name eq 'BSON::Regex' {
-#          $perl ~= '  ' x $indent unless $key.defined;
-#          $perl ~= "BSON::Regex.new( ),\n";
-#        }
+          when $value.^name eq 'BSON::Regex' {
+            $perl ~= '  ' x $indent unless $key.defined;
+            $perl ~= $value.perl($indent) ~ ",\n";
+          }
 
-#        elsif $value.^name eq 'BSON::Javascript' {
-#          $perl ~= '  ' x $indent unless $key.defined;
-#          $perl ~= "BSON::Javascript.new( ),\n";
-#        }
+          when $value.^name eq 'BSON::Javascript' {
+            $perl ~= '  ' x $indent unless $key.defined;
+            $perl ~= $value.perl($indent) ~ ",\n";
+          }
 
-        elsif $value.can('perl') {
-          $perl ~= '  ' x $indent unless $key.defined;
-          $perl ~= $value.perl ~ ",\n";
-        }
+          when $value.can('perl') {
+            $perl ~= '  ' x $indent unless $key.defined;
+            $perl ~= $value.perl ~ ",\n";
+          }
 
-        else {
-          $perl ~= '  ' x $indent unless $key.defined;
-          $perl ~= "$value,\n";
+          default {
+            $perl ~= '  ' x $indent unless $key.defined;
+            $perl ~= "$value,\n";
+          }
         }
       }
       return $perl;
@@ -738,8 +740,11 @@ package BSON:ver<0.9.21> {
           # "\x05" e_name int32 subtype byte*
           # subtype is '\x00' for the moment (Generic binary subtype)
           #
-          $b = [~] Buf.new(BSON::C-BINARY), encode-e-name($p.key);
-
+          $b = [~] Buf.new(BSON::C-BINARY),
+                   encode-e-name($p.key),
+                   .encode;
+          ;
+#`{{
           if .has-binary-data {
             $b ~= encode-int32(.binary-data.elems);
             $b ~= Buf.new(.binary-type);
@@ -750,13 +755,14 @@ package BSON:ver<0.9.21> {
             $b ~= encode-int32(0);
             $b ~= Buf.new(.binary-type);
           }
+}}
         }
 
        when BSON::ObjectId {
           # ObjectId
           # "\x07" e_name (byte*12)
           #
-          $b = [~] Buf.new(BSON::C-OBJECTID), encode-e-name($p.key), .oid;
+          $b = [~] Buf.new(BSON::C-OBJECTID), encode-e-name($p.key), .encode;
         }
 
         when Bool {
@@ -876,30 +882,6 @@ package BSON:ver<0.9.21> {
               :error("Number too $reason")
             );
           }
-        }
-
-#`{{
-        when ... {
-            # Timestamp. 
-            # "\x11" e_name int64
-            #
-            # Special internal type used by MongoDB replication and
-            # sharding. First 4 bytes are an increment, second 4 are a
-            # timestamp.
-        }
-}}
-
-        # Buf is converted to BSON binary with generic type. When decoding it
-        # will always be BSON::Binary again. Buf can be retrieved with
-        # $o.binary-data;
-        #
-        when Buf {
-          my BSON::Binary $bbin .= new(:data($_));
-          $b = [~] Buf.new(BSON::C-BINARY),
-                   encode-e-name($p.key),
-                   encode-int32(.binary-data.elems),
-                   Buf.new(.binary-type),
-                   .binary-data;
         }
 
         default {
@@ -1101,7 +1083,6 @@ package BSON:ver<0.9.21> {
 #say "Prom from $key, $idx, {%!promises{$key}:exists}";
 
           if %!promises{$key}:exists {
-
             # Return the Buffer slices in each entry so it can be
             # concatenated again when encoding
             #
@@ -1260,7 +1241,7 @@ package BSON:ver<0.9.21> {
           $!index += C-INT32-SIZE + 1 + $nbr-bytes;
 
           %!promises{$key} = Promise.start( {
-              @!values[$idx] = decode-binary(
+              @!values[$idx] = BSON::Binary.decode(
                 $!encoded-document,
                 $i,
                 $nbr-bytes
@@ -1281,10 +1262,7 @@ package BSON:ver<0.9.21> {
           $!index += 12;
 
           %!promises{$key} = Promise.start( {
-              @!values[$idx] = BSON::ObjectId.new(
-                :bytes($!encoded-document[$i ..^ ($i + 12)])
-              );
-
+              @!values[$idx] = BSON::ObjectId.decode( $!encoded-document, $i);
               $!encoded-document.subbuf($decode-start ..^ ($i + 12));
             }
           );
@@ -1628,7 +1606,12 @@ package BSON:ver<0.9.21> {
 
       return $value;
     }
+  }
+}
 
+
+
+=finish
     #---------------------------------------------------------------------------
     sub decode-binary (
       Buf:D $b, Int:D $index is copy, Int:D $nbr-bytes
@@ -1697,6 +1680,31 @@ package BSON:ver<0.9.21> {
         :type($sub_type)
       );
     }
-  }
-}
 
+
+
+#`{{
+        when ... {
+            # Timestamp. 
+            # "\x11" e_name int64
+            #
+            # Special internal type used by MongoDB replication and
+            # sharding. First 4 bytes are an increment, second 4 are a
+            # timestamp.
+        }
+}}
+
+#`{{
+        # Buf is converted to BSON binary with generic type. When decoding it
+        # will always be BSON::Binary again. Buf can be retrieved with
+        # $o.binary-data;
+        #
+        when Buf {
+          my BSON::Binary $bbin .= new(:data($_));
+          $b = [~] Buf.new(BSON::C-BINARY),
+                   encode-e-name($p.key),
+                   encode-int32(.binary-data.elems),
+                   Buf.new(.binary-type),
+                   .binary-data;
+        }
+}}

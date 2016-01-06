@@ -166,8 +166,22 @@ package BSON {
       for $!count.fmt('%08x').comb(/../)[2...0] -> $hexnum {
         @numbers.push: :16($hexnum);
       }
-      
+
       $!oid .= new(@numbers);
+    }
+
+    #---------------------------------------------------------------------------
+    method encode ( ) {
+      $!oid;
+    }
+
+    #---------------------------------------------------------------------------
+    method decode (
+      Buf:D $b,
+      Int:D $index is copy,
+      --> BSON::ObjectId
+    ) {
+      BSON::ObjectId.new(:bytes($b[$index ..^ ($index + 12)]));
     }
   }
 }

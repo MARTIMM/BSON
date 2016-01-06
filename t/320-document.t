@@ -245,6 +245,9 @@ subtest {
     0x00                                        # End document
   );
 
+  say "\n\nBSON::Document perl() show off: ", $d.perl;
+  print " \n";
+
   # Encode document and compare with handcrafted byte array
   #
   my Buf $edoc = $d.encode;
