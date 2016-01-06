@@ -8,8 +8,9 @@ Timing 50 iterations of 32 inserts... (* is current BSON::Document use)
  D4     Replaced Hash $!data with @!values in D1
  D5     Replaced %!promises with @!promises -> dustbin
  D6     Optional use of autovivify and hashes, restorage of buf parts.
- D7*    A few methods modified into subs
+ D7     A few methods modified into subs
  D8     Removing Positional role -> dustbin
+ D9*    Bugfixes and improvements
 
  H      Original BSON methods with hashes
 
@@ -22,6 +23,7 @@ Timing 50 iterations of 32 inserts... (* is current BSON::Document use)
  D6    11.3167 wallclock secs @ 4.4182/s (n=50) Terrible slow
  D7*    9.4807 wallclock secs @ 5.2739/s (n=50) Small changes
  D8    10.0837 wallclock secs @ 4.9585/s (n=50) Doen't help much
+        7.8202 wallclock secs @ 6.3937/s (n=50) Perl 2015 12 24
 
  H      3.1644 wallclock secs @ 15.8006/s (n=50)
 
