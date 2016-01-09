@@ -5,7 +5,7 @@ use BSON::Regex;
 use BSON::Javascript;
 use BSON::Binary;
 
-package BSON:ver<0.9.21> {
+package BSON:ver<0.9.22> {
 
   #-----------------------------------------------------------------------------
   # BSON type codes
@@ -182,7 +182,7 @@ package BSON:ver<0.9.21> {
         my $key;
         my $value;
 
-        if $item.can('key') {
+        if $item.^can('key') {
           $key = $item.key;
           $value = $item.value // 'Nil';
           $perl ~= '  ' x $indent ~ "$key => ";
@@ -191,7 +191,6 @@ package BSON:ver<0.9.21> {
         else {
           $value = $item // 'Nil';
         }
-
 
         given $value {
           when $value ~~ BSON::Document {
@@ -211,6 +210,12 @@ package BSON:ver<0.9.21> {
             $perl ~= "(\n";
             $perl ~= self!str-pairs( $indent + 1, @$value);
             $perl ~= '  ' x $indent ~ "),\n";
+          }
+
+#TODO check if this can be removed in later perl versions
+          when $value ~~ Buf {
+            $perl ~= '  ' x $indent unless $key.defined;
+            $perl ~= $value.perl ~ ",\n";
           }
 
 #          when $value.^name eq 'BSON::ObjectId' {
@@ -233,7 +238,7 @@ package BSON:ver<0.9.21> {
             $perl ~= $value.perl($indent) ~ ",\n";
           }
 
-          when $value.can('perl') {
+          when ?$value.^can('perl') {
             $perl ~= '  ' x $indent unless $key.defined;
             $perl ~= $value.perl ~ ",\n";
           }
