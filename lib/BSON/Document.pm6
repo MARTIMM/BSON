@@ -80,6 +80,8 @@ package BSON:ver<0.9.22> {
     #---------------------------------------------------------------------------
     # Make new document and initialize with a list of pairs
     #
+#TODO better type checking:  List $pairs where all($_) ~~ Pair
+#TODO better API
     multi method new ( List $pairs, *%h ) {
       self.bless( :$pairs, :%h);
     }
@@ -622,6 +624,7 @@ package BSON:ver<0.9.22> {
     }
 
     #---------------------------------------------------------------------------
+#TODO very slow method
     method modify-array ( Str $key, Str $operation, $data --> List ) {
 
       my Int $idx = self.find-key($key);
