@@ -230,7 +230,7 @@ Defined as
 
   method perl ( --> Str )
 
-Return some information about the object and its structure.
+Return objects structure.
 
 =head2 method WHAT
 
@@ -412,6 +412,19 @@ Use as
 Modify an array in a document afterwards. This method is necessary to apply
 changes because when doing it directly like B<$d<docs>.push: (c => 2);> it
 wouldn't be encoded because the document object is not aware of these changes.
+
+This is a slow method because every change will trigger an encoding procedure
+in the background. When a whole array needs to be entered then it is a lot
+faster to make the array first and then assign it to an entry in the document
+e.g;
+
+  BSON::Document $d .= new;
+  my $arr = [];
+  for ^10 -> $i {
+    $arr.push($i);
+  }
+  $d<myarray> = $arr;
+  
 
 =head2 method encode
 
