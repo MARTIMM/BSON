@@ -5,7 +5,7 @@ use BSON::Regex;
 use BSON::Javascript;
 use BSON::Binary;
 
-package BSON:ver<0.9.22> {
+package BSON:ver<0.9.23> {
 
   #-----------------------------------------------------------------------------
   # BSON type codes
@@ -291,7 +291,14 @@ package BSON:ver<0.9.22> {
 }}
 
     #---------------------------------------------------------------------------
-    method find-key ( Str:D $key --> Int ) {
+    multi method find-key ( Int:D $idx --> Str ) {
+
+      my $key = $idx >= @!keys.elems ?? 'key' ~ $idx !! @!keys[$idx];
+      return self{$key}:exists ?? $key !! Str;
+    }
+
+    #---------------------------------------------------------------------------
+    multi method find-key ( Str:D $key --> Int ) {
 
       my Int $idx;
       loop ( my $i = 0; $i < @!keys.elems; $i++) {
