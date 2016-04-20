@@ -10,7 +10,8 @@ Timing 50 iterations of 32 inserts... (* is current BSON::Document use)
  D6     Optional use of autovivify and hashes, restorage of buf parts.
  D7     A few methods modified into subs
  D8     Removing Positional role -> dustbin
- D9*    Bugfixes and improvements
+ D9     Bugfixes and improvements
+ D10*   Native encoding/decoding for doubles
 
  H      Original BSON methods with hashes
 
@@ -21,11 +22,13 @@ Timing 50 iterations of 32 inserts... (* is current BSON::Document use)
  D4     6.9710 wallclock secs @ 7.1726/s (n=50)
  D5     7.2508 wallclock secs @ 6.8958/s (n=50) Slower with @!promises
  D6    11.3167 wallclock secs @ 4.4182/s (n=50) Terrible slow
- D7*    9.4807 wallclock secs @ 5.2739/s (n=50) Small changes
+ D7     9.4807 wallclock secs @ 5.2739/s (n=50) Small changes
  D8    10.0837 wallclock secs @ 4.9585/s (n=50) Doen't help much
-        7.8202 wallclock secs @ 6.3937/s (n=50) Perl 2015 12 24
+ D9     7.8202 wallclock secs @ 6.3937/s (n=50) Perl 2015 12 24
+ D10*   6.4880 wallclock secs @ 7.7066/s (n=50) again a bit better
 
  H      3.1644 wallclock secs @ 15.8006/s (n=50)
+
 
 
 Worries;
