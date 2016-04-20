@@ -31,3 +31,43 @@ Timing 50 iterations of 32 inserts... (* is current BSON::Document use)
 Worries;
 D5 and D6 sometimes crashes with coredumps. Is it Bench or BSON::Document??
 Segmentation fault (core dumped)
+
+
+benchmarks/double.pm6
+
+1) 2016 04 20
+   Rakudo version 2016.02-136-g412d9a4
+   MoarVM version 2016.02-25-gada3752 implementing Perl 6.c.
+
+  emulated encode
+    1) 3000 runs total time = 7.565150 s, 0.002522 s per run, 396.555238 runs per s
+
+  native encode
+    1) 3000 runs total time = 2.048168 s, 0.000683 s per run, 1464.723704 runs per s
+
+  emulated decode
+    1) 3000 runs total time = 1.223361 s, 0.000408 s per run, 2452.261307 runs per s
+
+  native decode
+    1) 3000 runs total time = 0.926162 s, 0.000309 s per run, 3239.173228 runs per s
+
+
+benchmarks/int64.pm6
+
+1) 2016 04 20
+   Rakudo version 2016.02-136-g412d9a4
+   MoarVM version 2016.02-25-gada3752 implementing Perl 6.c.
+
+  emulated encode
+    1) 3000 runs total time = 0.856549 s, 0.000286 s per run, 3502.425992 runs per s
+
+  native encode
+    1) 3000 runs total time = 1.764482 s, 0.000588 s per run, 1700.215580 runs per s
+
+  emulated decode
+    1) 3000 runs total time = 0.703039 s, 0.000234 s per run, 4267.190570 runs per s
+
+  native decode
+    1) 3000 runs total time = 1.040393 s, 0.000347 s per run, 2883.526640 runs per s
+
+Conclusion: not worth it to do native encode/decode for any type of integer.
