@@ -10,7 +10,7 @@ use BSON::Regex;
 use BSON::Javascript;
 use BSON::Binary;
 
-unit package BSON:ver<0.9.26>:auth<MARTIMM>;
+unit package BSON:ver<0.9.26.1>:auth<MARTIMM>;
 
 #-------------------------------------------------------------------------------
 # BSON type codes
@@ -386,7 +386,7 @@ class Document does Associative does Positional {
 
   multi method ASSIGN-KEY ( Str:D $key, List:D $new --> Nil ) {
 
-#note "Asign-key($?LINE): $key => ", $new.WHAT, ', ', $new[0].WHAT;
+#say "Asign-key($?LINE): $key => ", $new.WHAT, ', ', $new[0].WHAT;
     my BSON::Document $v .= new;
     for @$new -> $pair {
       if $pair ~~ Pair {
@@ -492,7 +492,16 @@ class Document does Associative does Positional {
     @!keys[$idx] = $k;
     @!values[$idx] = $v;
 
-    %!promises{$k} = Promise.start({ self!encode-element: ($k => $v); });
+    %!promises{$k} = Promise.start({self!encode-element: ($k => $v);});
+#    %!promises{$k} = Promise.start( {
+#      self!encode-element: ($k => $v);
+#say "E key = $k, val = $v.WHAT()";
+#      CATCH {
+#        default {
+#          say .message;
+#        }
+#      }
+#    });
   }
 
   # All other values are calculated in parallel
@@ -520,6 +529,16 @@ class Document does Associative does Positional {
     @!values[$idx] = $v;
 
     %!promises{$k} = Promise.start({ self!encode-element: ($k => $v); });
+#    %!promises{$k} = Promise.start( {
+#      my Buf $b = self!encode-element: ($k => $v);
+#      CATCH {
+#        default {
+#          .say;
+#          .rethrow;
+#        }
+#      }
+#      $b;
+#    });
   }
 
   #-----------------------------------------------------------------------------
@@ -664,7 +683,11 @@ class Document does Associative does Positional {
       # Test if a promise is created to calculate stuff in parallel
       #
       if %!promises{$key}:exists {
-        @!encoded-entries[$idx] = %!promises{$key}.result;
+#        @!encoded-entries[$idx] = %!promises{$key}.result;
+#say "B0: key = $key";
+        my $b = %!promises{$key}.result;
+#say "B1: ", $b;
+        @!encoded-entries[$idx] = $b;
       }
 
       # Test if a value is a document. These are never done in parallel
@@ -674,8 +697,10 @@ class Document does Associative does Positional {
       # first so ends up here returning the complete encoded subdocument.
       #
       elsif @!values[$idx] ~~ BSON::Document {
+#        @!encoded-entries[$idx] =
+#          self!encode-element: (@!keys[$idx] => @!values[$idx]);
         @!encoded-entries[$idx] =
-          self!encode-element: (@!keys[$idx] => @!values[$idx]);
+          (self!encode-element: (@!keys[$idx] => @!values[$idx]));
       }
 
       # else {}. Other values might be calculated before and are to be
@@ -686,6 +711,9 @@ class Document does Associative does Positional {
 
     my Buf $b;
     if @!encoded-entries.elems {
+
+#say "N: @!encoded-entries.elems()";
+#say "E: @!encoded-entries.gist()";
       $!encoded-document = [~] @!encoded-entries;
       $b = [~] encode-int32($!encoded-document.elems + 5),
                $!encoded-document,
@@ -763,19 +791,7 @@ class Document does Associative does Positional {
         $b = [~] Buf.new(BSON::C-BINARY),
                  encode-e-name($p.key),
                  .encode;
-        ;
-#`{{
-        if .has-binary-data {
-          $b ~= encode-int32(.binary-data.elems);
-          $b ~= Buf.new(.binary-type);
-          $b ~= .binary-data;
-        }
-
-        else {
-          $b ~= encode-int32(0);
-          $b ~= Buf.new(.binary-type);
-        }
-}}
+#note "Bin", $b;
       }
 
      when BSON::ObjectId {
@@ -872,7 +888,7 @@ class Document does Associative does Positional {
         else {
           die X::Parse-document.new(
             :operation('encode Javscript'),
-            :error('cannot send empty code')
+            :error('will not process empty javascript code')
           );
         }
       }
@@ -945,8 +961,15 @@ class Document does Associative does Positional {
   #-----------------------------------------------------------------------------
   sub encode-int32 ( Int:D $i --> Buf ) is export {
     my int $ni = $i;
+#`{{ perl bug in following code 2016 07 16
+
     return Buf.new( $ni +& 0xFF, ($ni +> 0x08) +& 0xFF,
                     ($ni +> 0x10) +& 0xFF, ($ni +> 0x18) +& 0xFF
+                  );
+}}
+    return Buf.new( |( $ni +& 0xFF, ($ni +> 0x08) +& 0xFF,
+                       ($ni +> 0x10) +& 0xFF, ($ni +> 0x18) +& 0xFF
+                     )
                   );
   }
 
@@ -957,10 +980,19 @@ class Document does Associative does Positional {
     # enc-element normally where it is checked
     #
     my int $ni = $i;
+#`{{ perl bug in following code 2016 07 16
+
     return Buf.new( $ni +& 0xFF, ($ni +> 0x08) +& 0xFF,
                     ($ni +> 0x10) +& 0xFF, ($ni +> 0x18) +& 0xFF,
                     ($ni +> 0x20) +& 0xFF, ($ni +> 0x28) +& 0xFF,
                     ($ni +> 0x30) +& 0xFF, ($ni +> 0x38) +& 0xFF
+                  );
+}}
+    return Buf.new( |( $ni +& 0xFF, ($ni +> 0x08) +& 0xFF,
+                       ($ni +> 0x10) +& 0xFF, ($ni +> 0x18) +& 0xFF,
+                       ($ni +> 0x20) +& 0xFF, ($ni +> 0x28) +& 0xFF,
+                       ($ni +> 0x30) +& 0xFF, ($ni +> 0x38) +& 0xFF
+                     )
                   );
   }
 

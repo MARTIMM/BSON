@@ -89,9 +89,18 @@ package BSON {
 #TODO Remove duplicate sub into other module
     sub encode-int32 ( Int:D $i --> Buf ) {
       my int $ni = $i;
+
+#`{{ perl bug 2016 07 15
+
       return Buf.new(
         $ni +& 0xFF, ($ni +> 0x08) +& 0xFF,
         ($ni +> 0x10) +& 0xFF, ($ni +> 0x18) +& 0xFF
+      );
+}}
+      return Buf.new(
+        |( $ni +& 0xFF, ($ni +> 0x08) +& 0xFF,
+           ($ni +> 0x10) +& 0xFF, ($ni +> 0x18) +& 0xFF
+         )
       );
     }
 
