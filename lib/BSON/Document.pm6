@@ -10,7 +10,7 @@ use BSON::Regex;
 use BSON::Javascript;
 use BSON::Binary;
 
-unit package BSON:ver<0.9.26.1>:auth<MARTIMM>;
+unit package BSON:ver<0.9.27>:auth<MARTIMM>;
 
 #-------------------------------------------------------------------------------
 # BSON type codes
@@ -119,8 +119,6 @@ class Document does Associative does Positional {
   #
   multi method new ( |capture ) {
 
-#      unless capture.keys and capture<capture-group>
-#        or capture.elems == 0 {
     if capture.keys {
       die X::Parse-document.new(
         :operation("new: key => value")
@@ -278,22 +276,6 @@ class Document does Associative does Positional {
   submethod accept-hash ( Bool $acch = True ) {
     $accept-hash = $acch;
   }
-
-
-#`{{
-  #-----------------------------------------------------------------------------
-  submethod DESTROY ( ) {
-
-    @!keys = ();
-    @!values = ();
-
-    $!encoded-document = Nil;
-    @!encoded-entries = ();
-
-#await first?
-    %!promises = ();
-  }
-}}
 
   #-----------------------------------------------------------------------------
   multi method find-key ( Int:D $idx --> Str ) {
@@ -470,7 +452,7 @@ class Document does Associative does Positional {
   #
   multi method ASSIGN-KEY ( Str:D $key, Array:D $new --> Nil ) {
 
-# TODO Test pushes and pops
+#TODO Test pushes and pops
 
 #say "Asign-key($?LINE): $key => ", $new.WHAT;
 
@@ -683,11 +665,7 @@ class Document does Associative does Positional {
       # Test if a promise is created to calculate stuff in parallel
       #
       if %!promises{$key}:exists {
-#        @!encoded-entries[$idx] = %!promises{$key}.result;
-#say "B0: key = $key";
-        my $b = %!promises{$key}.result;
-#say "B1: ", $b;
-        @!encoded-entries[$idx] = $b;
+        @!encoded-entries[$idx] = %!promises{$key}.result;
       }
 
       # Test if a value is a document. These are never done in parallel
@@ -697,10 +675,8 @@ class Document does Associative does Positional {
       # first so ends up here returning the complete encoded subdocument.
       #
       elsif @!values[$idx] ~~ BSON::Document {
-#        @!encoded-entries[$idx] =
-#          self!encode-element: (@!keys[$idx] => @!values[$idx]);
         @!encoded-entries[$idx] =
-          (self!encode-element: (@!keys[$idx] => @!values[$idx]));
+          self!encode-element: (@!keys[$idx] => @!values[$idx]);
       }
 
       # else {}. Other values might be calculated before and are to be
@@ -712,8 +688,6 @@ class Document does Associative does Positional {
     my Buf $b;
     if @!encoded-entries.elems {
 
-#say "N: @!encoded-entries.elems()";
-#say "E: @!encoded-entries.gist()";
       $!encoded-document = [~] @!encoded-entries;
       $b = [~] encode-int32($!encoded-document.elems + 5),
                $!encoded-document,
@@ -791,7 +765,6 @@ class Document does Associative does Positional {
         $b = [~] Buf.new(BSON::C-BINARY),
                  encode-e-name($p.key),
                  .encode;
-#note "Bin", $b;
       }
 
      when BSON::ObjectId {
@@ -961,15 +934,8 @@ class Document does Associative does Positional {
   #-----------------------------------------------------------------------------
   sub encode-int32 ( Int:D $i --> Buf ) is export {
     my int $ni = $i;
-#`{{ perl bug in following code 2016 07 16
-
     return Buf.new( $ni +& 0xFF, ($ni +> 0x08) +& 0xFF,
                     ($ni +> 0x10) +& 0xFF, ($ni +> 0x18) +& 0xFF
-                  );
-}}
-    return Buf.new( |( $ni +& 0xFF, ($ni +> 0x08) +& 0xFF,
-                       ($ni +> 0x10) +& 0xFF, ($ni +> 0x18) +& 0xFF
-                     )
                   );
   }
 
@@ -980,19 +946,10 @@ class Document does Associative does Positional {
     # enc-element normally where it is checked
     #
     my int $ni = $i;
-#`{{ perl bug in following code 2016 07 16
-
     return Buf.new( $ni +& 0xFF, ($ni +> 0x08) +& 0xFF,
                     ($ni +> 0x10) +& 0xFF, ($ni +> 0x18) +& 0xFF,
                     ($ni +> 0x20) +& 0xFF, ($ni +> 0x28) +& 0xFF,
                     ($ni +> 0x30) +& 0xFF, ($ni +> 0x38) +& 0xFF
-                  );
-}}
-    return Buf.new( |( $ni +& 0xFF, ($ni +> 0x08) +& 0xFF,
-                       ($ni +> 0x10) +& 0xFF, ($ni +> 0x18) +& 0xFF,
-                       ($ni +> 0x20) +& 0xFF, ($ni +> 0x28) +& 0xFF,
-                       ($ni +> 0x30) +& 0xFF, ($ni +> 0x38) +& 0xFF
-                     )
                   );
   }
 
