@@ -80,8 +80,10 @@ See [semantic versioning](http://semver.org/). Please note point 4. on
 that page: *Major version zero (0.y.z) is for initial development. Anything may
 change at any time. The public API should not be considered stable*.
 
+* 0.9.28
+  * Bug fix concat Buf arrays. Changes caused by changes in perl 6
 * 0.9.27
-  * Perl6 bug fixed, workarounds removed 
+  * Perl6 bug fixed, workarounds removed
 * 0.9.25.1
   * Need to reprogram parts in Document caused by bugs/changes in perl6.
 * 0.9.25
