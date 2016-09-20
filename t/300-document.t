@@ -335,6 +335,8 @@ subtest {
     my BSON::Document $d .= new;
     $d<test> = 1.2.Num;
     my Buf $b = $d.encode;
+say 'B: ', $b.perl;
+    # Now use encoded buffer and take a slice from it rendering it currupt.
     $d .= new(Buf.new($b[0 ..^ ($b.elems - 2)]));
 
     CATCH {

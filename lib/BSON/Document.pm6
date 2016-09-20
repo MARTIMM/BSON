@@ -688,7 +688,9 @@ class Document does Associative does Positional {
     my Buf $b;
     if @!encoded-entries.elems {
 
-      $!encoded-document = [~] @!encoded-entries;
+      $!encoded-document = @!encoded-entries.elems > 1
+                           ?? [~] @!encoded-entries
+                           !! @!encoded-entries[0];
       $b = [~] encode-int32($!encoded-document.elems + 5),
                $!encoded-document,
                Buf.new(0x00);
