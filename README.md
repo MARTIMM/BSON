@@ -67,11 +67,7 @@ BSON/Document.pod
 
 * [Bugs, todo](https://github.com/MARTIMM/BSON/blob/master/doc/TODO.md)
 
-## AUTHOR
+## Author
 
 Original creator of the modules is Pawel Pabian (2011-2015, v0.3)(bbkr on github)
-Current maintainer Marcel Timmerman (2015-present)
-
-## CONTACT
-
-MARTIMM on github
+Current maintainer Marcel Timmerman (2015-present)(MARTIMM on github)
