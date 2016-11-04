@@ -68,5 +68,4 @@ BSON/Document.pod
 
 ## Author
 
-Original creator of the modules is Pawel Pabian (2011-2015, v0.3)(bbkr on github)
-Current maintainer Marcel Timmerman (2015-present)(MARTIMM on github)
+Original creator of the modules is Pawel Pabian (2011-2015, v0.3)(bbkr on github). Current maintainer Marcel Timmerman (2015-present)(MARTIMM on github)
