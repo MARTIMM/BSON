@@ -474,16 +474,21 @@ class Document does Associative does Positional {
     @!keys[$idx] = $k;
     @!values[$idx] = $v;
 
-    %!promises{$k} = Promise.start({self!encode-element: ($k => $v);});
-#    %!promises{$k} = Promise.start( {
-#      self!encode-element: ($k => $v);
-#say "E key = $k, val = $v.WHAT()";
-#      CATCH {
-#        default {
-#          say .message;
-#        }
-#      }
-#    });
+#    %!promises{$k} = Promise.start({self!encode-element: ($k => $v);});
+    %!promises{$k} = Promise.start( {
+say "E key = $k, val = ", $v, ', ', $v.WHAT();
+      my Buf $b = self!encode-element: ($k => $v);
+
+      CATCH {
+        default {
+          note "Error at $?FILE $?LINE: $_";
+#          .note;
+          .rethrow;
+        }
+      }
+
+      $b;
+    });
   }
 
   # All other values are calculated in parallel
@@ -510,17 +515,20 @@ class Document does Associative does Positional {
     @!keys[$idx] = $k;
     @!values[$idx] = $v;
 
-    %!promises{$k} = Promise.start({ self!encode-element: ($k => $v); });
-#    %!promises{$k} = Promise.start( {
-#      my Buf $b = self!encode-element: ($k => $v);
-#      CATCH {
-#        default {
-#          .say;
-#          .rethrow;
-#        }
-#      }
-#      $b;
-#    });
+#    %!promises{$k} = Promise.start({ self!encode-element: ($k => $v); });
+    %!promises{$k} = Promise.start( {
+say "E key = $k, val = ", $v, ', ', $v.WHAT();
+      my Buf $b = self!encode-element: ($k => $v);
+      CATCH {
+        default {
+          note "Error at $?FILE $?LINE: $_";
+#          .note;
+          .rethrow;
+        }
+      }
+
+      $b;
+    });
   }
 
   #-----------------------------------------------------------------------------
