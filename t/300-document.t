@@ -285,8 +285,8 @@ subtest {
 
     CATCH {
       when X::Parse-document {
-        ok .message ~~ ms/'cannot' 'send' 'empty' 'code'/,
-           'Cannot send empty code';
+        cmp-ok .message, '~~', / :s will not process empty javascript code/,
+           'cannot process empty javascript code';
       }
     }
   }
@@ -335,6 +335,8 @@ subtest {
     my BSON::Document $d .= new;
     $d<test> = 1.2.Num;
     my Buf $b = $d.encode;
+say 'B: ', $b.perl;
+    # Now use encoded buffer and take a slice from it rendering it currupt.
     $d .= new(Buf.new($b[0 ..^ ($b.elems - 2)]));
 
     CATCH {
