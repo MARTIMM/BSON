@@ -54,7 +54,7 @@ $d<rex> = BSON::Regex.new( :regex('abc|def'), :options<is>);
 
 =end code
 
-=head1 SUPPORTED TYPES
+=head1 Supported types
 
 The type which are currently supported are marked with a [x]. [-] will not be
 implemented and [ ] is a future thingy.
@@ -129,7 +129,7 @@ place enough.
 
 =end code
 
-=head1 OPERATIONS
+=head1 Operations
 
 =head2 postcircumfix:<{}>
 
@@ -165,7 +165,7 @@ locations are set as the next free location in the document and a key is
 generated using the index prefixed with 'key' (depending on autovivify).
 
 
-=head1 METHODS
+=head1 Methods
 
 =head2 method new
 
@@ -423,7 +423,7 @@ Defined as
 Decode a BSON encoded byte buffer to produce a document. Decoding also takes
 place when providing a byte buffer to C<new()>.
 
-=head1 EXCEPTIONS
+=head1 Exceptions
 
 =head2 X::Parse-document
 
