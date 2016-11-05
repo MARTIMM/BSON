@@ -1,32 +1,6 @@
-#!/usr/bin/env perl6
-#
 use v6;
 
-# Running the pod file will create a pdf using wkhtmltopdf
-#
-my Str $pod = "$*PROGRAM";
-my Str $pdf = $pod;
-$pdf ~~ s/\. <-[.]>+ $/.pdf/;
-shell( "perl6 --doc=HTML '$pod' | wkhtmltopdf - '$pdf'");
-
-#-------------------------------------------------------------------------------
-
 =begin pod
-
-=begin Xhtml
-<style>
-  pre {
-/**/
-    border-width:       2px;
-    border-style:       solid;
-    border-color:       #060;
-    padding:            10px 0 3px 10px;
-    color:              #060;
-    background-color:   #eaefea;
-    font-family:        FreeMono;
-  }
-</style>
-=end Xhtml
 
 =TITLE class BSON::Document
 
@@ -233,6 +207,7 @@ Defined as
 
 Return objects structure.
 
+=begin comment
 =head2 method WHAT
 
 Defined as
@@ -240,6 +215,7 @@ Defined as
   method WHAT ( --> Str )
 
 Return type of the object. This is '(BSON::Document)'.
+=end comment
 
 =head2 method Str
 
@@ -456,7 +432,7 @@ decoding.
 
 =head2 X::NYS
 
-Thrown when encoding stubles upon a variable which is not supported(yet)
+Thrown when encoding stumbles upon a variable which is not supported(yet)
 
 
 =end pod
