@@ -48,7 +48,7 @@ subtest {
     $d .= new: ppp => 100, qqq => ( d => 110, e => 120);
 
     CATCH {
-      when X::Parse-document {
+      when X::BSON::Parse-document {
         ok .message ~~ ms/'Cannot' 'use' 'hash' 'values' 'on' 'init'/,
            'Cannot use hashes on init';
       }
@@ -66,7 +66,7 @@ subtest {
     is $d<q><a>, 20, "Hash value $d<q><a>";
 
     CATCH {
-      when X::Parse-document {
+      when X::BSON::Parse-document {
         ok .message ~~ ms/'Cannot' 'use' 'hash' 'values'/,
            'Cannot use hashes';
       }
@@ -119,7 +119,7 @@ subtest {
     is $d<e>, 11, "Bound: \$d<e> = $d<e> == \$x = $x";
 
     CATCH {
-      when X::Parse-document {
+      when X::BSON::Parse-document {
         my $s = ~$_;
         $s ~~ s:g/\n//;
         ok .message ~~ ms/'Cannot' 'use' 'binding'/, $s;
@@ -169,7 +169,7 @@ subtest {
     is $d[4], 11, "Bound: \$d[4] = $d[4] == \$x = $x";
 
     CATCH {
-      when X::Parse-document {
+      when X::BSON::Parse-document {
         my $s = ~$_;
         $s ~~ s:g/\n//;
         ok .message ~~ ms/'Cannot' 'use' 'binding'/, $s;
@@ -284,7 +284,7 @@ subtest {
     $d.encode;
 
     CATCH {
-      when X::Parse-document {
+      when X::BSON::Parse-document {
         cmp-ok .message, '~~', / :s will not process empty javascript code/,
            'cannot process empty javascript code';
       }
@@ -298,7 +298,7 @@ subtest {
 
     CATCH {
 #say $_.WHAT;
-      when X::Parse-document {
+      when X::BSON::Parse-document {
         ok .message ~~ m/'Number too large'/,
            "encode Int error, number too large";
       }
@@ -311,7 +311,7 @@ subtest {
     $d.encode;
 
     CATCH {
-      when X::Parse-document {
+      when X::BSON::Parse-document {
         ok .message ~~ m/'Number too small'/,
            "encode Int error, number too small";
       }
@@ -324,7 +324,7 @@ subtest {
     $d.encode;
 
     CATCH {
-      when X::Parse-document {
+      when X::BSON::Parse-document {
         ok .message ~~ m/'Forbidden 0x00 sequence in'/,
            "Forbidden 0x00 sequence in 'Double\0test'";
       }
@@ -335,12 +335,11 @@ subtest {
     my BSON::Document $d .= new;
     $d<test> = 1.2.Num;
     my Buf $b = $d.encode;
-say 'B: ', $b.perl;
     # Now use encoded buffer and take a slice from it rendering it currupt.
     $d .= new(Buf.new($b[0 ..^ ($b.elems - 2)]));
 
     CATCH {
-      when X::Parse-document {
+      when X::BSON::Parse-document {
         ok .message ~~ m/'Not enaugh characters left'/,
            "Not enaugh characters left";
       }
@@ -359,7 +358,7 @@ say 'B: ', $b.perl;
     my BSON::Document $d .= new($b);
 
     CATCH {
-      when X::Parse-document {
+      when X::BSON::Parse-document {
         ok .message ~~ ms/'Size of document' .* 'does not match'/,
            'Size of document(11) does not match with index';
       }
@@ -375,9 +374,11 @@ say 'B: ', $b.perl;
     $d.encode;
 
     CATCH {
-      when X::NYS {
-        ok .message ~~ m/'encode-element() error: Type \'A<' \d+ '>\' is not (yet) supported'/,
-           'encode-element() error: Type \'A<...>\' is not (yet) supported';
+#.say;
+      when X::BSON::NYS {
+        ok .message ~~
+           m/'BSON Type ' "'A<" \d+ ">'" ' is not (yet) supported'/,
+           .message;
       }
     }
   }
@@ -394,7 +395,7 @@ say 'B: ', $b.perl;
     my BSON::Document $d .= new($b);
 
     CATCH {
-      when X::Parse-document {
+      when X::BSON::Parse-document {
         ok .message ~~ ms/'BSON code \'0xa0\' not supported'/,
            'BSON code \'0xa0\' not supported';
       }
@@ -414,7 +415,7 @@ say 'B: ', $b.perl;
     my BSON::Document $d .= new($b);
 
     CATCH {
-      when X::Parse-document {
+      when X::BSON::Parse-document {
         ok .message ~~ ms/'Missing trailing 0x00'/, 'Missing trailing 0x00';
       }
     }
