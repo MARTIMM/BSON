@@ -2,6 +2,8 @@ See [semantic versioning](http://semver.org/). Please note point 4. on
 that page: *Major version zero (0.y.z) is for initial development. Anything may
 change at any time. The public API should not be considered stable*.
 
+* 0.9.30
+  * Moved and renamed an exception class from ObjectId.pm6 to a new module BSON.pm6 as X::BSON::Parse-objectid.
 * 0.9.29
   * Appveyor Tests
   * separated text from readme into several other documents.
