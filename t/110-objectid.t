@@ -10,8 +10,8 @@ subtest {
     my BSON::ObjectId $o .= new(:string<67ab4550>);
 
     CATCH {
-#      when BSON::X::Parse {
-      default {
+#.say;
+      when X::BSON::Parse-objectid {
         ok .message ~~ ms/'String' 'too' 'short' 'or' 'nonhexadecimal'/,
            'Too short oid string';
       }
@@ -22,8 +22,7 @@ subtest {
     my BSON::ObjectId $o .= new(:string<Vbghu7988798Vbghu7988798>);
 
     CATCH {
-#      when BSON::X::Parse {
-      default {
+      when X::BSON::Parse-objectid {
         ok .message ~~ ms/'String' 'too' 'short' 'or' 'nonhexadecimal'/,
            'Nonhexadecimal';
       }
@@ -37,8 +36,7 @@ subtest {
     my BSON::ObjectId $o .= new(:bytes(Buf.new(5,7,9...15)));
 
     CATCH {
-#      when BSON::X::Parse {
-      default {
+      when X::BSON::Parse-objectid {
         ok .message ~~ ms/'Byte' 'buffer' 'too' 'short' 'or' 'long'/,
            'Too short/long byte buffer';
       }
