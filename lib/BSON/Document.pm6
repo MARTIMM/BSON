@@ -10,7 +10,7 @@ use BSON::Regex;
 use BSON::Javascript;
 use BSON::Binary;
 
-unit package BSON:ver<0.9.27>:auth<MARTIMM>;
+unit package BSON:auth<https://github.com/MARTIMM>;
 
 #-------------------------------------------------------------------------------
 # BSON type codes
@@ -258,9 +258,9 @@ class Document does Associative does Positional {
   }
 
   #-----------------------------------------------------------------------------
-  submethod WHAT ( --> BSON::Document ) {
-    BSON::Document;
-  }
+#  submethod WHAT ( --> BSON::Document ) {
+#    BSON::Document;
+#  }
 
   #-----------------------------------------------------------------------------
   submethod Str ( --> Str ) {
