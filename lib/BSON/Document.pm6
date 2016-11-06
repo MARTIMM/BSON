@@ -349,7 +349,7 @@ class Document does Associative does Positional {
 
   multi method ASSIGN-KEY ( Str:D $key, List:D $new --> Nil ) {
 
-#say "Asign-key($?LINE): $key => ", $new.WHAT, ', ', $new[0].WHAT;
+#say "$*THREAD.id(), List, Asign-key($?LINE): $key => ", $new.WHAT, ', ', $new[0].WHAT;
     my BSON::Document $v .= new;
     for @$new -> $pair {
       if $pair ~~ Pair {
@@ -383,7 +383,7 @@ class Document does Associative does Positional {
 
   multi method ASSIGN-KEY ( Str:D $key, Pair $new --> Nil ) {
 
-#say "Asign-key($?LINE): $key => ", $new.WHAT;
+#say "$*THREAD.id(), Pair, Asign-key($?LINE): $key => ", $new.WHAT;
 
     my Str $k = $key;
     my BSON::Document $v .= new;
@@ -410,7 +410,7 @@ class Document does Associative does Positional {
   #
   multi method ASSIGN-KEY ( Str:D $key, Hash $new --> Nil ) {
 
-#say "Asign-key($?LINE): $key => ", $new.WHAT;
+#say "$*THREAD.id(), Hash, Asign-key($?LINE): $key => ", $new;
 
     if ! $accept-hash {
       die X::BSON::Parse-document.new(
@@ -424,7 +424,7 @@ class Document does Associative does Positional {
 
   multi method ASSIGN-KEY ( Str:D $key, Seq $new --> Nil ) {
 
-#say "Asign-key($?LINE): $key => ", $new.WHAT;
+#say "$*THREAD.id(), Seq, Asign-key($?LINE): $key => ", $new;
     self.ASSIGN-KEY( $key, $new.List);
   }
 
@@ -435,7 +435,7 @@ class Document does Associative does Positional {
 
 #TODO Test pushes and pops
 
-#say "Asign-key($?LINE): $key => ", $new.WHAT;
+#say "$*THREAD.id(), Array, Asign-key($?LINE): $key => ", $new;
 
     my Str $k = $key;
     my Array $v = $new;
@@ -457,16 +457,15 @@ class Document does Associative does Positional {
 
 #    %!promises{$k} = Promise.start({self!encode-element: ($k => $v);});
     %!promises{$k} = Promise.start( {
-say "E key = $k, val = ", $v, ', ', $v.WHAT();
+#say "$*THREAD.id(), Array, E key = $k, val = ", $v, ', ', $v.WHAT();
       my Buf $b = self!encode-element: ($k => $v);
 
       CATCH {
-say .WHAT;
-say "Error at line $?LINE: ";
-.say;
+#say .WHAT;
+#say "Error at line $?LINE: ";
+#.say;
         default {
-          say "Error at $?FILE $?LINE: $_";
-#          .note;
+          say "Error at $?FILE $?LINE:",  $_;
           .rethrow;
         }
       }
@@ -479,7 +478,7 @@ say "Error at line $?LINE: ";
   #
   multi method ASSIGN-KEY ( Str:D $key, Any $new --> Nil ) {
 
-#say "Asign-key($?LINE): $key => ", $new.WHAT;
+#say "$*THREAD.id(), Any, Asign-key($?LINE): $key => ", $new.WHAT;
 
     my Str $k = $key;
     my $v = $new;
@@ -662,24 +661,26 @@ say "Error at line $?LINE: ";
 
       loop ( my $idx = 0; $idx < @!keys.elems; $idx++) {
         my $key = @!keys[$idx];
-say "$*THREAD.id(), $key, $idx";
+#say "$*THREAD.id(), $key, ", @!values[$idx];    #, ', ',
+#    %!promises{$key}.defined ?? %!promises{$key}.status !! 'no promise';
 
         # Test if a promise is created to calculate stuff in parallel
         if %!promises{$key}.defined {
-          if %!promises{$key}.status ~~ Kept {
+          my PromiseStatus $pstat = %!promises{$key}.status;
+          if $pstat ~~ Kept {
             @!encoded-entries[$idx] = %!promises{$key}.result;
             %!promises{$key} = Nil;
-say "$*THREAD.id(), Kept: $key, $idx";
+#say "$*THREAD.id(), Kept: $key, ", @!values[$idx];
           }
 
-          elsif %!promises{$key}.status ~~ Planned {
-say "$*THREAD.id(), Planned: $key, $idx";
+          elsif $pstat ~~ Planned {
+#say "$*THREAD.id(), Planned: $key, ", @!values[$idx];
             $still-planned = True;
             next;
           }
 
-          elsif %!promises{$key}.status ~~ Broken {
-say "$*THREAD.id(), Broken: $key, $idx";
+          elsif $pstat ~~ Broken {
+#say "$*THREAD.id(), Broken: $key";
             die "Promise $key/$idx broken";
           }
         }
@@ -691,13 +692,13 @@ say "$*THREAD.id(), Broken: $key, $idx";
         # first so ends up here returning the complete encoded subdocument.
         #
         elsif @!values[$idx] ~~ BSON::Document {
-say "$*THREAD.id(), D: $key, $idx, ", @!values[$idx];
+#say "$*THREAD.id(), D: $key, ", @!values[$idx];
           @!encoded-entries[$idx] =
             self!encode-element: (@!keys[$idx] => @!values[$idx]);
         }
 
         else {
-say "$*THREAD.id(), EK: $key, $idx, ", @!values[$idx];
+#say "$*THREAD.id(), EK: $key, ", @!values[$idx];
         }
       }
     }
@@ -710,10 +711,10 @@ say "$*THREAD.id(), EK: $key, $idx, ", @!values[$idx];
     if @!encoded-entries.elems {
 
       $!encoded-document = Buf.new;
-my $idx = 0;
+#my $idx = 0;
       for @!encoded-entries -> $e {
-say "$*THREAD.id(), K: $idx, @!keys[$idx], @!values[$idx]";
-$idx++;
+#say "$*THREAD.id(), K: $idx, @!keys[$idx], {@!values[$idx]//'Nil'}";
+#$idx++;
 
         $!encoded-document ~= $e;
       }
