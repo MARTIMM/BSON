@@ -4,6 +4,8 @@ change at any time. The public API should not be considered stable*.
 
 * 0.9.30
   * Moved and renamed an exception class from ObjectId.pm6 to a new module BSON.pm6 as X::BSON::Parse-objectid.
+  * Also exception classes from Document are moved to BSON
+  * Old bug removed which was only visible once in a long while. It had to do with promises which were most of the time kept but sometimes the thread was still busy. The code forgot to reprocess the planned threads.
 * 0.9.29
   * Appveyor Tests
   * separated text from readme into several other documents.
