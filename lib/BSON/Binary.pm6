@@ -69,7 +69,7 @@ class Binary {
   }
 
   #---------------------------------------------------------------------------
-  method encode ( ) {
+  method encode ( --> Buf ) {
     my Buf $b .= new;
     if self.has-binary-data {
       $b ~= encode-int32(self.binary-data.elems);
@@ -123,18 +123,19 @@ class Binary {
 
       when BSON::C-BINARY-OLD {
         # Binary (Old - deprecated)
-        die X::Parse-document.new(
-          :operantion<decode Binary>,
-          :error('Code (0x02) Deprecated binary data')
+        die X::BSON::Deprecated.new(
+          :operation<decode binary>,
+          :type(BSON::Binary),
+          :subtype(BSON::C-BINARY-OLD)
         );
       }
 
       when BSON::C-UUID-OLD {
         # UUID (Old - deprecated)
-        die 'UUID(0x03) Deprecated binary data';
-        die X::Parse-document.new(
-          :operantion<decode Binary>,
-          :error('UUID(0x03) Deprecated binary data')
+        die X::BSON::Deprecated.new(
+          :operation<decode binary>,
+          :type(BSON::Binary),
+          :subtype(BSON::C-UUID-OLD)
         );
       }
 
@@ -143,7 +144,7 @@ class Binary {
         # http://en.wikipedia.org/wiki/Universally_unique_identifier the
         # universally unique identifier is a 128-bit (16 byte) value.
         #
-        die X::Parse-document.new(
+        die BSON::X::Parse-document.new(
           :operation('decode Binary'),
           :error('UUID(0x04) Length mismatch')
         ) unless $nbr-bytes ~~ BSON::C-UUID-SIZE;
@@ -151,7 +152,7 @@ class Binary {
 
       when BSON::C-MD5 {
         # MD5. This is a 16 byte number (32 character hex string)
-        die X::Parse-document.new(
+        die BSON::X::Parse-document.new(
           :operation('decode Binary'),
           :error('MD5(0x05) Length mismatch')
         ) unless $nbr-bytes ~~ BSON::C-MD5-SIZE;

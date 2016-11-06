@@ -507,7 +507,7 @@ class Document does Associative does Positional {
         when X::BSON::Parse-objectid    { .rethrow; }
         when X::BSON::Parse-document    { .rethrow; }
         when X::BSON::NYS               { .rethrow; }
-        when X::BSON::DEPRECATED        { .rethrow; }
+        when X::BSON::Deprecated        { .rethrow; }
 
         default {
           note "Error at $?FILE $?LINE: $_";
