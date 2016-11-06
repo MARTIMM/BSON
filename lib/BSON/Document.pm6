@@ -3,14 +3,14 @@ use v6.c;
 # There are some *-native() and *-emulated() subs kept for later benchmarks when
 # perl evolves.
 
-
+use BSON;
 use NativeCall;
 use BSON::ObjectId;
 use BSON::Regex;
 use BSON::Javascript;
 use BSON::Binary;
 
-unit package BSON:ver<0.9.27>:auth<MARTIMM>;
+unit package BSON:auth<https://github.com/MARTIMM>;
 
 #-------------------------------------------------------------------------------
 # BSON type codes
@@ -42,25 +42,6 @@ constant C-MAX-KEY            = 0x7F;
 constant C-INT32-SIZE         = 4;
 constant C-INT64-SIZE         = 8;
 constant C-DOUBLE-SIZE        = 8;
-
-#-------------------------------------------------------------------------------
-class X::Parse-document is Exception {
-  has $.operation;                      # Operation method
-  has $.error;                          # Parse error
-
-  method message () {
-    return "\n$!operation error: $!error\n";
-  }
-}
-
-class X::NYS is Exception {
-  has $.operation;                      # Operation encode, decode
-  has $.type;                           # Type to encode/decode
-
-  method message () {
-    return "\n$!operation error: Type '$!type' is not (yet) supported\n";
-  }
-}
 
 #-------------------------------------------------------------------------------
 class Document does Associative does Positional {
@@ -120,7 +101,7 @@ class Document does Associative does Positional {
   multi method new ( |capture ) {
 
     if capture.keys {
-      die X::Parse-document.new(
+      die X::BSON::Parse-document.new(
         :operation("new: key => value")
         :error(
           "Cannot use hash values on init.\n",
@@ -258,9 +239,9 @@ class Document does Associative does Positional {
   }
 
   #-----------------------------------------------------------------------------
-  submethod WHAT ( --> BSON::Document ) {
-    BSON::Document;
-  }
+#  submethod WHAT ( --> BSON::Document ) {
+#    BSON::Document;
+#  }
 
   #-----------------------------------------------------------------------------
   submethod Str ( --> Str ) {
@@ -368,7 +349,7 @@ class Document does Associative does Positional {
 
   multi method ASSIGN-KEY ( Str:D $key, List:D $new --> Nil ) {
 
-#say "Asign-key($?LINE): $key => ", $new.WHAT, ', ', $new[0].WHAT;
+#say "$*THREAD.id(), List, Asign-key($?LINE): $key => ", $new.WHAT, ', ', $new[0].WHAT;
     my BSON::Document $v .= new;
     for @$new -> $pair {
       if $pair ~~ Pair {
@@ -376,7 +357,7 @@ class Document does Associative does Positional {
       }
 
       else {
-        die X::Parse-document.new(
+        die X::BSON::Parse-document.new(
           :operation("\$d<$key> = ({$pair.perl}, ...)")
           :error("Can only use lists of Pair")
         );
@@ -402,7 +383,7 @@ class Document does Associative does Positional {
 
   multi method ASSIGN-KEY ( Str:D $key, Pair $new --> Nil ) {
 
-#say "Asign-key($?LINE): $key => ", $new.WHAT;
+#say "$*THREAD.id(), Pair, Asign-key($?LINE): $key => ", $new.WHAT;
 
     my Str $k = $key;
     my BSON::Document $v .= new;
@@ -429,10 +410,10 @@ class Document does Associative does Positional {
   #
   multi method ASSIGN-KEY ( Str:D $key, Hash $new --> Nil ) {
 
-#say "Asign-key($?LINE): $key => ", $new.WHAT;
+#say "$*THREAD.id(), Hash, Asign-key($?LINE): $key => ", $new;
 
     if ! $accept-hash {
-      die X::Parse-document.new(
+      die X::BSON::Parse-document.new(
         :operation("\$d<$key> = {$new.perl}")
         :error("Cannot use hash values.\nSet accept-hash if you really want to")
       );
@@ -443,7 +424,7 @@ class Document does Associative does Positional {
 
   multi method ASSIGN-KEY ( Str:D $key, Seq $new --> Nil ) {
 
-#say "Asign-key($?LINE): $key => ", $new.WHAT;
+#say "$*THREAD.id(), Seq, Asign-key($?LINE): $key => ", $new;
     self.ASSIGN-KEY( $key, $new.List);
   }
 
@@ -454,7 +435,7 @@ class Document does Associative does Positional {
 
 #TODO Test pushes and pops
 
-#say "Asign-key($?LINE): $key => ", $new.WHAT;
+#say "$*THREAD.id(), Array, Asign-key($?LINE): $key => ", $new;
 
     my Str $k = $key;
     my Array $v = $new;
@@ -476,13 +457,15 @@ class Document does Associative does Positional {
 
 #    %!promises{$k} = Promise.start({self!encode-element: ($k => $v);});
     %!promises{$k} = Promise.start( {
-say "E key = $k, val = ", $v, ', ', $v.WHAT();
+#say "$*THREAD.id(), Array, E key = $k, val = ", $v, ', ', $v.WHAT();
       my Buf $b = self!encode-element: ($k => $v);
 
       CATCH {
+#say .WHAT;
+#say "Error at line $?LINE: ";
+#.say;
         default {
-          note "Error at $?FILE $?LINE: $_";
-#          .note;
+          say "Error at $?FILE $?LINE:",  $_;
           .rethrow;
         }
       }
@@ -495,7 +478,7 @@ say "E key = $k, val = ", $v, ', ', $v.WHAT();
   #
   multi method ASSIGN-KEY ( Str:D $key, Any $new --> Nil ) {
 
-#say "Asign-key($?LINE): $key => ", $new.WHAT;
+#say "$*THREAD.id(), Any, Asign-key($?LINE): $key => ", $new.WHAT;
 
     my Str $k = $key;
     my $v = $new;
@@ -517,12 +500,17 @@ say "E key = $k, val = ", $v, ', ', $v.WHAT();
 
 #    %!promises{$k} = Promise.start({ self!encode-element: ($k => $v); });
     %!promises{$k} = Promise.start( {
-say "E key = $k, val = ", $v, ', ', $v.WHAT();
+#say "E key = $k, val = ", $v, ', ', $v.WHAT();
       my Buf $b = self!encode-element: ($k => $v);
       CATCH {
+#say .WHAT;
+        when X::BSON::Parse-objectid    { .rethrow; }
+        when X::BSON::Parse-document    { .rethrow; }
+        when X::BSON::NYS               { .rethrow; }
+        when X::BSON::DEPRECATED        { .rethrow; }
+
         default {
           note "Error at $?FILE $?LINE: $_";
-#          .note;
           .rethrow;
         }
       }
@@ -537,7 +525,7 @@ say "E key = $k, val = ", $v, ', ', $v.WHAT();
   #
   method BIND-KEY ( Str $key, \new ) {
 
-    die X::Parse-document.new(
+    die X::BSON::Parse-document.new(
       :operation("\$d<$key> := {new}")
       :error("Cannot use binding")
     );
@@ -584,7 +572,7 @@ say "E key = $k, val = ", $v, ', ', $v.WHAT();
   #
   method BIND-POS ( Index $idx, \new ) {
 
-    die X::Parse-document.new(
+    die X::BSON::Parse-document.new(
       :operation("\$d[$idx] := {new}")
       :error("Cannot use binding")
     );
@@ -667,43 +655,83 @@ say "E key = $k, val = ", $v, ', ', $v.WHAT();
   #
   method encode ( --> Buf ) {
 
-    loop ( my $idx = 0; $idx < @!keys.elems; $idx++) {
-      my $key = @!keys[$idx];
+    my Bool $still-planned = True;
+    while $still-planned {
+      $still-planned = False;
 
-      # Test if a promise is created to calculate stuff in parallel
-      #
-      if %!promises{$key}:exists {
-        @!encoded-entries[$idx] = %!promises{$key}.result;
+      loop ( my $idx = 0; $idx < @!keys.elems; $idx++) {
+        my $key = @!keys[$idx];
+#say "$*THREAD.id(), $key, ", @!values[$idx];    #, ', ',
+#    %!promises{$key}.defined ?? %!promises{$key}.status !! 'no promise';
+
+        # Test if a promise is created to calculate stuff in parallel
+        if %!promises{$key}.defined {
+          my PromiseStatus $pstat = %!promises{$key}.status;
+          if $pstat ~~ Kept {
+            @!encoded-entries[$idx] = %!promises{$key}.result;
+            %!promises{$key} = Nil;
+#say "$*THREAD.id(), Kept: $key, ", @!values[$idx];
+          }
+
+          elsif $pstat ~~ Planned {
+#say "$*THREAD.id(), Planned: $key, ", @!values[$idx];
+            $still-planned = True;
+            next;
+          }
+
+          elsif $pstat ~~ Broken {
+#say "$*THREAD.id(), Broken: $key";
+#say %!promises{$key}.cause.WHAT;
+#say %!promises{$key}.cause.message;
+            die %!promises{$key}.cause;
+#            die "Promise for key '$key' broken, %!promises{$key}.cause()";
+          }
+        }
+
+        # Test if a value is a document. These are never done in parallel
+        # Subdocuments entries are also calculated in parallel but also
+        # except for subdocuments. When encodng a Document here it calls
+        # its own encode() which will gather the data. This happens depth
+        # first so ends up here returning the complete encoded subdocument.
+        #
+        elsif @!values[$idx] ~~ BSON::Document {
+#say "$*THREAD.id(), D: $key, ", @!values[$idx];
+          @!encoded-entries[$idx] =
+            self!encode-element: (@!keys[$idx] => @!values[$idx]);
+        }
+
+        else {
+#say "$*THREAD.id(), EK: $key, ", @!values[$idx];
+        }
       }
-
-      # Test if a value is a document. These are never done in parallel
-      # Subdocuments entries are also calculated in parallel but also
-      # except for subdocuments. When encodng a Document here it calls
-      # its own encode() which will gather the data. This happens depth
-      # first so ends up here returning the complete encoded subdocument.
-      #
-      elsif @!values[$idx] ~~ BSON::Document {
-        @!encoded-entries[$idx] =
-          self!encode-element: (@!keys[$idx] => @!values[$idx]);
-      }
-
-      # else {}. Other values might be calculated before and are to be
-      # found in @!encoded-entries.
     }
 
     %!promises = ();
 
     my Buf $b;
+
+    # if there are entries
     if @!encoded-entries.elems {
 
-      $!encoded-document = @!encoded-entries.elems > 1
-                           ?? [~] @!encoded-entries
-                           !! @!encoded-entries[0];
+      $!encoded-document = Buf.new;
+#my $idx = 0;
+      for @!encoded-entries -> $e {
+#say "$*THREAD.id(), K: $idx, @!keys[$idx], {@!values[$idx]//'Nil'}";
+#$idx++;
+
+        $!encoded-document ~= $e;
+      }
+
+#      $!encoded-document = @!encoded-entries.elems > 1
+#                           ?? [~] @!encoded-entries
+#                           !! @!encoded-entries[0];
+
       $b = [~] encode-int32($!encoded-document.elems + 5),
                $!encoded-document,
                Buf.new(0x00);
     }
 
+    # otherwise generate an empty document
     else {
       $b = [~] encode-int32(5), Buf.new(0x00);
     }
@@ -763,6 +791,7 @@ say "E key = $k, val = ", $v, ', ', $v.WHAT();
         #
         my $pairs = (for .kv -> $k, $v { "$k" => $v });
         my BSON::Document $d .= new($pairs);
+#say "Array: ", $d.perl;
         $b = [~] Buf.new(BSON::C-ARRAY), encode-e-name($p.key), $d.encode;
 #note "Encoded array ($?LINE): ", $b;
       }
@@ -772,12 +801,10 @@ say "E key = $k, val = ", $v, ', ', $v.WHAT();
         # "\x05" e_name int32 subtype byte*
         # subtype is '\x00' for the moment (Generic binary subtype)
         #
-        $b = [~] Buf.new(BSON::C-BINARY),
-                 encode-e-name($p.key),
-                 .encode;
+        $b = [~] Buf.new(BSON::C-BINARY), encode-e-name($p.key), .encode;
       }
 
-     when BSON::ObjectId {
+      when BSON::ObjectId {
         # ObjectId
         # "\x07" e_name (byte*12)
         #
@@ -869,9 +896,9 @@ say "E key = $k, val = ", $v, ', ', $v.WHAT();
         }
 
         else {
-          die X::Parse-document.new(
+          die X::BSON::Parse-document.new(
             :operation('encode Javscript'),
-            :error('will not process empty javascript code')
+            :error('cannot process empty javascript code')
           );
         }
       }
@@ -896,7 +923,7 @@ say "E key = $k, val = ", $v, ', ', $v.WHAT();
         else {
           my $reason = 'small' if $p.value < -0x7fffffff_ffffffff;
           $reason = 'large' if $p.value > 0x7fffffff_ffffffff;
-          die X::Parse-document.new(
+          die X::BSON::Parse-document.new(
             :operation('encode Int'),
             :error("Number too $reason")
           );
@@ -910,7 +937,7 @@ say "E key = $k, val = ", $v, ', ', $v.WHAT();
         }
 
         else {
-          die X::NYS.new( :operation('encode-element()'), :type($_));
+          die X::BSON::NYS.new( :operation('encode-element()'), :type($_));
         }
       }
     }
@@ -927,7 +954,7 @@ say "E key = $k, val = ", $v, ', ', $v.WHAT();
 
   #-----------------------------------------------------------------------------
   sub encode-cstring ( Str:D $s --> Buf ) is export {
-    die X::Parse-document.new(
+    die X::BSON::Parse-document.new(
       :operation('encode-cstring()'),
       :error('Forbidden 0x00 sequence in $s')
     ) if $s ~~ /\x00/;
@@ -1130,7 +1157,7 @@ say "E key = $k, val = ", $v, ', ', $v.WHAT();
 
     # Check size of document with final byte location
     #
-    die X::Parse-document.new(
+    die X::BSON::Parse-document.new(
       :operation<decode-document()>,
       :error(
         [~] 'Size of document(', $doc-size,
@@ -1447,7 +1474,7 @@ say "E key = $k, val = ", $v, ', ', $v.WHAT();
         # We must stop because we do not know what the length should be of
         # this particular structure.
         #
-        die X::Parse-document.new(
+        die X::BSON::Parse-document.new(
           :operation<decode-element()>,
           :error("BSON code '{.fmt('0x%02x')}' not supported")
         );
@@ -1473,7 +1500,7 @@ say "E key = $k, val = ", $v, ', ', $v.WHAT();
     # This takes only place if there are no 0x0 characters found until the
     # end of the buffer which is almost never.
     #
-    die X::Parse-document.new(
+    die X::BSON::Parse-document.new(
       :operation<decode-cstring>,
       :error('Missing trailing 0x00')
     ) unless $index < $l and $b[$index++] ~~ 0x00;
@@ -1489,12 +1516,12 @@ say "E key = $k, val = ", $v, ', ', $v.WHAT();
 
     # Check if there are enaugh letters left
     #
-    die X::Parse-document.new(
+    die X::BSON::Parse-document.new(
       :operation<decode-string>,
       :error('Not enaugh characters left')
     ) unless ($b.elems - $size) > $index;
 
-    die X::Parse-document.new(
+    die X::BSON::Parse-document.new(
       :operation<decode-string>,
       :error('Missing trailing 0x00')
     ) unless $b[$end-string-at] == 0x00;
@@ -1507,7 +1534,7 @@ say "E key = $k, val = ", $v, ', ', $v.WHAT();
 
     # Check if there are enaugh letters left
     #
-    die X::Parse-document.new(
+    die X::BSON::Parse-document.new(
       :operation<decode-int32>,
       :error('Not enaugh characters left')
     ) if $b.elems - $index < 4;
@@ -1533,7 +1560,7 @@ say "E key = $k, val = ", $v, ', ', $v.WHAT();
 
     # Check if there are enaugh letters left
     #
-    die X::Parse-document.new(
+    die X::BSON::Parse-document.new(
       :operation<decode-int64>,
       :error('Not enaugh characters left')
     ) if $b.elems - $index < 8;
@@ -1632,7 +1659,7 @@ say "E key = $k, val = ", $v, ', ', $v.WHAT();
   # encode Num in buf little endian
   #
   sub encode-double ( Num:D $r --> Buf ) is export {
-  
+
     my CArray[num64] $da .= new($r);
     my $list = nativecast( CArray[uint8], $da)[^8];
     if little-endian() {

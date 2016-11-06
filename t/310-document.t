@@ -7,6 +7,7 @@ subtest {
 
   my BSON::Document $d .= new: ('a' ... 'd') Z=> 121..124;
   is $d<a>, 121, "\$<a> = $d<a>";
+  is $d.keys, <a b c d>, 'keys a, b, c, d';
 
   # keys 'a'..'d' are cstring => 0xnn 0x00
   # 121..124 are numbers in size int32 => bson code 0x10
@@ -25,6 +26,8 @@ subtest {
 
 
   is $d<b>:delete, 122, '$d<b> deleted';
+  is $d.keys, <a c d>, 'keys a, c, d';
+
   $etst = Buf.new(
     0x1a, 0x00 xx 3,
     0x10, 0x61, 0x00, 0x79, 0x00, 0x00, 0x00,   # 10 'a' 121
@@ -38,6 +41,8 @@ subtest {
 
   $d<b> = 2663;
   is $d<b>, 2663, '$d<b> added at end';
+  is $d.keys, <a c d b>, 'keys a, c, d, b';
+
   $etst = Buf.new(
     0x21, 0x00 xx 3,
     0x10, 0x61, 0x00, 0x79, 0x00, 0x00, 0x00,   # 10 'a' 121
@@ -46,6 +51,7 @@ subtest {
     0x10, 0x62, 0x00, 0x67, 0x0a, 0x00, 0x00,   # 10 'b' 2663
     0x00
   );
+#say $d.perl;
   $edoc = $d.encode;
   is-deeply $edoc, $etst, 'Encoded document still correct after addition';
 
