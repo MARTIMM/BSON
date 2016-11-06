@@ -681,7 +681,10 @@ class Document does Associative does Positional {
 
           elsif $pstat ~~ Broken {
 #say "$*THREAD.id(), Broken: $key";
-            die "Promise $key/$idx broken";
+#say %!promises{$key}.cause.WHAT;
+#say %!promises{$key}.cause.message;
+            die %!promises{$key}.cause;
+#            die "Promise for key '$key' broken, %!promises{$key}.cause()";
           }
         }
 
@@ -895,7 +898,7 @@ class Document does Associative does Positional {
         else {
           die X::BSON::Parse-document.new(
             :operation('encode Javscript'),
-            :error('will not process empty javascript code')
+            :error('cannot process empty javascript code')
           );
         }
       }

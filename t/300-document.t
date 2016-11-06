@@ -284,9 +284,12 @@ subtest {
     $d.encode;
 
     CATCH {
+#say .WHAT;
+#.say;
       when X::BSON::Parse-document {
-        cmp-ok .message, '~~', / :s will not process empty javascript code/,
-           'cannot process empty javascript code';
+        my $m = .message;
+        $m ~~ s:g/\n//;
+        like $m, / :s cannot process empty javascript code /, $m;
       }
     }
   }
@@ -297,10 +300,12 @@ subtest {
     $d.encode;
 
     CATCH {
-#say $_.WHAT;
+#say .WHAT;
+#.say;
       when X::BSON::Parse-document {
-        ok .message ~~ m/'Number too large'/,
-           "encode Int error, number too large";
+        my $m = .message;
+        $m ~~ s:g/\n//;
+        like $m, /'Number too large'/, $m;
       }
     }
   }
@@ -312,8 +317,9 @@ subtest {
 
     CATCH {
       when X::BSON::Parse-document {
-        ok .message ~~ m/'Number too small'/,
-           "encode Int error, number too small";
+        my $m = .message;
+        $m ~~ s:g/\n//;
+        like $m, /'Number too small'/, $m;
       }
     }
   }
@@ -325,8 +331,9 @@ subtest {
 
     CATCH {
       when X::BSON::Parse-document {
-        ok .message ~~ m/'Forbidden 0x00 sequence in'/,
-           "Forbidden 0x00 sequence in 'Double\0test'";
+        my $m = .message;
+        $m ~~ s:g/\n//;
+        like $m, /'Forbidden 0x00 sequence in'/, $m;
       }
     }
   }
@@ -340,8 +347,9 @@ subtest {
 
     CATCH {
       when X::BSON::Parse-document {
-        ok .message ~~ m/'Not enaugh characters left'/,
-           "Not enaugh characters left";
+        my $m = .message;
+        $m ~~ s:g/\n//;
+        like $m, /'Not enaugh characters left'/, $m;
       }
     }
   }
@@ -359,8 +367,9 @@ subtest {
 
     CATCH {
       when X::BSON::Parse-document {
-        ok .message ~~ ms/'Size of document' .* 'does not match'/,
-           'Size of document(11) does not match with index';
+        my $m = .message;
+        $m ~~ s:g/\n//;
+        like $m, /:s 'Size of document' .* 'does not match'/, $m;
       }
     }
   }
@@ -376,9 +385,9 @@ subtest {
     CATCH {
 #.say;
       when X::BSON::NYS {
-        ok .message ~~
-           m/'BSON Type ' "'A<" \d+ ">'" ' is not (yet) supported'/,
-           .message;
+        my $m = .message;
+        $m ~~ s:g/\n//;
+        like $m, /'BSON type' .* 'A<' \d+ '>'/, $m;
       }
     }
   }
