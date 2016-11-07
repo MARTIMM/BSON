@@ -969,7 +969,7 @@ class Document does Associative does Positional {
   }
 
   #-----------------------------------------------------------------------------
-  sub encode-int32 ( Int:D $i --> Buf ) is export {
+  sub Xencode-int32 ( Int:D $i --> Buf ) is export {
     my int $ni = $i;
     return Buf.new( $ni +& 0xFF, ($ni +> 0x08) +& 0xFF,
                     ($ni +> 0x10) +& 0xFF, ($ni +> 0x18) +& 0xFF
@@ -1280,22 +1280,20 @@ class Document does Associative does Positional {
       #
       when BSON::C-BINARY {
 
-        my Int $nbr-bytes = decode-int32( $!encoded-document, $!index);
+        my Int $buf-size = decode-int32( $!encoded-document, $!index);
         my Int $i = $!index + C-INT32-SIZE;
 
         # Step over size field, subtype and binary data
         #
-        $!index += C-INT32-SIZE + 1 + $nbr-bytes;
+        $!index += C-INT32-SIZE + 1 + $buf-size;
 
         %!promises{$key} = Promise.start( {
             @!values[$idx] = BSON::Binary.decode(
-              $!encoded-document,
-              $i,
-              $nbr-bytes
+              $!encoded-document, $i, :$buf-size
             );
 
             $!encoded-document.subbuf(
-              $decode-start ..^ ($i + 1 + $nbr-bytes)
+              $decode-start ..^ ($i + 1 + $buf-size)
             );
           }
         );
@@ -1393,19 +1391,16 @@ class Document does Associative does Positional {
         # for the next action.
         #
         my Int $i = $!index;
-        my Int $js-size = decode-int32( $!encoded-document, $i);
+        my Int $buf-size = decode-int32( $!encoded-document, $i);
 
         # Step over size field and the javascript text
         #
-        $!index += (BSON::C-INT32-SIZE + $js-size);
+        $!index += (BSON::C-INT32-SIZE + $buf-size);
 
         %!promises{$key} = Promise.start( {
-            @!values[$idx] = BSON::Javascript.new(
-              :javascript(decode-string( $!encoded-document, $i))
-            );
-
+            @!values[$idx] = BSON::Javascript.decode( $!encoded-document, $i);
             $!encoded-document.subbuf(
-              $decode-start ..^ ($i + BSON::C-INT32-SIZE + $js-size)
+              $decode-start ..^ ($i + BSON::C-INT32-SIZE + $buf-size)
             );
           }
         );
@@ -1424,12 +1419,17 @@ class Document does Associative does Positional {
         my Int $i3 = $!index;
 
         %!promises{$key} = Promise.start( {
-            my BSON::Document $d .= new;
-            $d.decode(Buf.new($!encoded-document[$i2 ..^ ($i2 + $js-size)]));
-            @!values[$idx] = BSON::Javascript.new(
-              :javascript(decode-string( $!encoded-document, $i1)),
-              :scope($d)
+#            my BSON::Document $d .= new;
+#            $d.decode(Buf.new($!encoded-document[$i2 ..^ ($i2 + $js-size)]));
+            @!values[$idx] = BSON::Javascript.decode(
+              $!encoded-document, $i1,
+              :bson-doc(BSON::Document.new),
+              :scope(Buf.new($!encoded-document[$i2 ..^ ($i2 + $js-size)]))
             );
+#            @!values[$idx] = BSON::Javascript.new(
+#              :javascript(decode-string( $!encoded-document, $i1)),
+#              :scope($d)
+#            );
 
             $!encoded-document.subbuf($decode-start ..^ $i3);
           }
@@ -1509,7 +1509,7 @@ class Document does Associative does Positional {
   }
 
   #-----------------------------------------------------------------------------
-  sub decode-string ( Buf:D $b, Int:D $index is copy --> Str ) {
+  sub Xdecode-string ( Buf:D $b, Int:D $index is copy --> Str ) {
 
     my $size = decode-int32( $b, $index);
     my $end-string-at = $index + 4 + $size - 1;
@@ -1530,7 +1530,7 @@ class Document does Associative does Positional {
   }
 
   #-----------------------------------------------------------------------------
-  sub decode-int32 ( Buf:D $b, Int:D $index --> Int ) is export {
+  sub Xdecode-int32 ( Buf:D $b, Int:D $index --> Int ) is export {
 
     # Check if there are enaugh letters left
     #

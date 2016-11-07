@@ -1,4 +1,5 @@
 use v6.c;
+use BSON;
 
 unit package BSON:auth<https://github.com/MARTIMM>;
 
@@ -88,7 +89,7 @@ class Binary {
   #---------------------------------------------------------------------------
 #TODO Remove duplicate sub into other module. Document has it but then recursive
 #loading loop, 
-  sub encode-int32 ( Int:D $i --> Buf ) {
+  sub Xencode-int32 ( Int:D $i --> Buf ) {
     my int $ni = $i;
 
     return Buf.new(
@@ -101,7 +102,7 @@ class Binary {
   method decode (
     Buf:D $b,
     Int:D $index is copy,
-    Int:D $nbr-bytes
+    Int:D :$buf-size
     --> BSON::Binary
   ) {
 
@@ -147,7 +148,7 @@ class Binary {
         die BSON::X::Parse-document.new(
           :operation('decode Binary'),
           :error('UUID(0x04) Length mismatch')
-        ) unless $nbr-bytes ~~ BSON::C-UUID-SIZE;
+        ) unless $buf-size ~~ BSON::C-UUID-SIZE;
       }
 
       when BSON::C-MD5 {
@@ -155,16 +156,17 @@ class Binary {
         die BSON::X::Parse-document.new(
           :operation('decode Binary'),
           :error('MD5(0x05) Length mismatch')
-        ) unless $nbr-bytes ~~ BSON::C-MD5-SIZE;
+        ) unless $buf-size ~~ BSON::C-MD5-SIZE;
       }
 
-      when 0x80 {
+      # when 0x80..0xFF
+      default {
         # User defined. That is, all other codes 0x80 .. 0xFF
       }
     }
 
     return BSON::Binary.new(
-      :data(Buf.new($b[$index ..^ ($index + $nbr-bytes)])),
+      :data(Buf.new($b[$index ..^ ($index + $buf-size)])),
       :type($sub_type)
     );
   }

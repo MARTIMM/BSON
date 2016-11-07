@@ -1,4 +1,5 @@
 use v6.c;
+use BSON;
 
 unit package BSON:auth<https://github.com/MARTIMM>;
 
@@ -49,6 +50,27 @@ class Javascript {
     }
 
     $perl ~= '  ' x $indent ~ ")";
+  }
+
+  #---------------------------------------------------------------------------
+  method decode (
+    Buf:D $b, Int:D $index is copy, :$bson-doc, Buf :$scope
+    --> BSON::Javascript
+  ) {
+
+    my $js;
+    if ?$scope and ?$bson-doc {
+
+      $bson-doc.decode($scope);
+      $js = BSON::Javascript.new(
+        :javascript( decode-string( $b, $index)), :scope($bson-doc)
+      );
+    }
+
+    else {
+
+      $js = BSON::Javascript.new( :javascript( decode-string( $b, $index)));
+    }
   }
 }
 
