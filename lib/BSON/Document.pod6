@@ -6,9 +6,11 @@ use v6;
 
 =SUBTITLE BSON Encodable and Decodable document
 
-  package BSON { class Document does Associative does Positional { ... } }
+  unit package BSON;
+  class Document does Associative does Positional { ... }
 
-Use as
+
+=head1 Synopsis
 
 =begin code
 
@@ -31,6 +33,7 @@ $d2.decode($b);
 
 =end code
 
+=head1 Description
 
 Document storage with Hash like behavior used mainly to communicate with a
 mongodb server. It can also be used as a serialized storage format. The main
@@ -38,7 +41,7 @@ difference with the Hash is that this class keeps the input order of inserted
 key-value pairs which is important for the use with mongodb.
 
 Every form of nesting with e.g. pairs is converted into a BSON::Document. Other
-classes might be needed to handle types such as Javascript, ObjectId and Binary.
+classes are needed to handle types such as Javascript, ObjectId and Binary.
 These classes are automatically loaded when C<BSON::Document> is loaded.
 
 E.g.
@@ -56,80 +59,57 @@ $d<rex> = BSON::Regex.new( :regex('abc|def'), :options<is>);
 
 =head1 Supported types
 
-The type which are currently supported are marked with a [x]. [-] will not be
+There are BSON specifications L<mentioned on their site|http://bsonspec.org/spec.html>
+which are deprecated or used internally only. These are not implemented.
+
+There are quite a few more perl6 container types like (Fat)Rat, Bag, Set etc.
+Now binary types are possible it might be an idea to put these perl6 types into
+binary. There are 127 user definable types in that BSON binary specification, so
+place enough to put it there, also because when javascript is run on the server
+it would not able to cope with these types.
+
+The types currently supported are marked with a [x]. [-] will not be
 implemented and [ ] is a future thingy.
 
 =begin code
 
-    Encoding perl6 to a BSON bytestream
-    Perl6               BSON
+    Encoding/Decoding a bytestream from/to perl6
 
-[x] Num                 64-bit Double.
-[x] Str                 UTF-8 string
-[x] Seq                 Embedded document
-[x] Pair                Embedded document
-[x] Hash                Embedded document, throws an exception by default.
-[x] Array               Array document
-[x] BSON::Binary        All kinds of binary data
-[x]                       Generic type
-[ ]                       Function
-[-]                       Binary old, deprecated
-[-]                       UUID old, deprecated
-[x]                       UUID
-[x]                       MD5
-[x] BSON::ObjectId      ObjectId
-[x] Bool                Boolean "true" / "false"
-[x] DateTime            int64 UTC datetime, seconds since January 1st 1970
-[x] Undefined type      Null value
-[x] BSON::Regex         Regular expression for serverside searches
-[x] BSON::Javascript    Javascript code transport with or whithout scope
-[x] Int                 32-bit Integer if -2147483646 < n < 2147483647
-                        64-bit Integer if -9,22337203685e+18 < n < 9,22337203685e+18
-                        9,22337203685e+18 Fails at the moment if
-                        larger/smaller with an exception X::BSON::ImProperUse.
-                        Later it might be stored as a binary.
+      Type/sub-
+Impl  type  BSON spec                           Perl6
 
-=end code
-
-There are BSON specifactions L<mentioned on their site|http://bsonspec.org/spec.html>
-which are deprecated or used internally only. These are not implemented.
-
-There are quite a few more perl6 container types like Rat, Bag, Set etc. Now
-binary types are possible it might be an idea to put these perl6 types into
-binary. There are 127 user definable types in that BSON binary specification, so
-place enough.
-
-=begin code
-
-    Decoding a bytestream to perl6
-    BSON                                Perl6
-
-[x] 64-bit Double                       Num
-[x] UTF-8 string                        Str
-[x] Embedded document.                  BSON::Document
-[x] Array document                      Array
-[x] All kinds of binary data            BSON::Binary
-[x]   Generic type                      BSON::Binary
-[ ]   Function                          BSON::Binary
-[-]   Binary old, deprecated            BSON::Binary
-[-]   UUID old, deprecated              BSON::Binary
-[x]   UUID                              BSON::Binary
-[x]   MD5                               BSON::Binary
-[x] ObjectId                            BSON::ObjectId
-[x] Boolean "true" / "false"            Bool
-[x] int64 UTC datetime                  DateTime
-[x] Null value                          Undefined type
-[x] Regular expression                  BSON::Regex
-[x] Javascript code                     BSON::Javascript
-[x] 32 bit integers.                    Int
-[x] 64 bit integers.                    Int
-
-[ ]                                     FatRat
-[ ]                                     Rat
+ [x]  1     64-bit Double                       Num
+ [x]  2     UTF-8 string                        Str
+ [x]  3     Embedded document.                  BSON::Document
+ [x]  4     Array document                      Array
+ [x]  5     All kinds of binary data            BSON::Binary
+ [x]  5/0   Generic type
+ [ ]  5/1   Function
+ [-]  5/2   Binary old, deprecated
+ [-]  5/3   UUID old, deprecated
+ [x]  5/4   UUID
+ [x]  5/5   MD5
+ [ ]  5/128 Int larger/smaller than 64 bit      Int
+ [ ]  5/129                                     FatRat
+ [ ]  5/130                                     Bag
+ [-]  6     Undefined value - Deprecated
+ [x]  7     ObjectId                            BSON::ObjectId
+ [x]  8     Boolean "true" / "false"            Bool
+ [x]  9     int64 UTC datetime                  DateTime
+ [x] 10     Null value                          Undefined type
+ [x] 11     Regular expression(perl 5 like)     BSON::Regex
+ [-] 12     DBPointer - Deprecated
+ [x] 13     Javascript code                     BSON::Javascript
+ [-] 14     Symbol - Deprecated
+ [x] 15     Javascript code with scope          BSON::Javascript
+ [x] 16     32 bit integers.                    Int
+ [-] 17     Timestamp, used internally
+ [x] 18     64 bit integers.                    Int
+ [ ] 19     128 bit decimal floating point      Rat
 
 =end code
 
-=head1 Operations
+=head1 Operators
 
 =head2 postcircumfix:<{}>
 
@@ -137,7 +117,7 @@ place enough.
 
 =head2 postcircumfix:<<>>
 
-  $d<name> = 'Marcel Timmerman';
+  $d<name> = 'Mr Foo and Mrs Bar';
 
 =head2 postcircumfix:<[]>
 
@@ -167,16 +147,14 @@ generated using the index prefixed with 'key' (depending on autovivify).
 
 =head1 Methods
 
-=head2 method new
-
-Defined as
+=head2 new
 
   multi method new ( List $l = () )
   multi method new ( Pair $p )
   multi method new ( Seq $s )
   multi method new ( Buf $b )
 
-Use as
+Some examples to call new
 
 =begin code
 
@@ -199,35 +177,27 @@ $d .= new: ( a => 10, b => 11);
 
 Initialize a new document.
 
-=head2 method perl
-
-Defined as
+=head2 perl
 
   method perl ( --> Str )
 
 Return objects structure.
 
 =begin comment
-=head2 method WHAT
-
-Defined as
+=head2 WHAT
 
   method WHAT ( --> Str )
 
 Return type of the object. This is '(BSON::Document)'.
 =end comment
 
-=head2 method Str
-
-Defined as
+=head2 Str
 
   method Str ( --> Str )
 
 Return type and location of the object.
 
-=head2 method autovivify
-
-Defined as
+=head2 autovivify
 
   submethod autovivify ( Bool $avvf = True )
 
@@ -254,9 +224,7 @@ $d<a><b> = 10;
 
 NOTE: Testing for items will also create the entries if they weren't there.
 
-=head2 method accept-hash
-
-Defined as
+=head2 accept-hash
 
   submethod accept-hash ( Bool $acch = True )
 
@@ -280,9 +248,7 @@ say $d<q>.keys;
 
 =end code
 
-=head2 method find-key
-
-Defined as
+=head2 find-key
 
   multi method find-key ( Int:D $idx --> Str )
   multi method find-key ( Str:D $key --> Int )
@@ -301,9 +267,7 @@ is $d.find-key(2), 'c', "Index 2 is mapped to key 'c'";
 
 =end code
 
-=head2 method of
-
-Defined as
+=head2 of
 
   method of ( )
 
@@ -313,15 +277,11 @@ investicate further
 
 =head2 method elems
 
-Defined as
-
   method elems ( --> Int )
 
 Return the number of pairs in the document
 
-=head2 method kv
-
-Defined as
+=head2 kv
 
   method kv ( --> List )
 
@@ -336,17 +296,13 @@ say $d.kv;
 
 =end code
 
-=head2 method pairs
-
-Defined as
+=head2 pairs
 
   method pairs ( --> List )
 
 Return a list of pairs in the same order as entered.
 
-=head2 method keys
-
-Defined as
+=head2 keys
 
   method keys ( --> List )
 
@@ -361,9 +317,7 @@ say $d.keys;
 
 =end code
 
-=head2 method values
-
-Defined as
+=head2 values
 
   method values ( --> List )
 
@@ -378,9 +332,7 @@ say $d.values;
 
 =end code
 
-=head2 method modify-array
-
-Defined as
+=head2 modify-array
 
   method modify-array ( Str $key, Str $operation, $data --> List )
 
@@ -406,23 +358,20 @@ e.g;
   $d<myarray> = $arr;
   
 
-=head2 method encode
-
-Defined as
+=head2 encode
 
   method encode ( --> Buf )
 
 Encode entire document and return a BSON encoded byte buffer.
 
-=head2 method decode
-
-Defined as
+=head2 decode
 
   method decode ( Buf $data --> Nil )
 
 Decode a BSON encoded byte buffer to produce a document. Decoding also takes
 place when providing a byte buffer to C<new()>.
 
+=begin comment
 =head1 Exceptions
 
 =head2 X::Parse-document
@@ -434,6 +383,7 @@ decoding.
 
 Thrown when encoding stumbles upon a variable which is not supported(yet)
 
+=end comment
 
 =end pod
 

@@ -6,9 +6,10 @@ use v6;
 
 =SUBTITLE Container for binary data
 
-  package BSON { class Binary { ... } }
+  unit package BSON;
+  class Binary { ... }
 
-Use as
+=head1 Synopsis
 
 =begin code
 
