@@ -54,6 +54,27 @@ class X::BSON::Deprecated is Exception {
 
 
 #-------------------------------------------------------------------------------
+sub encode-e-name ( Str:D $s --> Buf ) is export {
+  return encode-cstring($s);
+}
+
+#-------------------------------------------------------------------------------
+sub encode-cstring ( Str:D $s --> Buf ) is export {
+  die X::BSON::Parse-document.new(
+    :operation('encode-cstring()'),
+    :error('Forbidden 0x00 sequence in $s')
+  ) if $s ~~ /\x00/;
+
+  return $s.encode() ~ Buf.new(0x00);
+}
+
+#-------------------------------------------------------------------------------
+sub encode-string ( Str:D $s --> Buf ) is export {
+  my Buf $b .= new($s.encode('UTF-8'));
+  return [~] encode-int32($b.bytes + 1), $b, Buf.new(0x00);
+}
+
+#-------------------------------------------------------------------------------
 sub encode-int32 ( Int:D $i --> Buf ) is export {
   my int $ni = $i;
 

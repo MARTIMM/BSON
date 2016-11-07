@@ -880,27 +880,31 @@ class Document does Associative does Positional {
         # "\x0D" e_name string
         # "\x0F" e_name int32 string document
         #
-        if .has-javascript {
-          my Buf $js = encode-string(.javascript);
+#        if .has-javascript {
+#          my Buf $js = encode-string(.javascript);
 
           if .has-scope {
-            my Buf $doc = .scope.encode;
+#            my Buf $doc = .scope.encode;
             $b = [~] Buf.new(BSON::C-JAVASCRIPT-SCOPE),
                      encode-e-name($p.key),
-                     $js, $doc;
+                     .encode;
+#                     $js, $doc;
           }
 
           else {
-            $b = [~] Buf.new(BSON::C-JAVASCRIPT), encode-e-name($p.key), $js;
+            $b = [~] Buf.new(BSON::C-JAVASCRIPT),
+                     encode-e-name($p.key),
+                     .encode;
+#                     $js;
           }
-        }
+#        }
 
-        else {
-          die X::BSON::Parse-document.new(
-            :operation('encode Javscript'),
-            :error('cannot process empty javascript code')
-          );
-        }
+#        else {
+#          die X::BSON::Parse-document.new(
+#            :operation('encode Javscript'),
+#            :error('cannot process empty javascript code')
+#          );
+#        }
       }
 
       when Int {
@@ -948,12 +952,12 @@ class Document does Associative does Positional {
   }
 
   #-----------------------------------------------------------------------------
-  sub encode-e-name ( Str:D $s --> Buf ) {
+  sub Xencode-e-name ( Str:D $s --> Buf ) {
     return encode-cstring($s);
   }
 
   #-----------------------------------------------------------------------------
-  sub encode-cstring ( Str:D $s --> Buf ) is export {
+  sub Xencode-cstring ( Str:D $s --> Buf ) is export {
     die X::BSON::Parse-document.new(
       :operation('encode-cstring()'),
       :error('Forbidden 0x00 sequence in $s')
@@ -963,7 +967,7 @@ class Document does Associative does Positional {
   }
 
   #-----------------------------------------------------------------------------
-  sub encode-string ( Str:D $s --> Buf ) {
+  sub Xencode-string ( Str:D $s --> Buf ) {
     my Buf $b .= new($s.encode('UTF-8'));
     return [~] encode-int32($b.bytes + 1), $b, Buf.new(0x00);
   }
