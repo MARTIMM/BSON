@@ -27,8 +27,8 @@ class ObjectId {
   multi submethod BUILD ( Str:D :$string! ) {
 
     die X::BSON::Parse-objectid.new(
-      :operation('ObjectId.new'),
-      :error('String too short or nonhexadecimal')
+      :operation<ObjectId.new>,
+      :error<String too short or nonhexadecimal>
     ) unless $string ~~ m/ ^ <xdigit>**24 $ /;
 
 

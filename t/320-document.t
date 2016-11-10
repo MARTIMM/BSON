@@ -1,5 +1,6 @@
 use v6;
 use Test;
+use BSON;
 use BSON::Document;
 use UUID;
 

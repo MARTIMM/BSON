@@ -60,10 +60,10 @@ $new-doc.decode($enc-doc);
 
 
 BSON/Document.pod
+* [BSON::Binary](https://github.com/MARTIMM/BSON/blob/master/doc/Binary.pdf)
 * [BSON::Document](https://github.com/MARTIMM/BSON/blob/master/doc/Document.pdf)
 
 * [Release notes](https://github.com/MARTIMM/BSON/blob/master/doc/CHANGES.md)
-
 * [Bugs, todo](https://github.com/MARTIMM/BSON/blob/master/doc/TODO.md)
 
 ## Author
