@@ -3,7 +3,7 @@ use Test;
 use BSON::Document;
 
 #-------------------------------------------------------------------------------
-subtest {
+subtest "Extending array", {
 
   my BSON::Document $d .= new: (docs => []);
   $d.modify-array( 'docs', 'push', (a => 1, b => 2));
@@ -29,7 +29,7 @@ subtest {
 #$d.perl.say;
 #say "E: ", $encoded;
 
-}, "Extending array";
+}
 
 
 #-------------------------------------------------------------------------------
