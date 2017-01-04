@@ -121,8 +121,9 @@ class Document does Associative does Positional {
     # self{x} = y will end up at ASSIGN-KEY
     #
     for @$pairs -> $pair {
-#TODO better error messages when accessing $pair
-#say "P: ", $pair;
+      die "Pair not defined" unless ?$pair;
+      die "Key of pair not defined or empty" unless ?$pair.key;
+      die "Value of pair not defined" unless $pair.value.defined;
       self{$pair.key} = $pair.value;
     }
   }
