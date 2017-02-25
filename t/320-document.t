@@ -294,7 +294,7 @@ subtest {
   # Test sequence
   #
 #  diag "Sequence of index";
-
+#`{{
   is $d[0], -203.345.Num, "0: $d[0], double";
   is $d[1], 1234, "1: $d[1], int32";
   is $d[2], 4295392664, "2: $d[2], int64";
@@ -314,7 +314,7 @@ subtest {
   nok $d[13].defined, '13: Null not defined';
   is $d[14].regex, 'abc|def', '14: Regex ok';
   is $d[14].options, 'is', '14: Regex options ok';
-
+}}
 }, "Document encoding decoding types";
 
 #-------------------------------------------------------------------------------

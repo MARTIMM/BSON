@@ -44,6 +44,7 @@ constant C-INT64-SIZE         = 8;
 constant C-DOUBLE-SIZE        = 8;
 
 #-------------------------------------------------------------------------------
+#class Document does Associative does Positional {
 class Document does Associative does Positional {
 
   subset Index of Int where $_ >= 0;
@@ -279,6 +280,7 @@ class Document does Associative does Positional {
 
     $idx;
   }
+
 
   #-----------------------------------------------------------------------------
   # Associative role methods
@@ -532,7 +534,7 @@ class Document does Associative does Positional {
     );
   }
 
-
+#`{{
   #-----------------------------------------------------------------------------
   # Positional role methods
   #-----------------------------------------------------------------------------
@@ -578,6 +580,7 @@ class Document does Associative does Positional {
       :error("Cannot use binding")
     );
   }
+}}
 
   #-----------------------------------------------------------------------------
   # Must be defined because of Positional and Associative sources of of()

@@ -3,7 +3,7 @@ use Test;
 use BSON::Document;
 
 #-------------------------------------------------------------------------------
-subtest {
+subtest "Empty document", {
 
   my BSON::Document $d .= new;
   is $d.^name, 'BSON::Document', 'Isa ok';
@@ -14,11 +14,10 @@ subtest {
   $d .= new;
   $d.decode($b);
   is $d.elems, 0, "Zero elements/keys in decoded document";
-
-}, "Empty document";
+}
 
 #-------------------------------------------------------------------------------
-subtest {
+subtest "Initialize document", {
 
   # Init via Seq
   #
@@ -54,11 +53,10 @@ subtest {
       }
     }
   }
-
-}, "Initialize document";
+}
 
 #-------------------------------------------------------------------------------
-subtest {
+subtest "Ban the hash", {
 
   my BSON::Document $d .= new;
   try {
@@ -88,11 +86,10 @@ subtest {
 
   $d<e><f><g> = {b => 30};
   is $d<e><f><g><b>, 30, "Autovivified hash value $d<e><f><g><b>";
-
-}, "Ban the hash";
+}
 
 #-------------------------------------------------------------------------------
-subtest {
+subtest "Test document, associative", {
 
   my BSON::Document $d .= new;
 
@@ -126,9 +123,9 @@ subtest {
       }
     }
   }
+}
 
-}, "Test document, associative";
-
+#`{{
 #-------------------------------------------------------------------------------
 subtest {
 
@@ -178,9 +175,10 @@ subtest {
   }
 
 }, "Test document, positional";
+}}
 
 #-------------------------------------------------------------------------------
-subtest {
+subtest "Test document, other", {
 
   my BSON::Document $d .= new: ('a' ... 'z') Z=> 120..145;
 
@@ -191,11 +189,10 @@ subtest {
   is ($d.values)[*-1], 145, "Last value is 145";
   is ($d.keys)[3], 'd', "4th key is 'd'";
   is ($d.values)[3], 123, '4th value is 123';
-
-}, "Test document, other";
+}
 
 #-------------------------------------------------------------------------------
-subtest {
+subtest "Document nesting 1", {
 
   # Try nesting with BSON::Document
   #
@@ -209,6 +206,7 @@ subtest {
   is $d<c><b>, 110, "\$d<c><b> = $d<c><b>";
   is $d<c><p>, 1, "\$d<c><p> = $d<c><p>";
 
+#`{{
   is $d<c>[1], 2, "\$d<c>[1] = $d<c>[1]";
   is $d<c>[3], 110, "\$d<c>[3] = $d<c>[3]";
 
@@ -237,11 +235,11 @@ subtest {
       }
     }
   }
-
-}, "Document nesting 1";
+}}
+}
 
 #-------------------------------------------------------------------------------
-subtest {
+subtest "Document nesting 2", {
 
   # Try nesting with k => v
   #
@@ -268,11 +266,10 @@ subtest {
 
 #$d .= new: ('a' ... 'z') Z=> 120..145;
 #say $d.kv;
-
-}, "Document nesting 2";
+}
 
 #-------------------------------------------------------------------------------
-subtest {
+subtest "Exception tests", {
 
   # Hash tests done above
   # Bind keys done above
@@ -434,8 +431,7 @@ subtest {
 
 #  my BSON::Document $d .= new;
 #  $d( 1, 2, 'test', ( ('a' ... 'd') Z=> 20 .. 13), :w<fd>);
-
-}, "Exception tests";
+}
 
 #-------------------------------------------------------------------------------
 # Cleanup

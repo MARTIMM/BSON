@@ -57,6 +57,7 @@ subtest {
 
 }, "Document encoding associative";
 
+#`{{
 #-------------------------------------------------------------------------------
 subtest {
 
@@ -130,6 +131,7 @@ subtest {
   is-deeply $edoc, $etst, 'Encoded document is correct after adding';
 
 }, "Document encoding positional";
+}}
 
 #-------------------------------------------------------------------------------
 subtest {
