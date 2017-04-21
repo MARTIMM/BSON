@@ -11,7 +11,7 @@
     "UUID"
   ],
   "description": "BSON encoding/decoding, used in MongoDB drivers",
-  "license": "The Artistic License 2.0",
+  "license": "Artistic-2.0",
   "name": "BSON",
   "provides": {
     "BSON":                     "lib/BSON.pm6",
