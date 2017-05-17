@@ -3,14 +3,14 @@ use v6.c;
 #TODO There are some *-native() and *-emulated() subs kept for later benchmarks
 # when perl evolves.
 
+#-------------------------------------------------------------------------------
+unit package BSON:auth<github:MARTIMM>;
+
 use BSON;
 use BSON::ObjectId;
 use BSON::Regex;
 use BSON::Javascript;
 use BSON::Binary;
-
-#-------------------------------------------------------------------------------
-unit package BSON:auth<https://github.com/MARTIMM>;
 
 #-------------------------------------------------------------------------------
 # BSON type codes
@@ -1249,4 +1249,3 @@ class Document does Associative {
     }
   }
 }
-
