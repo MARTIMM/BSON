@@ -20,7 +20,8 @@
     "BSON::Document":           "lib/BSON/Document.pm6",
     "BSON::Javascript":         "lib/BSON/Javascript.pm6",
     "BSON::ObjectId":           "lib/BSON/ObjectId.pm6",
-    "BSON::Regex":              "lib/BSON/Regex.pm6"
+    "BSON::Regex":              "lib/BSON/Regex.pm6",
+    "BSON::Decimal128":         "lib/BSON/Decimal128.pm6"
   },
   "source-url": "git://github.com/MARTIMM/BSON.git",
   "perl": "6",
