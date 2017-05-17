@@ -1,6 +1,7 @@
 {
   "authors": [
-    "Marcel Timmerman"
+    "Marcel Timmerman",
+    "Paweł Pabian"
   ],
   "history": [
     "Paweł Pabian worked on it from 2011 until January 2015",
@@ -23,5 +24,5 @@
   },
   "source-url": "git://github.com/MARTIMM/BSON.git",
   "perl": "6",
-  "version": "0.9.32.2"
+  "version": "0.9.32.3"
 }

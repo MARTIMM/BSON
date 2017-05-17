@@ -1,6 +1,7 @@
 branches:
   only:
-    - master
+#    - master
+    - develop
 
 language: perl6
 
@@ -8,12 +9,10 @@ perl6:
   - latest
 
 install:
-  - rakudobrew build-panda ${TRAVIS_PERL6_VERSION#latest}
-  - panda installdeps .
-#  - panda update
-#  - panda install Digest::MD5 UUID
+  - rakudobrew build-zef ${TRAVIS_PERL6_VERSION#latest}
+  - zef --depsonly install .
 
-cache:
-  directories:
-    - $TRAVIS_BUILD_DIR/.rakudobrew
-
+#cache:
+#  directories:
+#    - $HOME/Travis-ci
+#    - $HOME/.rakudobrew
