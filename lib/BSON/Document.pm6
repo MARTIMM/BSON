@@ -11,6 +11,7 @@ use BSON::ObjectId;
 use BSON::Regex;
 use BSON::Javascript;
 use BSON::Binary;
+use BSON::Decimal128;
 
 #-------------------------------------------------------------------------------
 # BSON type codes
@@ -41,6 +42,7 @@ constant C-MAX-KEY            = 0x7F;
 constant C-INT32-SIZE         = 4;
 constant C-INT64-SIZE         = 8;
 constant C-DOUBLE-SIZE        = 8;
+constant C-DECIMAL128-SIZE    = 16;
 
 #-------------------------------------------------------------------------------
 class Document does Associative {
@@ -859,6 +861,13 @@ class Document does Associative {
             :error("Number too $reason")
           );
         }
+
+        when BSON::Decimal128 {
+          $b = [~] Buf.new(BSON::C-DECIMAL128),
+                   encode-e-name($p.key),
+                   .encode;
+
+        }
       }
 
       default {
@@ -1232,6 +1241,22 @@ class Document does Associative {
 
             $!encoded-document.subbuf(
               $decode-start ..^ ($i + BSON::C-INT64-SIZE)
+            );
+          }
+        );
+      }
+
+      # 128-bit Decimal
+      when BSON::Decimal128 {
+
+        my Int $i = $!index;
+        $!index += BSON::C-DECIMAL128-SIZE;
+
+        %!promises{$key} = Promise.start( {
+            @!values[$idx] = BSON::Decimal128.decode( $!encoded-document, $i);
+
+            $!encoded-document.subbuf(
+              $decode-start ..^ ($i + BSON::C-DECIMAL128-SIZE)
             );
           }
         );
