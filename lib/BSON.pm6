@@ -453,4 +453,3 @@ sub little-endian ( --> Bool ) {
 
   $j[0] == 0x01;
 }
-
