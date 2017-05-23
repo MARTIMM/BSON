@@ -55,6 +55,12 @@ class Decimal128 {
   }
 
   #----------------------------------------------------------------------------
+  # return string representation for string concatenation
+  method Bool ( --> Bool ) {
+    self.defined and ? $!number.numerator;
+  }
+
+  #----------------------------------------------------------------------------
   # return a number when requeste for calculations
   method Numeric ( --> Numeric ) {
     $!number;
@@ -64,6 +70,8 @@ class Decimal128 {
   # encode to BSON binary
   multi method encode ( --> Buf ) {
 
+    my Bool $sign = $!number.sign;
+    my Int $exponent = 0;
   }
 
   #----------------------------------------------------------------------------

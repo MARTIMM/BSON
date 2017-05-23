@@ -14,6 +14,12 @@ subtest 'init decimal128 nummerator/denominator', {
 
   ok +$d128 ~~ FatRat, 'object coersed to return FatRat';
   is-approx (cos +$d128), 0.877582, 'cosine on coersed object';
+
+  ok ?$d128, 'd128 is not 0';
+  $d128 .= new( 0, 234);
+  nok ?$d128, 'd128 is 0';
+  $d128 = BSON::Decimal128;
+  nok ?$d128, 'd128 not defined';
 }
 
 #-------------------------------------------------------------------------------
