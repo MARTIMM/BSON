@@ -14,37 +14,6 @@ use BSON::Binary;
 use BSON::Decimal128;
 
 #-------------------------------------------------------------------------------
-# BSON type codes
-constant C-DOUBLE             = 0x01;
-constant C-STRING             = 0x02;
-constant C-DOCUMENT           = 0x03;
-constant C-ARRAY              = 0x04;
-constant C-BINARY             = 0x05;
-constant C-UNDEFINED          = 0x06;         # Deprecated
-constant C-OBJECTID           = 0x07;
-constant C-BOOLEAN            = 0x08;
-constant C-DATETIME           = 0x09;
-constant C-NULL               = 0x0A;
-constant C-REGEX              = 0x0B;
-constant C-DBPOINTER          = 0x0C;         # Deprecated
-constant C-JAVASCRIPT         = 0x0D;
-constant C-DEPRECATED         = 0x0E;         # Deprecated
-constant C-JAVASCRIPT-SCOPE   = 0x0F;
-constant C-INT32              = 0x10;
-constant C-TIMESTAMP          = 0x11;         # Used internally
-constant C-INT64              = 0x12;
-constant C-DECIMAL128         = 0x13;
-constant C-MIN-KEY            = 0xFF;
-constant C-MAX-KEY            = 0x7F;
-
-#-------------------------------------------------------------------------------
-# Fixed sizes
-constant C-INT32-SIZE         = 4;
-constant C-INT64-SIZE         = 8;
-constant C-DOUBLE-SIZE        = 8;
-constant C-DECIMAL128-SIZE    = 16;
-
-#-------------------------------------------------------------------------------
 class Document does Associative {
 
   subset Index of Int where $_ >= 0;
@@ -929,7 +898,7 @@ class Document does Associative {
     # Get the size of the (nested-)document
     #
     my Int $doc-size = decode-int32( $!encoded-document, $!index);
-    $!index += C-INT32-SIZE;
+    $!index += BSON::C-INT32-SIZE;
 
     while $!encoded-document[$!index] !~~ 0x00 {
       self!decode-element;
@@ -1063,11 +1032,11 @@ class Document does Associative {
       when BSON::C-BINARY {
 
         my Int $buf-size = decode-int32( $!encoded-document, $!index);
-        my Int $i = $!index + C-INT32-SIZE;
+        my Int $i = $!index + BSON::C-INT32-SIZE;
 
         # Step over size field, subtype and binary data
         #
-        $!index += C-INT32-SIZE + 1 + $buf-size;
+        $!index += BSON::C-INT32-SIZE + 1 + $buf-size;
 
         %!promises{$key} = Promise.start( {
             @!values[$idx] = BSON::Binary.decode(
@@ -1194,7 +1163,7 @@ class Document does Associative {
 
         my Int $i1 = $!index;
         my Int $js-size = decode-int32( $!encoded-document, $i1);
-        my Int $i2 = $!index + C-INT32-SIZE + $js-size;
+        my Int $i2 = $!index + BSON::C-INT32-SIZE + $js-size;
         my Int $js-scope-size = decode-int32( $!encoded-document, $i2);
 
         $!index += (BSON::C-INT32-SIZE + $js-size + $js-scope-size);
