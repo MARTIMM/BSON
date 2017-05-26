@@ -6,9 +6,8 @@ use BSON::Decimal128;
 #-------------------------------------------------------------------------------
 subtest 'init decimal128 nummerator/denominator', {
   my BSON::Decimal128 $d128 .= new( 2, 4);
-  isa-ok $d128, BSON::Decimal128;
 
-  is ~$d128, '0.5', 'can be coersed to string';
+  like ~$d128, /^ '0.5' /, 'can be coersed to string';
   is $d128 * 2.3, 1.15, 'calculations can be done directly';
   ok ($d128 * 2.3) ~~ FatRat, 'type of calculation is FatRat';
 
@@ -25,10 +24,9 @@ subtest 'init decimal128 nummerator/denominator', {
 #-------------------------------------------------------------------------------
 subtest 'init decimal128 with Num and others', {
   my BSON::Decimal128 $d128 .= new(:num(1.34e4));
-  is $d128, 13400.0, 'Num init ok';
+  is +$d128, 13400.0, 'Num init ok';
 
   $d128 .= new(:rat(2/52));
-  note +$d128;
   is-approx +$d128, 0.038462, 1e-5, 'Rat init ok';
 
   $d128 .= new(:str<12.345>);
