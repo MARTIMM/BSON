@@ -1,4 +1,9 @@
+// gcc -o d128 d128.c
+
 #include <stdio.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <string.h>
 
 #define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
 #define byte unsigned char
@@ -15,14 +20,15 @@ void printByteBin( byte b ) {
 }
 
 //-----------------------------------------------------------------------------
-int main( int argc, char *args[]) {
+void showD128Pattern( double x ) {
 
   struct bits {
     _Decimal128 d128;
     byte b128[16];
   } v;
 
-  v.d128 = 1;
+  v.d128 = x;
+  printf( "N = %f: ", x);
   for( int i=0; i<16; i++) {
     printf( " %02x", v.b128[i]);
   }
@@ -34,4 +40,13 @@ int main( int argc, char *args[]) {
   }
 
   printf( "\n");
+}
+
+//-----------------------------------------------------------------------------
+int main( int argc, char *args[]) {
+
+  for( int i = 1; i < argc; i++) {
+printf( "A: %s, %f\n", args[i], atof(args[i]));
+    showD128Pattern(atof(args[i]));
+  }
 }
