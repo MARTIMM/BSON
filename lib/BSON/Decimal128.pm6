@@ -14,12 +14,16 @@ unit package BSON:auth<github:MARTIMM>;
 class Decimal128 {
 
   constant C-BIAS-D128 = 6176;
+  constant C-EMAX-D128 = 6144;
+  constant C-EMIN-D128 = -6143;
   constant C-ZERO-ORD = '0'.ord;
 
   #----------------------------------------------------------------------------
-  has Buf $!internal .= new( 16 xx 0 );
+  has Buf $!internal .= new( 0x00 xx 16 );
   has FatRat $!number;
   has Str $!string;
+  has Bool $!is-inf;
+  has Bool $!is-nan;
 
   has Buf $!bcd8;
   has Buf $!dpd;
@@ -39,28 +43,49 @@ class Decimal128 {
   #----------------------------------------------------------------------------
   # FatRat initialization
   multi submethod BUILD ( FatRat:D :$!number! ) {
+
+    # store number an get string representation then remove trailing spaces
     $!string = $!number.fmt('%34.34f');
+    $!string ~~ s/ '0'+ $ //;
   }
 
   #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   # init using Rat
   multi submethod BUILD ( Rat:D :$rat! ) {
+    $!is-inf = $!is-nan = False;
     $!number = $rat.FatRat;
     $!string = $!number.fmt('%34.34f');
+    $!string ~~ s/ '0'+ $ //;
   }
 
   #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   # init using Num. it is possible to define Inf and NaN with Num.
   multi submethod BUILD ( Num:D :$num! ) {
-    $!number = $num.FatRat;
-    $!string = $!number.fmt('%34.34f');
+
+    $!is-inf = $!is-nan = False;
+    if $num ~~ any(Inf,-Inf) {
+      $!is-inf = True;
+      $!number .= new( $num.sign, 1);
+    }
+
+    elsif $num ~~ NaN {
+      $!is-nan = True;
+    }
+
+    else {
+      $!number = $num.FatRat;
+      $!string = $!number.fmt('%34.34f');
+      $!string ~~ s/ '0'+ $ //;
+    }
   }
 
   #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   # init using string
   multi submethod BUILD ( Str:D :$str! ) {
+    $!is-inf = $!is-nan = False;
     $!number = $str.FatRat;
-    $!string = $str;
+    $!string = $!number.fmt('%34.34f');
+    $!string ~~ s/ '0'+ $ //;
   }
 
   #----------------------------------------------------------------------------
@@ -85,14 +110,73 @@ class Decimal128 {
   # encode to BSON binary
   multi method encode ( --> Buf ) {
 
-    my Buf $exponent;
-    my Buf $coefficient;
-    my Buf $combination;
+    #my Buf $exponent;
+    #my Buf $coefficient;
+    #my Buf $combination;
 
-    my Bool $s = $!number.sign;
-    my Int $e = 0;
 
-    my $dot = $!number.index('.');
+    # Test for special cases NaN and Inf
+    if $!is-nan {
+      # NaN, sign bit set to 0 but ignored like the rest of the bytes
+      $!internal .= new( 0x7c, 0x00 xx 15);
+    }
+
+    elsif $!is-inf {
+      my Int $s = $!number.sign;
+      if $s == 1 {
+        # +Inf
+        $!internal .= new( 0x78, 0x00 xx 15);
+      }
+
+      else {
+        # -Inf
+        $!internal .= new( 0xf8, 0x00 xx 15);
+      }
+    }
+
+    # all other finite cases
+    else {
+      my Int $s = $!number.sign;
+note "string: $!string, $s";
+      my $chars = $!string.chars;
+      my $index = $!string.index('.');
+      my $exponent;
+      if $!string ~~ m/^ '0' / {
+        $exponent = 0;
+      }
+
+      else {
+        # when no dot is found the exponent is not changed.
+        $exponent = $index // $exponent;
+      }
+
+      my $adj-exponent;
+      my $coefficient = $!string;
+      if ? $index {
+        $adj-exponent = $chars - $index - 1;
+        $coefficient ~~ s/'.'//;
+      }
+
+      else {
+        $adj-exponent = $exponent;
+      }
+
+      # check number of characters in coefficient
+      die "coeff too big" if $coefficient.chars > 34;
+
+      # check for exponent
+      die "exp too large" if $adj-exponent > C-EMAX-D128;
+      die "exp too small" if $adj-exponent > C-EMIN-D128;
+
+      $adj-exponent += C-BIAS-D128;
+
+
+      self.bcd2dpd(self.bcd8($coefficient));
+
+
+    }
+
+    $!internal;
   }
 
   #----------------------------------------------------------------------------
