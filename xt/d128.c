@@ -8,6 +8,10 @@
 #define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
 #define byte unsigned char
 
+# Test for smaller decimal types
+_Decimal64 d64 = 10.2e4;
+_Decimal32 d32 = 1e-2;
+
 //-----------------------------------------------------------------------------
 void printByteBin( byte b ) {
   printf( BYTE_TO_BINARY_PATTERN,
