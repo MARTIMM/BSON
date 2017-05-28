@@ -110,9 +110,20 @@ class Decimal128 {
   # encode to BSON binary
   multi method encode ( --> Buf ) {
 
-    #my Buf $exponent;
-    #my Buf $coefficient;
-    #my Buf $combination;
+    # 34 digits precision of which one digit of 4 bits is merged into the
+    # space of 3 bits and placed in the combination field together with 2 bits
+    # from the exponent. Thus;
+
+    # Combination
+    # field (5 bits) 	 Type 	    Exponent       Coefficient
+    #               	            MSBs (2 bits)  MSD (4 bits)
+    # a b c d e 	     Finite 	  a b 	         0 c d e
+    # 1 1 c d e 	     Finite 	  c d 	         1 0 0 e
+    # 1 1 1 1 0 	     Infinity 	- - 	         - - - -
+    # 1 1 1 1 1        NaN        - - 	         - - - -
+
+    # For the rest of the precision 33 digits as DPD 33/3 * 10 = 110 bits
+    # Leaves us an exponent of 128 - 1(sign) - 5(combination) - 110 = 12 bits
 
 
     # Test for special cases NaN and Inf
@@ -168,10 +179,13 @@ note "string: $!string, $s";
       die "exp too large" if $adj-exponent > C-EMAX-D128;
       die "exp too small" if $adj-exponent > C-EMIN-D128;
 
+      # get the coefficient. the MSByte is at the end of the array
+      self.bcd2dpd(self.bcd8($coefficient));
+
+
       $adj-exponent += C-BIAS-D128;
 
 
-      self.bcd2dpd(self.bcd8($coefficient));
 
 
     }
