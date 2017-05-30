@@ -3,6 +3,7 @@ use Test;
 
 use BSON::Decimal128;
 
+#`{{
 #-------------------------------------------------------------------------------
 subtest 'd128 bcd', {
   my BSON::Decimal128 $d128 .= new(:str<234>);
@@ -13,6 +14,7 @@ subtest 'd128 bcd', {
   is-deeply $d128.bcd(709223), Buf.new( 0x23, 0x92, 0x70), 'BCD 709223 ok';
   is-deeply $d128.bcd('872'), Buf.new( 0x72, 0x08), "BCD '872' ok";
 }
+}}
 
 #-------------------------------------------------------------------------------
 subtest 'd128 bcd8', {
@@ -24,8 +26,9 @@ subtest 'd128 bcd8', {
 #-------------------------------------------------------------------------------
 subtest 'd128 dpd', {
   my BSON::Decimal128 $d128 .= new(:str<234>);
-  is-deeply $d128.bcd2dpd($d128.bcd8('245')), Buf.new( 0x02, 0xc2), 'dpd 245';
-  is-deeply $d128.bcd2dpd($d128.bcd8('248')), Buf.new( 0x01, 0x4c), 'dpd 248';
+  is-deeply $d128.bcd2dpd($d128.bcd8('245')), Buf.new( 0x45, 0x01), 'dpd 245';
+  is-deeply $d128.bcd2dpd($d128.bcd8('248')), Buf.new( 0x4c, 0x00), 'dpd 248';
+#`{{
   is-deeply $d128.bcd2dpd($d128.bcd8('295')), Buf.new( 0x02, 0xba), 'dpd 295';
   is-deeply $d128.bcd2dpd($d128.bcd8('298')), Buf.new( 0x01, 0x1e), 'dpd 298';
   is-deeply $d128.bcd2dpd($d128.bcd8('945')), Buf.new( 0x02, 0xc9), 'dpd 945';
@@ -35,7 +38,11 @@ subtest 'd128 dpd', {
 
   is-deeply $d128.bcd2dpd($d128.bcd8('945898')),
             Buf.new( 0x01, 0xfa, 0xc9), 'dpd 945898';
+}}
 }
+
+done-testing;
+=finish
 
 #-------------------------------------------------------------------------------
 subtest 'init decimal128 nummerator/denominator', {
@@ -81,7 +88,31 @@ subtest 'encode decimal128', {
   $b = $d128.encode;
   is-deeply $b, Buf.new( 0x7c, 0x00 xx 15), 'NaN ok';
 
+  $d128 .= new(:num(1e0));
+  $b = $d128.encode;
+  is-deeply $b, Buf.new(
+    0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x40, 0x30
+  ), '1';
+
+#`{{
+  $d128 .= new( 2, 1);
+  $b = $d128.encode;
+  is-deeply $b, Buf.new(
+      0x10, 0xd0, 0x3c, 0xf1, 0xfd, 0x7f, 0x00, 0x00,
+      0x80, 0x05, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00
+    ),
+    '2';
+
+  $d128 .= new( 9999999999999999455752309870428160, 1);
+  $b = $d128.encode;
+  is-deeply $b, Buf.new(
+      0xb0, 0xf6, 0xf1, 0x74, 0xff, 0x7f, 0x00, 0x00,
+      0x80, 0x05, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00
+    ),
+    '9999999999999999455752309870428160';
+}}
 }
 
 #-------------------------------------------------------------------------------
-done-testing
+done-testing;

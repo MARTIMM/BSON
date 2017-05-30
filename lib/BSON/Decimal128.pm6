@@ -42,20 +42,13 @@ class Decimal128 {
 
   #----------------------------------------------------------------------------
   # FatRat initialization
-  multi submethod BUILD ( FatRat:D :$!number! ) {
-
-    # store number an get string representation then remove trailing spaces
-    $!string = $!number.fmt('%34.34f');
-    $!string ~~ s/ '0'+ $ //;
-  }
+  multi submethod BUILD ( FatRat:D :$!number! ) {  }
 
   #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   # init using Rat
   multi submethod BUILD ( Rat:D :$rat! ) {
     $!is-inf = $!is-nan = False;
     $!number = $rat.FatRat;
-    $!string = $!number.fmt('%34.34f');
-    $!string ~~ s/ '0'+ $ //;
   }
 
   #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -63,7 +56,7 @@ class Decimal128 {
   multi submethod BUILD ( Num:D :$num! ) {
 
     $!is-inf = $!is-nan = False;
-    if $num ~~ any(Inf,-Inf) {
+    if $num ~~ any( Inf, -Inf) {
       $!is-inf = True;
       $!number .= new( $num.sign, 1);
     }
@@ -74,8 +67,6 @@ class Decimal128 {
 
     else {
       $!number = $num.FatRat;
-      $!string = $!number.fmt('%34.34f');
-      $!string ~~ s/ '0'+ $ //;
     }
   }
 
@@ -84,14 +75,18 @@ class Decimal128 {
   multi submethod BUILD ( Str:D :$str! ) {
     $!is-inf = $!is-nan = False;
     $!number = $str.FatRat;
-    $!string = $!number.fmt('%34.34f');
-    $!string ~~ s/ '0'+ $ //;
   }
 
   #----------------------------------------------------------------------------
   # return string representation for string concatenation
   method Str ( --> Str ) {
-    $!string // NaN.Str;
+    if self.defined and ?$!number {
+      $!number.Str;
+    }
+
+    else {
+      NaN.Str;
+    }
   }
 
   #----------------------------------------------------------------------------
@@ -124,7 +119,7 @@ class Decimal128 {
 
     # For the rest of the precision 33 digits as DPD 33/3 * 10 = 110 bits
     # Leaves us an exponent of 128 - 1(sign) - 5(combination) - 110 = 12 bits
-
+    # With 2 bits exponent in the combination field it gives a total of 14 bits.
 
     # Test for special cases NaN and Inf
     if $!is-nan {
@@ -147,11 +142,19 @@ class Decimal128 {
 
     # all other finite cases
     else {
-      my Int $s = $!number.sign;
-note "string: $!string, $s";
-      my $chars = $!string.chars;
-      my $index = $!string.index('.');
-      my $exponent;
+      # store number an get string representation then remove trailing spaces
+      $!string = $!number.fmt('%34.34f');
+      $!string ~~ s/ '0'+ $ // if $!string.index('.');
+
+      # reset any previous values
+      $!internal .= new(0x00 xx 16);
+
+      # set sign bit
+      $!internal[15] = 0x80 if $!number.sign == -1;
+
+note "string: $!string";
+      my Int $index = $!string.index('.');
+      my Int $exponent;
       if $!string ~~ m/^ '0' / {
         $exponent = 0;
       }
@@ -160,11 +163,12 @@ note "string: $!string, $s";
         # when no dot is found the exponent is not changed.
         $exponent = $index // $exponent;
       }
+note "ex 0: $exponent";
 
-      my $adj-exponent;
-      my $coefficient = $!string;
+      my Int $adj-exponent;
+      my Str $coefficient = $!string;
       if ? $index {
-        $adj-exponent = $chars - $index - 1;
+        $adj-exponent = $!string.chars - $index - 1;
         $coefficient ~~ s/'.'//;
       }
 
@@ -172,22 +176,64 @@ note "string: $!string, $s";
         $adj-exponent = $exponent;
       }
 
-      # check number of characters in coefficient
-      die "coeff too big" if $coefficient.chars > 34;
-
-      # check for exponent
-      die "exp too large" if $adj-exponent > C-EMAX-D128;
-      die "exp too small" if $adj-exponent > C-EMIN-D128;
-
-      # get the coefficient. the MSByte is at the end of the array
-      self.bcd2dpd(self.bcd8($coefficient));
-
-
       $adj-exponent += C-BIAS-D128;
 
+note "coeff 1: $coefficient";
+note "ex 1: $adj-exponent";
+
+      # Check number of characters in coefficient
+      die "coeff too big" if $coefficient.chars > 34;
+
+      # Check for exponent
+#      die "exp too large" if $adj-exponent > C-EMAX-D128;
+#      die "exp too small" if $adj-exponent > C-EMIN-D128;
 
 
+      # Get the coefficient. The MSByte is at the end of the array
+      self.bcd2dpd(self.bcd8($coefficient));
 
+      # Copy 13 bytes and 6 bits into the result, a total of 110 bits
+      for ^14 -> $i {
+        $!internal[$i] = $!dpd[$i];
+      }
+
+      # Following is needed because the 2 bits map to a part of the last digit
+      # which must go to the combination bits. on these 2 bits, the exponent
+      # must start.
+      $!internal[13] +&= 0x3f;
+
+      # Get the last digit and copy to combination bits. Position the bits to
+      # the spot where it should come in the combination field.
+      my Int $c = $!dpd[14] +& 0xc0;
+      $c +>= 4;
+      $c +|= (($!dpd[15] +& 0x03) +< 4);
+
+      # If digit larger than 7 the bit at 0x20 is set. if so, bit at 0x40
+      # must be set too.
+      $c +|= 0x40 if $c +& 0x20;
+
+
+      # Get the exponent and copy 2 MSBits of it to the combination field
+      my $two-msb = $adj-exponent +& 0x3000;
+      if $c +& 0x20 {
+        $c +|= ($two-msb +> 1);
+      }
+
+      else {
+        $c +|= ($two-msb +< 1);
+      }
+
+      # copy component into the result
+      $!internal[15] +|= $c;
+
+      # copy the rest of the exponent
+      # next two MSbits of exponent in first byte, then a byte, then last 2bits
+      $!internal[15] +|= (($adj-exponent +& 0x0c00) +> 8); # ?
+      $!internal[14] +|= (($adj-exponent +& 0x03fc) +> 2);
+      $!internal[13] +|= (($adj-exponent +& 0x0003) +< 5); # ?
+
+note "D128:\n", ($!internal>>.fmt(' %08b')).join('');
+note "D128:\n", $!internal;
     }
 
     $!internal;
@@ -207,38 +253,41 @@ note "string: $!string, $s";
   # compress BCD to Densely Packed Decimal
   method bcd2dpd( Buf $bcd8? --> Buf ) {
 
-    $!bcd8 //= $bcd8;
+    $!bcd8 = $bcd8 // $!bcd8;
     die '8bit BCD buffer not defined' unless ? $!bcd8;
 
+    # init result bits array
     my @dpd = ();
 
+    # match to multple of 3 digits.
     while ! ($!bcd8.elems %% 3) {
       $!bcd8.push(0);
     }
 
-    # Pack every 3 nibles into 10 bits
+    # Pack every 3 nibles (each in a byte) into 10 bits
     for @$!bcd8 -> $b1, $b2, $b3 {
 
       my @bit-array = ();
-      @bit-array.push( |map {$_ - C-ZERO-ORD}, $b1.fmt('%04b').ords );
-      @bit-array.push( |map {$_ - C-ZERO-ORD}, $b2.fmt('%04b').ords );
-      @bit-array.push( |map {$_ - C-ZERO-ORD}, $b3.fmt('%04b').ords );
-#note 'bit array:   ', @bit-array;
+      @bit-array.push( |map {$_ - C-ZERO-ORD}, $b1.fmt('%04b').ords.reverse );
+      @bit-array.push( |map {$_ - C-ZERO-ORD}, $b2.fmt('%04b').ords.reverse );
+      @bit-array.push( |map {$_ - C-ZERO-ORD}, $b3.fmt('%04b').ords.reverse );
+note "bit array $b1, $b2, $b3 for dpd:    ", @bit-array;
 
       my Int $msb-bits = 0;
       my @dense-array = ();
 
-      $msb-bits = (@bit-array[0] +< 2) +|
-                  (@bit-array[4] +< 1) +|
-                  (@bit-array[8]);
-#note "msb-bits: ", $msb-bits.fmt('%03b');
+      $msb-bits = (@bit-array[3] +< 2) +|         # $b1 sign
+                  (@bit-array[7] +< 1) +|         # $b2 sign
+                  (@bit-array[11]);               # $b3 sign
+note "msb-bits for dpd: ", $msb-bits.fmt('%03b');
 
       # Compression: (abcd)(efgh)(ijkm) becomes (pqr)(stu)(v)(wxy)
       given $msb-bits {
 
         # 000 => bcd fgh 0 jkm 	All digits are small
         when 0b000 {
-          @dense-array = |@bit-array[1..3], |@bit-array[5..11];
+          @dense-array = |@bit-array[0..2], 0, |@bit-array[4..6],
+                         |@bit-array[8..10];
         }
 
         # 001 => bcd fgh 1 00m   Right digit is large [this keeps 0-9 unchanged]
@@ -261,8 +310,8 @@ note "string: $!string, $s";
 
         # 100 => jkd fgh 1 10m   Left digit is large
         when 0b100 {
-          @dense-array = |@bit-array[9..10], @bit-array[3], |@bit-array[5..7],
-                         1, 1, 0, @bit-array[11];
+          @dense-array = @bit-array[11], 0, 1, 1, |@bit-array[4..6],
+          @bit-array[8], |@bit-array[1,2];
         }
 
         # 101 => fgd 01h 1 11m   Middle digit is small [L & R are large]
@@ -284,25 +333,29 @@ note "string: $!string, $s";
         }
       }
 
-#note 'dense array: ', @dense-array;
+note 'dense array:', ' ' x 18, @dense-array;
       @dpd.push(|@dense-array);
     }
-#note 'dense array result: ', @dpd;
+note 'dense array result: ', ' ' x 10, @dpd;
 
+    # make multiple of 8 bits to fit bytes
+    @dpd = @dpd; #.reverse;
     while ! (@dpd.elems %% 8) {
-      @dpd.unshift(0);
+#      @dpd.unshift(0);
+      @dpd.push(0);
     }
-#note 'corrected dense array result: ', @dpd;
+note 'corrected dense array result: ', @dpd; #, ' (reversed)';
 
     $!dpd = Buf.new;
     for @dpd -> $b0, $b1, $b2, $b3, $b4, $b5, $b6, $b7 {
-      $!dpd.push(:2(( $b0, $b1, $b2, $b3, $b4, $b5, $b6, $b7).join('')));
+      $!dpd.push(:2(( $b0, $b1, $b2, $b3, $b4, $b5, $b6, $b7).reverse.join('')));
     }
 
-#note 'dpd: ', $!dpd;
+note 'dpd: ', $!dpd;
     $!dpd;
   }
 
+#`{{
   #----------------------------------------------------------------------------
   multi method bcd ( Int $n --> Buf ) {
     self.bcd($n.Str);
@@ -326,6 +379,7 @@ note "string: $!string, $s";
 
     $bcd;
   }
+}}
 
   #----------------------------------------------------------------------------
   multi method bcd8 ( Int $n --> Buf ) {
@@ -333,8 +387,10 @@ note "string: $!string, $s";
   }
 
   #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  # Little endian of a BSD representation (BSON likes litle endian)
+  # Little endian of a BSD representation (BSON likes litle endian).
+  # One digit per byte. This is easier to process later on
   multi method bcd8 ( Str $sn --> Buf ) {
+#note "string for bcd8: $sn";
 
     $!bcd8 .= new();
 
@@ -343,6 +399,7 @@ note "string: $!string, $s";
       $!bcd8.push($digit);
     }
 
+#note "bcd8: ", $!bcd8;
     $!bcd8;
   }
 }
