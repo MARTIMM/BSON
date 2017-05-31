@@ -9,5 +9,6 @@ Old/*
 *.log
 
 xt/decNumber/*
+xt/dfpal/*
 xt/d128-v[1-9]
 xt/e*
