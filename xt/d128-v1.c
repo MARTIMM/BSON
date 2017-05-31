@@ -4,6 +4,7 @@
 
 #define DECNUMDIGITS 34            // work with up to 34 digits
 #include "decNumber.h"             // base number library
+#include "decimal128.h"
 
 #define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
 #define byte unsigned char
@@ -29,11 +30,13 @@ void showD128Pattern( char *x ) {
 
 
   union bits {
-    decNumber d128;
+    decimal128 d128;
     byte b128[16];
   } v;
 
-  decNumberFromString( &v.d128, x, &set);
+  decNumber dn;
+  decNumberFromString( &dn, x, &set);
+  decimal128FromNumber( &(v.d128), &dn, &set);
 
 
   printf( "N = %s\n  ", x);

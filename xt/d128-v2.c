@@ -1,10 +1,11 @@
+// https://raw.githubusercontent.com/libdfp/libdfp/master/README.user
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
 #define byte unsigned char
-
 //-----------------------------------------------------------------------------
 void printByteBin( byte b ) {
   printf( BYTE_TO_BINARY_PATTERN,
@@ -17,16 +18,19 @@ void printByteBin( byte b ) {
 }
 
 //-----------------------------------------------------------------------------
-void showD128Pattern( double x ) {
+void showD128Pattern( char *x ) {
 
   union bits {
     _Decimal128 d128;
     byte b128[16];
   } v;
-  v.d128 = x;
+
+  char *rest;
+  v.d128 = strtod( x, &rest);
+  printf( "length: %DDf\n", v.d128);
 
 
-  printf( "N = %f\n  ", x);
+  printf( "N = %s\n  ", x);
   for( int i=0; i<16; i++) {
     printf( " 0x%02x,", v.b128[i]);
     if( !((i+1) % 8) ) { printf("\n  "); }
@@ -46,6 +50,6 @@ void showD128Pattern( double x ) {
 int main( int argc, char *args[]) {
 
   for( int i = 1; i < argc; i++) {
-    showD128Pattern(atof(args[i]));
+    showD128Pattern(args[i]);
   }
 }

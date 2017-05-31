@@ -276,9 +276,9 @@ note "bit array $b1, $b2, $b3 for dpd:    ", @bit-array;
       my Int $msb-bits = 0;
       my @dense-array = ();
 
-      $msb-bits = (@bit-array[3] +< 2) +|         # $b1 sign
+      $msb-bits = (@bit-array[11] +< 2) +|        # $b3 sign -> msb
                   (@bit-array[7] +< 1) +|         # $b2 sign
-                  (@bit-array[11]);               # $b3 sign
+                  (@bit-array[3]);                # $b1 sign
 note "msb-bits for dpd: ", $msb-bits.fmt('%03b');
 
       # Compression: (abcd)(efgh)(ijkm) becomes (pqr)(stu)(v)(wxy)
@@ -293,43 +293,44 @@ note "msb-bits for dpd: ", $msb-bits.fmt('%03b');
         # 001 => bcd fgh 1 00m   Right digit is large [this keeps 0-9 unchanged]
         # Same as for 0b000
         when 0b001 {
-          @dense-array = |@bit-array[1..3], |@bit-array[5..11];
+          @dense-array = @bit-array[0], 0, 0, 1, |@bit-array[4..6],
+                         |@bit-array[8..10];
         }
 
         # 010 => bcd jkh 1 01m   Middle digit is large
         when 0b010 {
-          @dense-array = |@bit-array[1..3], |@bit-array[9..10], @bit-array[7],
-                         1, 0, 1, @bit-array[11];
+          @dense-array = @bit-array[0], 1, 0, 1, @bit-array[4],
+                         |@bit-array[ 1, 2], |@bit-array[8..10];
         }
 
         # 011 => bcd 10h 1 11m   Left digit is small [M & R are large]
         when 0b011 {
-          @dense-array = |@bit-array[1..3], 1, 0, @bit-array[7],
-                         1, 1, 1, @bit-array[11];
+          @dense-array = @bit-array[0], 1, 1, 1, @bit-array[4],
+                         0, 1, |@bit-array[8..10];
         }
 
         # 100 => jkd fgh 1 10m   Left digit is large
         when 0b100 {
-          @dense-array = @bit-array[11], 0, 1, 1, |@bit-array[4..6],
-          @bit-array[8], |@bit-array[1,2];
+          @dense-array = @bit-array[0], 0, 1, 1, |@bit-array[4..6],
+                         @bit-array[8], |@bit-array[ 1, 2];
         }
 
         # 101 => fgd 01h 1 11m   Middle digit is small [L & R are large]
         when 0b101 {
-          @dense-array = |@bit-array[5..6], @bit-array[3],
-                         0, 1, @bit-array[7], 1, 1, 1, @bit-array[11];
+          @dense-array = @bit-array[0], 1, 1, 1, @bit-array[4],
+                         1, 0, @bit-array[8], |@bit-array[ 5, 6];
         }
 
         # 110 => jkd 00h 1 11m   Right digit is small [L & M are large]
         when 0b110 {
-          @dense-array = |@bit-array[9..10], @bit-array[3], 0, 0,
-                         @bit-array[7], 1, 1, 1, @bit-array[11];
+          @dense-array = @bit-array[0], 1, 1, 1, @bit-array[4],
+                         0, 0, @bit-array[8], |@bit-array[ 1, 2];
         }
 
         # 111 => 00d 11h 1 11m   All digits are large; two bits are unused
         when 0b111 {
-          @dense-array = 0, 0, @bit-array[3], 1, 1, @bit-array[7],
-                         1, 1, 1, @bit-array[11];
+          @dense-array = @bit-array[0], 1, 1, 1, @bit-array[4],
+                         1, 1, @bit-array[8], 0, 0;
         }
       }
 
