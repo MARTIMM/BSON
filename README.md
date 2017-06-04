@@ -2,7 +2,7 @@
 
 ![Face](logotype/logo_32x32.png) [![Build Status](https://travis-ci.org/MARTIMM/BSON.svg?branch=master)](https://travis-ci.org/MARTIMM/BSON) [![AppVeyor Build Status](https://ci.appveyor.com/api/projects/status/github/MARTIMM/bson?branch=master&passingText=Windows%20-%20OK&failingText=Windows%20-%20FAIL&pendingText=Windows%20-%20pending&svg=true)](https://ci.appveyor.com/project/MARTIMM/bson/branch/master) [![License](http://martimm.github.io/label/License-label.svg)](http://www.perlfoundation.org/artistic_license_2_0)
 
-Implements [BSON specification](http://bsonspec.org/).
+Implements [BSON specification][spec].
 
 ## Installing BSON
 
@@ -57,13 +57,24 @@ $new-doc.decode($enc-doc);
 ## Documentation
 
 BSON/Document.pod
-* [BSON::Binary](https://github.com/MARTIMM/BSON/blob/master/doc/Binary.pdf)
-* [BSON::Document](https://github.com/MARTIMM/BSON/blob/master/doc/Document.pdf)
+* [BSON::Binary][Binary]
+* [BSON::Document][Document]
 
-* [Release notes](https://github.com/MARTIMM/BSON/blob/master/doc/CHANGES.md)
-* [Bugs, todo](https://github.com/MARTIMM/BSON/blob/master/doc/TODO.md)
+* [Release notes][notes]
+* [Bugs, todo][todo]
 
 
 ## Authors
 
-Original creator of the modules is Pawel Pabian (2011-2015, v0.3)(bbkr on github). Current maintainer Marcel Timmerman (2015-present)(MARTIMM on github)
+Original creator of the modules is Pawel Pabian (2011-2015, v0.3)(bbkr on github).
+Current maintainer Marcel Timmerman (2015-present)(MARTIMM on github).
+
+
+
+[spec]: http://bsonspec.org/
+
+[Binary]: https://github.com/MARTIMM/BSON/blob/master/doc/Binary.pdf
+[Document]: https://github.com/MARTIMM/BSON/blob/master/doc/Document.pdf
+
+[notes]: https://github.com/MARTIMM/BSON/blob/master/doc/CHANGES.md
+[todo]: https://github.com/MARTIMM/BSON/blob/master/doc/TODO.md
