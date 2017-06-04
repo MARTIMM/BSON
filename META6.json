@@ -9,7 +9,8 @@
   ],
   "depends": [
     "Digest::MD5",
-    "UUID"
+    "UUID",
+    "Test"
   ],
   "description": "BSON encoding/decoding, used in MongoDB drivers",
   "license": "Artistic-2.0",
@@ -20,10 +21,9 @@
     "BSON::Document":           "lib/BSON/Document.pm6",
     "BSON::Javascript":         "lib/BSON/Javascript.pm6",
     "BSON::ObjectId":           "lib/BSON/ObjectId.pm6",
-    "BSON::Regex":              "lib/BSON/Regex.pm6",
-    "BSON::Decimal128":         "lib/BSON/Decimal128.pm6"
+    "BSON::Regex":              "lib/BSON/Regex.pm6"
   },
   "source-url": "git://github.com/MARTIMM/BSON.git",
   "perl": "6",
-  "version": "0.9.32.3"
+  "version": "0.9.33"
 }
