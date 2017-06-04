@@ -11,7 +11,7 @@ use BSON::ObjectId;
 use BSON::Regex;
 use BSON::Javascript;
 use BSON::Binary;
-use BSON::Decimal128;
+#use BSON::Decimal128;
 
 #-------------------------------------------------------------------------------
 class Document does Associative {
@@ -830,13 +830,14 @@ class Document does Associative {
             :error("Number too $reason")
           );
         }
-
+#`{{
         when BSON::Decimal128 {
           $b = [~] Buf.new(BSON::C-DECIMAL128),
                    encode-e-name($p.key),
                    .encode;
 
         }
+}}
       }
 
       default {
@@ -1215,6 +1216,7 @@ class Document does Associative {
         );
       }
 
+#`{{
       # 128-bit Decimal
       when BSON::Decimal128 {
 
@@ -1230,7 +1232,7 @@ class Document does Associative {
           }
         );
       }
-
+}}
       default {
         # We must stop because we do not know what the length should be of
         # this particular structure.
