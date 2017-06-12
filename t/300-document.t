@@ -252,8 +252,10 @@ subtest "Exception tests", {
     my BSON::Document $d .= new;
     $d<test> = 1.2.Num;
     my Buf $b = $d.encode;
+
     # Now use encoded buffer and take a slice from it rendering it currupt.
-    $d .= new(Buf.new($b[0 ..^ ($b.elems - 2)]));
+    my BSON::Document $d2 .= new;
+    $d2.decode(Buf.new($b[0 ..^ ($b.elems - 4)]));
 
     CATCH {
       when X::BSON::Parse-document {
@@ -293,10 +295,12 @@ subtest "Exception tests", {
     $d.encode;
 
     CATCH {
-      when X::BSON::NYS {
+#note "X:: ", .WHAT;
+#      when X::BSON::NYS {
+      when X::BSON::Parse-document {
         my $m = .message;
         $m ~~ s:g/\n//;
-        like $m, /'BSON type' .* 'A<' \d+ '>'/, $m;
+        like $m, /:s BSON type \' 'A<' \d+ '>' \'/, $m;
       }
     }
   }
@@ -345,22 +349,3 @@ subtest "Exception tests", {
 #
 done-testing();
 exit(0);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
