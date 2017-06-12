@@ -7,6 +7,7 @@
 * Perl 6 Int variables are integral numbers of arbitrary size. This means that any integer can be stored as large or small as you like. Int is coded as described in version 0.8.4. When integers get larger or smaller then 64bit can describe, then the Int should be coded as a binary array of some type.
 * Support for decimal 128 type = BSON type ID \x13.
 * Tests some more exceptions of Binary
+* Better checks for wrong sizes of buffers along every type encountered
 
 ### Using libraries
 Use libraries to check decimal128 against and maybe using it as a native lib.
