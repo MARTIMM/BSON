@@ -2,6 +2,9 @@ See [semantic versioning](http://semver.org/). Please note point 4. on
 that page: *Major version zero (0.y.z) is for initial development. Anything may
 change at any time. The public API should not be considered stable*.
 
+* 0.9.34
+  * All single die statement replaced by `die X::BSON::Parse-document`.
+  * The exception objects are subject to change into a simpler class: one instead of several.
 * 0.9.33
   * Refactored code for decimal128 to other project.
   * Binary coded decimal (BCD) implemented as one digit per byte (bcd8)

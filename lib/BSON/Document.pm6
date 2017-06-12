@@ -71,7 +71,7 @@ class Document does Associative {
 
     if capture.keys {
       die X::BSON::Parse-document.new(
-        :operation("new: key => value")
+        :operation("new: " ~ capture.gist)
         :error(
           "Cannot use hash values on init.\n",
           "Set accept-hash and use assignments later"
@@ -90,9 +90,22 @@ class Document does Associative {
     # self{x} = y will end up at ASSIGN-KEY
     #
     for @$pairs -> $pair {
-      die "Pair not defined" unless ?$pair;
-      die "Key of pair not defined or empty" unless ?$pair.key;
-      die "Value of pair not defined" unless $pair.value.defined;
+#say "P: ", $pair.perl, ', ', $pair.value.defined;
+      die X::BSON::Parse-document.new(
+        :operation("new: List $pairs.gist()"),
+        :error("Pair not defined")
+      ) unless ?$pair;
+
+      die X::BSON::Parse-document.new(
+        :operation("new: List $pairs.gist()"),
+        :error("Key of pair not defined or empty")
+      ) unless ?$pair.key;
+
+      die X::BSON::Parse-document.new(
+        :operation("new: List $pairs.gist()"),
+        :error("Value of pair not defined")
+      ) unless $pair.value.defined;
+
       self{$pair.key} = $pair.value;
     }
   }
@@ -431,7 +444,7 @@ class Document does Associative {
 #say "Error at line $?LINE: ";
 #.say;
         default {
-          say "Error at $?FILE $?LINE:",  $_;
+          say "Error at $?FILE $?LINE: ",  $_;
           .rethrow;
         }
       }
@@ -602,8 +615,10 @@ class Document does Associative {
 #say "$*THREAD.id(), Broken: $key";
 #say %!promises{$key}.cause.WHAT;
 #say %!promises{$key}.cause.message;
-            die %!promises{$key}.cause;
-#            die "Promise for key '$key' broken, %!promises{$key}.cause()";
+            die X::BSON::Parse-document.new(
+              :operation<encode>,
+              :error(%!promises{$key}.cause)
+            );
           }
         }
 
@@ -702,6 +717,7 @@ class Document does Associative {
         # The keys must be in ascending numerical order.
         #
         my $pairs = (for .kv -> $k, $v { "$k" => $v });
+#say "Array, pairs: ", $pairs.perl;
         my BSON::Document $d .= new($pairs);
 #say "Array: ", $d.perl;
         $b = [~] Buf.new(BSON::C-ARRAY), encode-e-name($p.key), $d.encode;
