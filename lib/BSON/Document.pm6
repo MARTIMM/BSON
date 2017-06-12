@@ -876,7 +876,7 @@ class Document does Associative {
   #-----------------------------------------------------------------------------
   # Decoding document
   #-----------------------------------------------------------------------------
-  method decode ( Buf $data --> Nil ) {
+  method decode ( Buf:D $data --> Nil ) {
 
     $!encoded-document = $data;
 
