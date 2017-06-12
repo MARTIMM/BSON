@@ -108,7 +108,7 @@ sub encode-e-name ( Str:D $s --> Buf ) is export {
 sub encode-cstring ( Str:D $s --> Buf ) is export {
   die X::BSON::Parse-document.new(
     :operation('encode-cstring()'),
-    :error('Forbidden 0x00 sequence in $s')
+    :error("Forbidden 0x00 sequence in '$s'")
   ) if $s ~~ /\x00/;
 
   return $s.encode() ~ Buf.new(0x00);
@@ -392,6 +392,12 @@ sub decode-int64-native ( Buf:D $b, Int:D $index --> Int ) is export {
 # decode to Num from buf little endian
 #
 sub decode-double ( Buf:D $b, Int:D $index --> Num ) is export {
+
+  # Check if there are enaugh letters left
+  die X::BSON::Parse-document.new(
+    :operation<decode-double>,
+    :error('Not enaugh characters left')
+  ) if $b.elems - $index < 8;
 
   my Buf[uint8] $ble;
   if little-endian() {
