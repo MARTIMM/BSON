@@ -9,10 +9,9 @@
   ],
   "depends": [
     "Digest::MD5",
-    "UUID"
+    "UUID",
+    "Test::META"
   ],
-  "test-depends": [ "Test::META"],
-  "build-depends": [ ],
   "tags": [ "bson", "mongodb", "serialize"],
   "description": "BSON encoding/decoding, used in MongoDB drivers",
   "license": "Artistic-2.0",
