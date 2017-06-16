@@ -875,7 +875,7 @@ class Document does Associative {
   # Decoding document
   #-----------------------------------------------------------------------------
   method decode ( Buf:D $data --> Nil ) {
-
+note "Decode data: ", $data.perl;
     $!encoded-document = $data;
 
     @!keys = ();
@@ -883,22 +883,19 @@ class Document does Associative {
     @!encoded-entries = ();
 
     # Document decoding start: init index
-    #
     $!index = 0;
 
     # Decode the document, then wait for any started parallel tracks
-    #
     self!decode-document;
 
     if %!promises.elems {
       loop ( my $idx = 0; $idx < @!keys.elems; $idx++) {
         my $key = @!keys[$idx];
-#say "Prom from $key, $idx, {%!promises{$key}:exists}";
+note "Prom from $key, $idx, {%!promises{$key}:exists}";
 
         if %!promises{$key}:exists {
           # Return the Buffer slices in each entry so it can be
           # concatenated again when encoding
-          #
           @!encoded-entries[$idx] = %!promises{$key}.result;
         }
       }
@@ -916,6 +913,7 @@ class Document does Associative {
     $!index += BSON::C-INT32-SIZE;
 
     while $!encoded-document[$!index] !~~ 0x00 {
+
       self!decode-element;
     }
 
@@ -936,21 +934,18 @@ class Document does Associative {
   method !decode-element ( --> Nil ) {
 
     # Decode start point
-    #
     my $decode-start = $!index;
 
     # Get the value type of next pair
-    #
     my $bson-code = $!encoded-document[$!index++];
 
     # Get the key value, Index is adjusted to just after the 0x00
     # of the string.
-    #
     my Str $key = decode-e-name( $!encoded-document, $!index);
+note "$*THREAD.id() $key found, idx now $!index";
 
     # Keys are pushed in the proper order as they are seen in the
     # byte buffer.
-    #
     my Int $idx = @!keys.elems;
     @!keys[$idx] = $key;              # index on new location == push()
     my Int $size;
@@ -958,7 +953,6 @@ class Document does Associative {
     given $bson-code {
 
       # 64-bit floating point
-      #
       when BSON::C-DOUBLE {
 
         my Int $i = $!index;
@@ -970,7 +964,6 @@ class Document does Associative {
 #say "DBL: $key, $idx = @!values[$idx]";
 
             # Return total section of binary data
-            #
             $!encoded-document.subbuf(
               $decode-start ..^               # At bson code
               ($i + BSON::C-DOUBLE-SIZE)      # $i is at code + key further
@@ -980,14 +973,12 @@ class Document does Associative {
       }
 
       # String type
-      #
       when BSON::C-STRING {
 
         my Int $i = $!index;
         my Int $nbr-bytes = decode-int32( $!encoded-document, $!index);
 
         # Step over the size field and the null terminated string
-        #
         $!index += BSON::C-INT32-SIZE + $nbr-bytes;
 
         %!promises{$key} = Promise.start( {
@@ -1001,7 +992,6 @@ class Document does Associative {
       }
 
       # Nested document
-      #
       when BSON::C-DOCUMENT {
         my Int $i = $!index;
         my Int $doc-size = decode-int32( $!encoded-document, $i);
@@ -1009,7 +999,6 @@ class Document does Associative {
 
         # Keep this decoding out of the promise routine. It gets problems
         # when waiting for it.
-        #
         my BSON::Document $d .= new;
         $d.decode($!encoded-document.subbuf($i ..^ ($i + $doc-size)));
         @!values[$idx] = $d;
@@ -1021,7 +1010,6 @@ class Document does Associative {
       }
 
       # Array code
-      #
       when BSON::C-ARRAY {
 
         my Int $i = $!index;
@@ -1043,14 +1031,12 @@ class Document does Associative {
       # "\x05 e_name int32 subtype byte*
       # subtype = byte \x00 .. \x05, .. \xFF
       # subtypes \x80 to \xFF are user defined
-      #
       when BSON::C-BINARY {
 
         my Int $buf-size = decode-int32( $!encoded-document, $!index);
         my Int $i = $!index + BSON::C-INT32-SIZE;
 
         # Step over size field, subtype and binary data
-        #
         $!index += BSON::C-INT32-SIZE + 1 + $buf-size;
 
         %!promises{$key} = Promise.start( {
@@ -1066,7 +1052,6 @@ class Document does Associative {
       }
 
       # Object id
-      #
       when BSON::C-OBJECTID {
 
         my Int $i = $!index;
@@ -1080,21 +1065,21 @@ class Document does Associative {
       }
 
       # Boolean code
-      #
       when BSON::C-BOOLEAN {
 
         my Int $i = $!index;
         $!index++;
 
         %!promises{$key} = Promise.start( {
+note "$*THREAD.id() Decode Boolean:  $key, $idx, $decode-start, $i";
             @!values[$idx] = $!encoded-document[$i] ~~ 0x00 ?? False !! True;
+note "$*THREAD.id() Decode Boolean = @!values[$idx]";
             $!encoded-document.subbuf($decode-start .. ($i + 1));
           }
         );
       }
 
       # Datetime code
-      #
       when BSON::C-DATETIME {
         my Int $i = $!index;
         $!index += BSON::C-INT64-SIZE;
@@ -1112,6 +1097,7 @@ class Document does Associative {
         );
       }
 
+      # Null value -> Any
       when BSON::C-NULL {
         %!promises{$key} = Promise.start( {
             @!values[$idx] = Any;
@@ -1121,8 +1107,8 @@ class Document does Associative {
         );
       }
 
+      # regular expressions. these are perl5 like
       when BSON::C-REGEX {
-
         my $doc-size = $!encoded-document.elems;
         my $i1 = $!index;
         while $!encoded-document[$!index] !~~ 0x00 and $!index < $doc-size {
@@ -1149,18 +1135,15 @@ class Document does Associative {
       }
 
       # Javascript code
-      #
       when BSON::C-JAVASCRIPT {
 
         # Get the size of the javascript code text, then adjust index
         # for this size and set i for the decoding. Then adjust index again
         # for the next action.
-        #
         my Int $i = $!index;
         my Int $buf-size = decode-int32( $!encoded-document, $i);
 
         # Step over size field and the javascript text
-        #
         $!index += (BSON::C-INT32-SIZE + $buf-size);
 
         %!promises{$key} = Promise.start( {
@@ -1173,7 +1156,6 @@ class Document does Associative {
       }
 
       # Javascript code with scope
-      #
       when BSON::C-JAVASCRIPT-SCOPE {
 
         my Int $i1 = $!index;
@@ -1197,7 +1179,6 @@ class Document does Associative {
       }
 
       # 32-bit Integer
-      #
       when BSON::C-INT32 {
 
         my Int $i = $!index;
@@ -1214,7 +1195,6 @@ class Document does Associative {
       }
 
       # 64-bit Integer
-      #
       when BSON::C-INT64 {
 
         my Int $i = $!index;
@@ -1250,7 +1230,6 @@ class Document does Associative {
       default {
         # We must stop because we do not know what the length should be of
         # this particular structure.
-        #
         die X::BSON::Parse-document.new(
           :operation<decode-element()>,
           :error("BSON code '{.fmt('0x%02x')}' not supported")
