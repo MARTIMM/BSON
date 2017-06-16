@@ -37,31 +37,31 @@ class Document does Associative {
   # Make new document and initialize with a list of pairs
 #TODO better type checking:  List $pairs where all($_) ~~ Pair
 #TODO better API
-  multi method new ( List $pairs, *%h ) {
-    self.bless( :$pairs, :%h);
+  multi method new ( List $pairs ) {
+    self.bless(:$pairs);
   }
 
   # Make new document and initialize with a pair
   # No default value! is handled by new() above
   #
-  multi method new ( Pair $p, *%h ) {
+  multi method new ( Pair $p ) {
     my List $pairs = $p.List;
-    self.bless( :$pairs, :%h);
+    self.bless(:$pairs);
   }
 
   # Make new document and initialize with a sequence of pairs
   # No default value! is handled by new() above
   #
-  multi method new ( Seq $p, *%h ) {
+  multi method new ( Seq $p ) {
     my List $pairs = $p.List;
-    self.bless( :$pairs, :%h);
+    self.bless(:$pairs);
   }
 
   # Make new document and initialize with a byte array. This will call
   # decode.
   #
-  multi method new ( Buf $b, *%h ) {
-    self.bless( :buf($b), :%h);
+  multi method new ( Buf $b ) {
+    self.bless(:buf($b));
   }
 
   # Other cases. No arguments will init empty document. Named values
@@ -83,12 +83,11 @@ class Document does Associative {
   }
 
   #-----------------------------------------------------------------------------
-  multi submethod BUILD ( List :$pairs!, :%h ) {
+  multi submethod BUILD ( List :$pairs! ) {
 
-    self!initialize(:%h);
+    self!initialize;
 
     # self{x} = y will end up at ASSIGN-KEY
-    #
     for @$pairs -> $pair {
 #say "P: ", $pair.perl, ', ', $pair.value.defined;
       die X::BSON::Parse-document.new(
@@ -110,17 +109,16 @@ class Document does Associative {
     }
   }
 
-  multi submethod BUILD ( Buf :$buf!, :%h ) {
+  multi submethod BUILD ( Buf :$buf! ) {
 
-    self!initialize(:%h);
+    self!initialize;
 
     # Decode buffer data
-    #
     self.decode($buf);
   }
 
   #-----------------------------------------------------------------------------
-  method !initialize ( :%h ) {
+  method !initialize ( ) {
 
     @!keys = ();
     @!values = ();
