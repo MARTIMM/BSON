@@ -1259,7 +1259,8 @@ note "Timestamp: ", @!values[$idx];
       }}
         die X::BSON::NYI.new(
           :operation<decode-element()>,
-          :error("BSON code '{.fmt('0x%02x')}'")
+          :error("BSON code '{.fmt('0x%02x')}'"),
+          :type(BSON::C-DECIMAL128)
         );
       }
 
@@ -1268,7 +1269,8 @@ note "Timestamp: ", @!values[$idx];
         # this particular structure.
         die X::BSON::NYS.new(
           :operation<decode-element()>,
-          :error("BSON code '{.fmt('0x%02x')}'")
+          :error("BSON code '{.fmt('0x%02x')}'"),
+          :type($_)
         );
       }
     }
