@@ -13,6 +13,8 @@ use BSON::Javascript;
 use BSON::Binary;
 #use BSON::Decimal128;
 
+class Decimal128 { }
+
 #-------------------------------------------------------------------------------
 class Document does Associative {
 
@@ -483,6 +485,7 @@ class Document does Associative {
 #say .WHAT;
         when X::BSON::Parse-objectid    { .rethrow; }
         when X::BSON::Parse-document    { .rethrow; }
+        when X::BSON::NYI               { .rethrow; }
         when X::BSON::NYS               { .rethrow; }
         when X::BSON::Deprecated        { .rethrow; }
 
@@ -582,7 +585,6 @@ class Document does Associative {
   #-----------------------------------------------------------------------------
   # Called from user to get encoded document or by a request from an
   # encoding Document to encode a subdocument.
-  #
   method encode ( --> Buf ) {
 
     my Bool $still-planned = True;
@@ -844,25 +846,36 @@ class Document does Associative {
             :error("Number too $reason")
           );
         }
-#`{{
-        when BSON::Decimal128 {
-          $b = [~] Buf.new(BSON::C-DECIMAL128),
-                   encode-e-name($p.key),
-                   .encode;
+      }
 
-        }
-}}
+      when BSON::Timestamp {
+        # timestamp as an unsigned 64 bit integer
+        # '\x11' e_name int64
+        $b = [~] Buf.new(BSON::C-TIMESTAMP),
+                 encode-e-name($p.key),
+                 encode-uint64($p.value);
+      }
+
+      when Decimal128 {
+        #`{{
+        $b = [~] Buf.new(BSON::C-DECIMAL128),
+                 encode-e-name($p.key),
+                 .encode;
+
+        }}
+
+        die X::BSON::NYI.new( :operation('encode-element()'), :type($_));
       }
 
       default {
-        if .can('encode') and .can('bson-code') {
-          my $code = .bson-code;
-          $b = [~] Buf.new($code), encode-e-name($p.key), .encode;
-        }
-
-        else {
+#        if .can('encode') and .can('bson-code') {
+#          my $code = .bson-code;
+#          $b = [~] Buf.new($code), encode-e-name($p.key), .encode;
+#        }
+#
+#        else {
           die X::BSON::NYS.new( :operation('encode-element()'), :type($_));
-        }
+#        }
       }
     }
 
@@ -875,7 +888,7 @@ class Document does Associative {
   # Decoding document
   #-----------------------------------------------------------------------------
   method decode ( Buf:D $data --> Nil ) {
-note "Decode data: ", $data.perl;
+#note "Decode data: ", $data.perl;
     $!encoded-document = $data;
 
     @!keys = ();
@@ -891,7 +904,7 @@ note "Decode data: ", $data.perl;
     if %!promises.elems {
       loop ( my $idx = 0; $idx < @!keys.elems; $idx++) {
         my $key = @!keys[$idx];
-note "Prom from $key, $idx, {%!promises{$key}:exists}";
+#note "Prom from $key, $idx, {%!promises{$key}:exists}";
 
         if %!promises{$key}:exists {
           # Return the Buffer slices in each entry so it can be
@@ -920,7 +933,6 @@ note "Prom from $key, $idx, {%!promises{$key}:exists}";
     $!index++;
 
     # Check size of document with final byte location
-    #
     die X::BSON::Parse-document.new(
       :operation<decode-document()>,
       :error(
@@ -942,7 +954,7 @@ note "Prom from $key, $idx, {%!promises{$key}:exists}";
     # Get the key value, Index is adjusted to just after the 0x00
     # of the string.
     my Str $key = decode-e-name( $!encoded-document, $!index);
-note "$*THREAD.id() $key found, idx now $!index";
+#note "$*THREAD.id() $key found, idx now $!index";
 
     # Keys are pushed in the proper order as they are seen in the
     # byte buffer.
@@ -1071,9 +1083,9 @@ note "$*THREAD.id() $key found, idx now $!index";
         $!index++;
 
         %!promises{$key} = Promise.start( {
-note "$*THREAD.id() Decode Boolean:  $key, $idx, $decode-start, $i";
+#note "$*THREAD.id() Decode Boolean:  $key, $idx, $decode-start, $i";
             @!values[$idx] = $!encoded-document[$i] ~~ 0x00 ?? False !! True;
-note "$*THREAD.id() Decode Boolean = @!values[$idx]";
+#note "$*THREAD.id() Decode Boolean = @!values[$idx]";
             $!encoded-document.subbuf($decode-start .. ($i + 1));
           }
         );
@@ -1194,6 +1206,25 @@ note "$*THREAD.id() Decode Boolean = @!values[$idx]";
         );
       }
 
+      # timestamp
+      when BSON::C-TIMESTAMP {
+
+        my Int $i = $!index;
+        $!index += BSON::C-UINT64-SIZE;
+
+        %!promises{$key} = Promise.start( {
+            @!values[$idx] = BSON::Timestamp.new(
+              decode-uint64( $!encoded-document, $i)
+            );
+note "Timestamp: ", @!values[$idx];
+
+            $!encoded-document.subbuf(
+              $decode-start ..^ ($i + BSON::C-UINT64-SIZE)
+            );
+          }
+        );
+      }
+
       # 64-bit Integer
       when BSON::C-INT64 {
 
@@ -1210,9 +1241,9 @@ note "$*THREAD.id() Decode Boolean = @!values[$idx]";
         );
       }
 
-#`{{
       # 128-bit Decimal
-      when BSON::Decimal128 {
+      when BSON::C-DECIMAL128 {
+        #`{{
 
         my Int $i = $!index;
         $!index += BSON::C-DECIMAL128-SIZE;
@@ -1225,14 +1256,19 @@ note "$*THREAD.id() Decode Boolean = @!values[$idx]";
             );
           }
         );
+      }}
+        die X::BSON::NYI.new(
+          :operation<decode-element()>,
+          :error("BSON code '{.fmt('0x%02x')}'")
+        );
       }
-}}
+
       default {
         # We must stop because we do not know what the length should be of
         # this particular structure.
-        die X::BSON::Parse-document.new(
+        die X::BSON::NYS.new(
           :operation<decode-element()>,
-          :error("BSON code '{.fmt('0x%02x')}' not supported")
+          :error("BSON code '{.fmt('0x%02x')}'")
         );
       }
     }
