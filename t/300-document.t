@@ -286,43 +286,32 @@ subtest "Exception tests", {
     }
   }
 
-  try {
-    class A { }
-    my A $a .= new;
+  throws-like( {
+      class A { }
+      my A $a .= new;
 
-    my BSON::Document $d .= new;
-    $d{"A"} = $a;
-    $d.encode;
+      my BSON::Document $d .= new;
+      $d{"A"} = $a;
+      $d.encode;
+    },
+    X::BSON::Parse-document,
+    :message(/:s BSON type/)
+  );
 
-    CATCH {
-#note "X:: ", .WHAT;
-#      when X::BSON::NYS {
-      when X::BSON::Parse-document {
-        my $m = .message;
-        $m ~~ s:g/\n//;
-        like $m, /:s BSON type \' 'A<' \d+ '>' \'/, $m;
-      }
-    }
-  }
+  throws-like( {
+      my $b = Buf.new(
+        0x0B, 0x00, 0x00, 0x00,           # 11 bytes
+          0xa0,                           # Unimplemented BSON code
+          0x62, 0x00,                     # 'b'
+          0x01, 0x01, 0x00, 0x00,         # integer
+        0x00
+      );
 
-  try {
-    my $b = Buf.new(
-      0x0B, 0x00, 0x00, 0x00,           # 11 bytes
-        0xa0,                           # Unimplemented BSON code
-        0x62, 0x00,                     # 'b'
-        0x01, 0x01, 0x00, 0x00,         # integer
-      0x00
-    );
-
-    my BSON::Document $d .= new($b);
-
-    CATCH {
-      when X::BSON::Parse-document {
-        ok .message ~~ ms/'BSON code \'0xa0\' not supported'/,
-           'BSON code \'0xa0\' not supported';
-      }
-    }
-  }
+      my BSON::Document $d .= new($b);
+    },
+    X::BSON::NYS,
+    :message(/:s BSON type \'160\' is not supported/)
+  );
 
   try {
     my $b = Buf.new(
@@ -346,6 +335,5 @@ subtest "Exception tests", {
 
 #-------------------------------------------------------------------------------
 # Cleanup
-#
 done-testing();
 exit(0);
