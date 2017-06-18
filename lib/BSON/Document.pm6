@@ -1216,7 +1216,7 @@ class Document does Associative {
             @!values[$idx] = BSON::Timestamp.new(
               decode-uint64( $!encoded-document, $i)
             );
-note "Timestamp: ", @!values[$idx];
+#note "Timestamp: ", @!values[$idx];
 
             $!encoded-document.subbuf(
               $decode-start ..^ ($i + BSON::C-UINT64-SIZE)
