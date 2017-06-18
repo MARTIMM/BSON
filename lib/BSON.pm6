@@ -362,7 +362,7 @@ sub decode-int32 ( Buf:D $b, Int:D $index --> Int ) is export {
     :error('Not enaugh characters left')
   ) if $b.elems - $index < 4;
 
-  my int $ni = $b[$index]             +| $b[$index + 1] +< 0x08 +|
+  my Int $ni = $b[$index]             +| $b[$index + 1] +< 0x08 +|
                $b[$index + 2] +< 0x10 +| $b[$index + 3] +< 0x18
                ;
 
@@ -388,7 +388,7 @@ sub decode-int64 ( Buf:D $b, Int:D $index --> Int ) is export {
     :error('Not enaugh characters left')
   ) if $b.elems - $index < 8;
 
-  my int $ni = $b[$index]             +| $b[$index + 1] +< 0x08 +|
+  my Int $ni = $b[$index]             +| $b[$index + 1] +< 0x08 +|
                $b[$index + 2] +< 0x10 +| $b[$index + 3] +< 0x18 +|
                $b[$index + 4] +< 0x20 +| $b[$index + 5] +< 0x28 +|
                $b[$index + 6] +< 0x30 +| $b[$index + 7] +< 0x38
@@ -414,7 +414,7 @@ sub decode-int64-native ( Buf:D $b, Int:D $index --> Int ) is export {
 
 #------------------------------------------------------------------------------
 # decode unsigned 64 bit integer
-sub decode-uint64 ( Buf:D $b, Int:D $index --> Int ) is export {
+sub decode-uint64 ( Buf:D $b, Int:D $index --> UInt ) is export {
 
   # Check if there are enaugh letters left
   die X::BSON::Parse-document.new(
@@ -422,7 +422,7 @@ sub decode-uint64 ( Buf:D $b, Int:D $index --> Int ) is export {
     :error('Not enaugh characters left')
   ) if $b.elems - $index < 8;
 
-  my int $ni = $b[$index]             +| $b[$index + 1] +< 0x08 +|
+  my UInt $ni = $b[$index]            +| $b[$index + 1] +< 0x08 +|
                $b[$index + 2] +< 0x10 +| $b[$index + 3] +< 0x18 +|
                $b[$index + 4] +< 0x20 +| $b[$index + 5] +< 0x28 +|
                $b[$index + 6] +< 0x30 +| $b[$index + 7] +< 0x38
