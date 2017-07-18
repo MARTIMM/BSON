@@ -219,12 +219,7 @@ subtest "Big, wide and deep nesting", {
     $d<x4><x2><x3>{$char} = $dsub.clone;
   }
 
-  my Buf $b = $d.encode;
-note "Encoded: ", $b.elems, " bytes";
-sleep 2;
-  $dsub .= new($b);
-note "Decoded";
-
+  $dsub .= new($d.encode);
   is-deeply $d, $dsub, 'document the same after encoding/decoding';
 }
 
