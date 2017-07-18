@@ -1,4 +1,5 @@
-use v6.c;
+#use v6;
+use v6.d.PREVIEW;
 
 #TODO There are some *-native() and *-emulated() subs kept for later benchmarks
 # when perl evolves.
@@ -271,7 +272,6 @@ class Document does Associative {
     }
 
     # No key found so its undefined, check if we must make a new entry
-    #
     elsif $autovivify {
       $value = BSON::Document.new;
       self{$key} = $value;
@@ -302,7 +302,6 @@ class Document does Associative {
   #-----------------------------------------------------------------------------
   # All assignments of values which become or already are BSON::Documents
   # will not be encoded in parallel.
-  #
   multi method ASSIGN-KEY ( Str:D $key, BSON::Document:D $new --> Nil ) {
 
 #say "Asign-key($?LINE): $key => ", $new.WHAT;
@@ -386,7 +385,6 @@ class Document does Associative {
   }
 
   # Hashes and sequences are reprocessed as lists
-  #
   multi method ASSIGN-KEY ( Str:D $key, Hash $new --> Nil ) {
 
 #say "$*THREAD.id(), Hash, Asign-key($?LINE): $key => ", $new;
@@ -512,7 +510,7 @@ class Document does Associative {
   }
 
   #-----------------------------------------------------------------------------
-  # Must be defined because of Positional and Associative sources of of()
+  # Must be defined because of Associative sources of of()
   #-----------------------------------------------------------------------------
   method of ( ) {
     BSON::Document;
@@ -520,7 +518,7 @@ class Document does Associative {
 
   #-----------------------------------------------------------------------------
   method CALL-ME ( |capture ) {
-#say "Call me capture: ", capture.perl;
+    die "Call me capture: ", capture.perl;
   }
 
   #-----------------------------------------------------------------------------
@@ -901,20 +899,29 @@ class Document does Associative {
     # Decode the document, then wait for any started parallel tracks
     self!decode-document;
 
+#note " ";
+    self!process-decode-promises;
+#`{{
     if %!promises.elems {
+
       loop ( my $idx = 0; $idx < @!keys.elems; $idx++) {
         my $key = @!keys[$idx];
-#note "Prom from $key, $idx, {%!promises{$key}:exists}";
+#note "$*THREAD.id() Prom from $key, $idx, {%!promises{$key}:exists}";
 
         if %!promises{$key}:exists {
           # Return the Buffer slices in each entry so it can be
           # concatenated again when encoding
+note "$*THREAD.id() Before wait for result of $key";
           @!encoded-entries[$idx] = %!promises{$key}.result;
+note "$*THREAD.id() After wait for $key";
         }
       }
 
+#      await(%!promises.values);
+
       %!promises = ();
     }
+}}
   }
 
   #-----------------------------------------------------------------------------
@@ -954,7 +961,7 @@ class Document does Associative {
     # Get the key value, Index is adjusted to just after the 0x00
     # of the string.
     my Str $key = decode-e-name( $!encoded-document, $!index);
-#note "$*THREAD.id() $key found, idx now $!index";
+#note "$*THREAD.id() $key found, type $bson-code, idx now $!index";
 
     # Keys are pushed in the proper order as they are seen in the
     # byte buffer.
@@ -1009,8 +1016,11 @@ class Document does Associative {
         my Int $doc-size = decode-int32( $!encoded-document, $i);
         $!index += $doc-size;
 
-        # Keep this decoding out of the promise routine. It gets problems
-        # when waiting for it.
+        # Wait for any threads to complete before decoding the subdocument
+        # If not, the threads are eaten up and we end up waiting for
+        # non-started threads.
+        self!process-decode-promises;
+
         my BSON::Document $d .= new;
         $d.decode($!encoded-document.subbuf($i ..^ ($i + $doc-size)));
         @!values[$idx] = $d;
@@ -1028,6 +1038,7 @@ class Document does Associative {
         my Int $doc-size = decode-int32( $!encoded-document, $!index);
         $!index += $doc-size;
 
+        self!process-decode-promises;
         %!promises{$key} = Promise.start( {
             my BSON::Document $d .= new;
 
@@ -1083,9 +1094,7 @@ class Document does Associative {
         $!index++;
 
         %!promises{$key} = Promise.start( {
-#note "$*THREAD.id() Decode Boolean:  $key, $idx, $decode-start, $i";
             @!values[$idx] = $!encoded-document[$i] ~~ 0x00 ?? False !! True;
-#note "$*THREAD.id() Decode Boolean = @!values[$idx]";
             $!encoded-document.subbuf($decode-start .. ($i + 1));
           }
         );
@@ -1272,7 +1281,29 @@ class Document does Associative {
           :error("BSON code '{.fmt('0x%02x')}'"),
           :type($_)
         );
-      }
-    }
-  }
+      } # default
+    } # given
+  } # method
+
+  #----------------------------------------------------------------------------
+  method !process-decode-promises {
+
+    if %!promises.elems {
+      await Promise.allof(%!promises.values);
+      loop ( my $idx = 0; $idx < @!keys.elems; $idx++) {
+        my $key = @!keys[$idx];
+#note "$*THREAD.id() Prom from $key, $idx, {%!promises{$key}:exists}";
+
+        if %!promises{$key}:exists {
+          # Return the Buffer slices in each entry so it can be
+          # concatenated again when encoding
+#note "$*THREAD.id() Before wait for result of $key";
+          @!encoded-entries[$idx] = %!promises{$key}.result;
+#note "$*THREAD.id() After wait for $key";
+        } # if
+      } # loop
+
+      %!promises = ();
+    } # if
+  } # method
 }

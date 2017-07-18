@@ -186,6 +186,49 @@ subtest "Document nesting 2", {
 }
 
 #-------------------------------------------------------------------------------
+# Test to see if no hangup takes place when making a special doc
+subtest "Big, wide and deep nesting", {
+
+  # Keys must be sufficiently long and value complex enough to keep a
+  # thread busy causing the process to runout of available threads
+  # which are by default 16.
+  my Num $count = 0.1e0;
+  my BSON::Document $d .= new;
+  for ('zxnbcvzbnxvc-aa', *.succ ... 'zxnbcvzbnxvc-bz') -> $char {
+    $d{$char} = ($count += 2.44);
+  }
+
+  my BSON::Document $dsub .= new;
+  for ('uqwteuyqwte-aa', *.succ ... 'uqwteuyqwte-bz') -> $char {
+    $dsub{$char} = ($count += 2.1);
+  }
+
+  for ('uqwteuyqwte-da', *.succ ... 'uqwteuyqwte-dz') -> $char {
+    $d<x1>{$char} = ($count += 2.1);
+    $d<x2><x1>{$char} = $dsub.clone;
+    $d<x2><x2><x3>{$char} = $dsub.clone;
+  }
+
+  for ('jhgsajhgasjdg-ca', *.succ ... 'jhgsajhgasjdg-cz') -> $char {
+    $d{$char} = ($count -= 0.02);
+  }
+
+  for ('uqwteuyqwte-ea', *.succ ... 'uqwteuyqwte-ez') -> $char {
+    $d<x3>{$char} = $dsub.clone;
+    $d<x4><x1>{$char} = $dsub.clone;
+    $d<x4><x2><x3>{$char} = $dsub.clone;
+  }
+
+  my Buf $b = $d.encode;
+note "Encoded: ", $b.elems, " bytes";
+sleep 2;
+  $dsub .= new($b);
+note "Decoded";
+
+  is-deeply $d, $dsub, 'document the same after encoding/decoding';
+}
+
+#-------------------------------------------------------------------------------
 subtest "Exception tests", {
 
   # Hash tests done above
