@@ -12,7 +12,7 @@
     "UUID"
   ],
   "build-depends": [ ],
-  "test-depends": ["Test::META"],
+  "test-depends": [ ],
   "tags": [ "bson", "mongodb", "serialize"],
   "description": "BSON encoding/decoding, used in MongoDB drivers",
   "license": "Artistic-2.0",
