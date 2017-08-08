@@ -1,14 +1,7 @@
-[toc]
+Tests of 2 * 16 types of insertions and repeated 50 times
 
-# Benchmark tests
+Timing 50 iterations of 32 inserts... (* is current BSON::Document use)
 
-The benchmark tests are setup to follow the improvement in speed while encoding and decoding a document. While promises are used to speedup the tests a little, some other tests are devised to look into the difference per BSON type. I imagine that some of the types are so simple to encode/decode that setting up a thread for the calculations would take more overhead than that it would speed up.
-
-## Document encoding/decoding
-
-Tests of encoding two series of 16 types, inserted into a newly created document. Then the result is decoded again. This is repeated 50 times.
-
-### Test notes
  D1     With use of Promises on encoding as well as decoding
  D2     Removed Promises on decoding -> dustbin
  D3     After some cleanup of D1
@@ -25,7 +18,7 @@ Tests of encoding two series of 16 types, inserted into a newly created document
  D14    2017-02-25. Dropped positional role from BSON::Document.
  D15    2017-07-18, 2017.07-19-g1818ad2, bugfix hangup decoding.
 
-### Measurements
+
  D1     8.0726 wallclock secs @ 6.1938/s (n=50)
  D2     9.5953 wallclock secs @ 5.2109/s (n=50) Slower without Promise
  D3     7.0094 wallclock secs @ 7.1333/s (n=50) Cleanup improved speed
