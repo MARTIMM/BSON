@@ -45,15 +45,15 @@ Timing 3000 iterations ....
 | Date | What | Wallclock sec | n per sec |
 |------|------|---------------|-----------|
 | 20160420 | rakudo 2016.02-136-g412d9a4, MoarVM 2016.02-25-gada3752
-|| double native encode | 2.048168 | 1464.7237
 || double emulated encode | 7.565150 | 396.5552
-|| double native decode | 0.926162 | 3239.1732
 || double emulated decode | 1.223361 | 2452.2613
+|| double native encode | 2.048168 | 1464.7237
+|| double native decode | 0.926162 | 3239.1732
 | 20170812 | rakudo 2017.07-91-g7e08f74 built on MoarVM 2017.07-15-g0729f84
-|| double emulated decode | 0.2486 | 12066.0512
 || double emulated encode | 4.8237 | 621.9242
-|| double native decode | 0.2707 | 11083.7616
+|| double emulated decode | 0.2486 | 12066.0512
 || double native encode | 0.3425 | 8758.5662
+|| double native decode | 0.2707 | 11083.7616
 
 Conclusion: it is not worth to keep the emulated encode/decode for double (Num). The emulated code was the original implementation before NativeCall was explored.
 
