@@ -67,11 +67,11 @@ Timing 3000 iterations ....
 | Date | What | Wallclock sec | n per sec|
 |------|------|---------------|----------|
 | 20170812 | rakudo 2017.07-91-g7e08f74, MoarVM 2017.07-15-g0729f84||
-||32 bit integer decode | 0.0321 | 62385.0167
 ||32 bit integer encode | 0.0615 | 32494.3486
+||32 bit integer decode | 0.0321 | 62385.0167
 ||32 bit native integer decode | 0.0870 | 22999.6250
-||64 bit integer decode | 0.0397 | 50397.2193
 ||64 bit integer encode | 0.0756 | 26438.7454
+||64 bit integer decode | 0.0397 | 50397.2193
 ||64 bit native integer decode | 0.0942 | 21226.7633
 
 Conclusion: it is not worth to do native decode for any type of integer.
