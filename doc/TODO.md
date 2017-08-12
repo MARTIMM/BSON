@@ -15,4 +15,3 @@
 
 
 ### Bugs
-in test 300-document.t it seems that a bug is found when handling a very large document.
