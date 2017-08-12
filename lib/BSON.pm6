@@ -176,15 +176,17 @@ sub encode-double ( Num:D $r --> Buf ) is export {
 
   state $little-endian = little-endian();
 
-  my CArray[num64] $da .= new($r);
-  my $list = nativecast( CArray[uint8], $da)[^8];
+  my Buf $b;
+  my CArray[num64] $na .= new($r);
   if $little-endian {
-    Buf[uint8].new($list);
+    $b .= new(nativecast( CArray[uint8], $na)[^8]);
   }
 
   else {
-    Buf[uint8].new($list.reverse);
+    $b .= new(nativecast( CArray[uint8], $na)[^8]);
   }
+
+  $b;
 }
 
 
