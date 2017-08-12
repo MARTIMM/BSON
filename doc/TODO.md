@@ -15,5 +15,4 @@
 
 
 ### Bugs
-
-* An array in a document which is modified later with push, pop or otherwise will not be properly encoded.
+in test 300-document.t it seems that a bug is found when handling a very large document.
