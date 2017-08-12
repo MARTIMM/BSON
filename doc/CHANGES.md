@@ -2,6 +2,8 @@ See [semantic versioning](http://semver.org/). Please note point 4. on
 that page: *Major version zero (0.y.z) is for initial development. Anything may
 change at any time. The public API should not be considered stable*.
 
+* 0.9.36
+  * Remove native implementation of encode/decode int23/int64 because benchmarks show that it is slower that pure perl.
 * 0.9.35
   * Quick fix to read a timestamp as an unsigned 64 bit integer. will become an object later. timestamp really is an object of 2 integers; an increment and a timestamp
 * 0.9.34
