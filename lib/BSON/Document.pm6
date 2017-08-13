@@ -824,13 +824,13 @@ class Document does Associative {
         # "\x10" e_name int32
         # '\x12' e_name int64
         #
-        if -0xffffffff < $p.value < 0xffffffff {
+        if -0x7fffffff <= $p.value <= 0x7fffffff {
           $b = [~] Buf.new(BSON::C-INT32),
                    encode-e-name($p.key),
                    encode-int32($p.value);
         }
 
-        elsif -0x7fffffff_ffffffff < $p.value < 0x7fffffff_ffffffff {
+        elsif -0x7fffffff_ffffffff <= $p.value <= 0x7fffffff_ffffffff {
           $b = [~] Buf.new(BSON::C-INT64),
                    encode-e-name($p.key),
                    encode-int64($p.value);
