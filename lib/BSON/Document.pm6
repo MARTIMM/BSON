@@ -837,8 +837,8 @@ class Document does Associative {
         }
 
         else {
-          my $reason = 'small' if $p.value <= -0x7fffffff_ffffffff;
-          $reason = 'large' if $p.value => 0x7fffffff_ffffffff;
+          my $reason = 'small' if $p.value < -0x7fffffff_ffffffff;
+          $reason = 'large' if $p.value > 0x7fffffff_ffffffff;
           die X::BSON::Parse-document.new(
             :operation('encode Int'),
             :error("Number too $reason")
