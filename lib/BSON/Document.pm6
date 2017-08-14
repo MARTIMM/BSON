@@ -482,7 +482,6 @@ class Document does Associative {
       CATCH {
 #say .WHAT;
         when X::BSON                    { .rethrow; }
-        when X::BSON::NYI               { .rethrow; }
         when X::BSON::NYS               { .rethrow; }
         when X::BSON::Deprecated        { .rethrow; }
 
@@ -861,7 +860,7 @@ class Document does Associative {
 
         }}
 
-        die X::BSON::NYI.new( :operation('encode-element()'), :type($_));
+        die X::BSON.new( :operation<encode>, :type($_), :error('Not yet implemented'));
       }
 
       default {
@@ -1241,10 +1240,10 @@ class Document does Associative {
           }
         );
       }}
-        die X::BSON::NYI.new(
-          :operation<decode-element()>,
-          :error("BSON code '{.fmt('0x%02x')}'"),
-          :type(BSON::C-DECIMAL128)
+
+        die X::BSON.new(
+          :operation<decode>, :type($_),
+          :error("BSON code '{.fmt('0x%02x')}' not yet implemented"),
         );
       }
 

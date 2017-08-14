@@ -52,16 +52,6 @@ class X::BSON is Exception {
 }
 
 #------------------------------------------------------------------------------
-class X::BSON::NYI is Exception {
-  has $.operation;                      # Operation encode, decode
-  has $.type;                           # Type to encode/decode
-
-  method message () {
-    return "\n$!operation error: BSON type '$!type' is not (yet) implemented\n";
-  }
-}
-
-#------------------------------------------------------------------------------
 class X::BSON::NYS is Exception {
   has $.operation;                      # Operation encode, decode
   has $.type;                           # Type to encode/decode
