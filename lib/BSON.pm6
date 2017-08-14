@@ -39,16 +39,20 @@ package BSON:auth<github:MARTIM> {
 }
 
 #------------------------------------------------------------------------------
-class X::BSON::Parse-objectid is Exception {
+class X::BSON is Exception {
 
   # No string types used because there can be lists of strings too
-  has $.operation;                      # Operation method
+  has $.operation;                      # Operation method encode/decode
+  has $.type;                           # Type to process
   has $.error;                          # Parse error
 
   method message () {
-    return "\n$!operation\() error: $!error\n";
+    return "\n$!operation\() on $!type, error: $!error\n";
   }
 }
+
+#`{{
+}}
 
 #------------------------------------------------------------------------------
 class X::BSON::Parse-document is Exception {

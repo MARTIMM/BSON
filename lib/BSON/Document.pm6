@@ -481,7 +481,7 @@ class Document does Associative {
       my Buf $b = self!encode-element: ($k => $v);
       CATCH {
 #say .WHAT;
-        when X::BSON::Parse-objectid    { .rethrow; }
+        when X::BSON                    { .rethrow; }
         when X::BSON::Parse-document    { .rethrow; }
         when X::BSON::NYI               { .rethrow; }
         when X::BSON::NYS               { .rethrow; }
