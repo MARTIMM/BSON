@@ -73,8 +73,8 @@ class Document does Associative {
   multi method new ( |capture ) {
 
     if capture.keys {
-      die X::BSON::Parse-document.new(
-        :operation("new: " ~ capture.gist)
+      die X::BSON.new(
+        :operation("new: " ~ capture.gist), :type<capture>,
         :error(
           "Cannot use hash values on init.\n",
           "Set accept-hash and use assignments later"
@@ -93,18 +93,18 @@ class Document does Associative {
     # self{x} = y will end up at ASSIGN-KEY
     for @$pairs -> $pair {
 #say "P: ", $pair.perl, ', ', $pair.value.defined;
-      die X::BSON::Parse-document.new(
-        :operation("new: List $pairs.gist()"),
+      die X::BSON.new(
+        :operation("new: List $pairs.gist()"), :type<List>,
         :error("Pair not defined")
       ) unless ?$pair;
 
-      die X::BSON::Parse-document.new(
-        :operation("new: List $pairs.gist()"),
+      die X::BSON.new(
+        :operation("new: List $pairs.gist()"), :type<List>,
         :error("Key of pair not defined or empty")
       ) unless ?$pair.key;
 
-      die X::BSON::Parse-document.new(
-        :operation("new: List $pairs.gist()"),
+      die X::BSON.new(
+        :operation("new: List $pairs.gist()"), :type<List>,
         :error("Value of pair not defined")
       ) unless $pair.value.defined;
 
@@ -335,8 +335,8 @@ class Document does Associative {
       }
 
       else {
-        die X::BSON::Parse-document.new(
-          :operation("\$d<$key> = ({$pair.perl}, ...)")
+        die X::BSON.new(
+          :operation("\$d<$key> = ({$pair.perl}, ...)"), :type<List>,
           :error("Can only use lists of Pair")
         );
       }
@@ -390,8 +390,8 @@ class Document does Associative {
 #say "$*THREAD.id(), Hash, Asign-key($?LINE): $key => ", $new;
 
     if ! $accept-hash {
-      die X::BSON::Parse-document.new(
-        :operation("\$d<$key> = {$new.perl}")
+      die X::BSON.new(
+        :operation("\$d<$key> = {$new.perl}"), :type<Hash>,
         :error("Cannot use hash values.\nSet accept-hash if you really want to")
       );
     }
@@ -482,7 +482,6 @@ class Document does Associative {
       CATCH {
 #say .WHAT;
         when X::BSON                    { .rethrow; }
-        when X::BSON::Parse-document    { .rethrow; }
         when X::BSON::NYI               { .rethrow; }
         when X::BSON::NYS               { .rethrow; }
         when X::BSON::Deprecated        { .rethrow; }
@@ -503,8 +502,8 @@ class Document does Associative {
   #
   method BIND-KEY ( Str $key, \new ) {
 
-    die X::BSON::Parse-document.new(
-      :operation("\$d<$key> := {new}")
+    die X::BSON.new(
+      :operation("\$d<$key> := {new}"), :type<any>,
       :error("Cannot use binding")
     );
   }
@@ -613,8 +612,8 @@ class Document does Associative {
 #say "$*THREAD.id(), Broken: $key";
 #say %!promises{$key}.cause.WHAT;
 #say %!promises{$key}.cause.message;
-            die X::BSON::Parse-document.new(
-              :operation<encode>,
+            die X::BSON.new(
+              :operation<encode>, :type<any>,
               :error(%!promises{$key}.cause)
             );
           }
@@ -839,8 +838,8 @@ class Document does Associative {
         else {
           my $reason = 'small' if $p.value < -0x7fffffff_ffffffff;
           $reason = 'large' if $p.value > 0x7fffffff_ffffffff;
-          die X::BSON::Parse-document.new(
-            :operation('encode Int'),
+          die X::BSON.new(
+            :operation<encode>, :type<Int>,
             :error("Number too $reason")
           );
         }
@@ -913,8 +912,8 @@ class Document does Associative {
     $!index++;
 
     # check size of document with final byte location
-    die X::BSON::Parse-document.new(
-      :operation<decode-document()>,
+    die X::BSON.new(
+      :operation<decode>, :type<Document>,
       :error(
         [~] 'Size of document(', $doc-size,
             ') does not match with index(', $!index, ')'

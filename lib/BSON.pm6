@@ -51,19 +51,6 @@ class X::BSON is Exception {
   }
 }
 
-#`{{
-}}
-
-#------------------------------------------------------------------------------
-class X::BSON::Parse-document is Exception {
-  has $.operation;                      # Operation method
-  has $.error;                          # Parse error
-
-  method message () {
-    return "\n$!operation error: $!error\n";
-  }
-}
-
 #------------------------------------------------------------------------------
 class X::BSON::NYI is Exception {
   has $.operation;                      # Operation encode, decode
@@ -124,8 +111,8 @@ sub encode-e-name ( Str:D $s --> Buf ) is export {
 
 #------------------------------------------------------------------------------
 sub encode-cstring ( Str:D $s --> Buf ) is export {
-  die X::BSON::Parse-document.new(
-    :operation('encode-cstring()'),
+  die X::BSON.new(
+    :operation<encode>, :type<cstring>,
     :error("Forbidden 0x00 sequence in '$s'")
   ) if $s ~~ /\x00/;
 
@@ -215,8 +202,8 @@ sub decode-cstring ( Buf:D $b, Int:D $index is rw --> Str ) is export {
   # This takes only place if there are no 0x0 characters found until the
   # end of the buffer which is almost never.
   #
-  die X::BSON::Parse-document.new(
-    :operation<decode-cstring>,
+  die X::BSON.new(
+    :operation<decode>, :type<cstring>,
     :error('Missing trailing 0x00')
   ) unless $index < $l and $b[$index++] ~~ 0x00;
 
@@ -231,13 +218,13 @@ sub decode-string ( Buf:D $b, Int:D $index is copy --> Str ) is export {
 
   # Check if there are enaugh letters left
   #
-  die X::BSON::Parse-document.new(
-    :operation<decode-string>,
+  die X::BSON.new(
+    :operation<decode>, :type<string>,
     :error('Not enaugh characters left')
   ) unless ($b.elems - $size) > $index;
 
-  die X::BSON::Parse-document.new(
-    :operation<decode-string>,
+  die X::BSON.new(
+    :operation<decode>, :type<string>,
     :error('Missing trailing 0x00')
   ) unless $b[$end-string-at] == 0x00;
 
@@ -249,8 +236,8 @@ sub decode-int32 ( Buf:D $b, Int:D $index --> Int ) is export {
 
   # Check if there are enaugh letters left
   #
-  die X::BSON::Parse-document.new(
-    :operation<decode-int32>,
+  die X::BSON.new(
+    :operation<decode>, :type<int32>,
     :error('Not enaugh characters left')
   ) if $b.elems - $index < 4;
 
@@ -275,8 +262,8 @@ sub decode-int64 ( Buf:D $b, Int:D $index --> Int ) is export {
 
   # Check if there are enaugh letters left
   #
-  die X::BSON::Parse-document.new(
-    :operation<decode-int64>,
+  die X::BSON.new(
+    :operation<decode>, :type<int64>,
     :error('Not enaugh characters left')
   ) if $b.elems - $index < 8;
 
@@ -293,9 +280,9 @@ sub decode-int64 ( Buf:D $b, Int:D $index --> Int ) is export {
 sub decode-uint64 ( Buf:D $b, Int:D $index --> UInt ) is export {
 
   # Check if there are enaugh letters left
-  die X::BSON::Parse-document.new(
-    :operation<decode-int64>,
-    :error('Not enaugh characters left')
+  die X::BSON.new(
+    :operation<decode>, :type<int64>,
+    :error('Not enough characters left')
   ) if $b.elems - $index < 8;
 
   my UInt $ni = $b[$index]            +| $b[$index + 1] +< 0x08 +|
@@ -313,8 +300,8 @@ sub decode-double ( Buf:D $b, Int:D $index --> Num ) is export {
   state $little-endian = little-endian();
 
   # Check if there are enaugh letters left
-  die X::BSON::Parse-document.new(
-    :operation<decode-double>,
+  die X::BSON.new(
+    :operation<decode>, :type<double>,
     :error('Not enaugh characters left')
   ) if $b.elems - $index < 8;
 
