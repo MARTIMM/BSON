@@ -482,7 +482,6 @@ class Document does Associative {
       CATCH {
 #say .WHAT;
         when X::BSON                    { .rethrow; }
-        when X::BSON::NYS               { .rethrow; }
         when X::BSON::Deprecated        { .rethrow; }
 
         default {
@@ -870,7 +869,7 @@ class Document does Associative {
 #        }
 #
 #        else {
-          die X::BSON::NYS.new( :operation('encode-element()'), :type($_));
+          die X::BSON.new( :operation<encode>, :type($_), :error('Not yet implemented'));
 #        }
       }
     }
@@ -1250,9 +1249,9 @@ class Document does Associative {
       default {
         # We must stop because we do not know what the length should be of
         # this particular structure.
-        die X::BSON::NYS.new(
-          :operation<decode-element()>,
-          :error("BSON code '{.fmt('0x%02x')}'"),
+        die X::BSON.new(
+          :operation<decode>,
+          :error("BSON code '{.fmt('0x%02x')}' not implemented"),
           :type($_)
         );
       } # default

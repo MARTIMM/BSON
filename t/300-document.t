@@ -259,7 +259,7 @@ subtest "Exception tests", {
       $d{"A"} = $a;
       $d.encode;
     }, X::BSON, 'Not a BSON type',
-    :message(/:s BSON type/);
+    :message(/'encode() on A<' \d* '>, error: Not yet implemented'/);
 
   throws-like {
       my $b = Buf.new(
@@ -272,8 +272,8 @@ subtest "Exception tests", {
 
       my BSON::Document $d .= new($b);
     },
-    X::BSON::NYS,
-    :message(/:s BSON type \'160\' is not supported/);
+    X::BSON, 'type is not implemented',
+    :message(/ 'decode() on 160, error: BSON code \'0xa0\' not implemented'/);
 
   throws-like {
       my $b = Buf.new(

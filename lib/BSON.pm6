@@ -46,18 +46,8 @@ class X::BSON is Exception {
   has $.type;                           # Type to process
   has $.error;                          # Parse error
 
-  method message () {
-    return "\n$!operation\() on $!type, error: $!error\n";
-  }
-}
-
-#------------------------------------------------------------------------------
-class X::BSON::NYS is Exception {
-  has $.operation;                      # Operation encode, decode
-  has $.type;                           # Type to encode/decode
-
-  method message () {
-    return "\n$!operation error: BSON type '$!type' is not supported\n";
+  method message ( --> Str ) {
+    "$!operation\() on $!type, error: $!error\n";
   }
 }
 
