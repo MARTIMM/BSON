@@ -51,16 +51,6 @@ class X::BSON is Exception {
   }
 }
 
-#------------------------------------------------------------------------------
-class X::BSON::Undefined is Exception {
-  has $.operation;                      # Operation encode, decode
-  has $.type;                           # Type to encode/decode
-
-  method message () {
-    return "\n$!operation error: BSON type '$!type' is not (yet) supported\n";
-  }
-}
-
 
 
 
