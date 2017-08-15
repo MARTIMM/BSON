@@ -115,19 +115,17 @@ class Binary {
 
       when BSON::C-BINARY-OLD {
         # Binary (Old - deprecated)
-        die X::BSON::Deprecated.new(
-          :operation<decode binary>,
-          :type(BSON::Binary),
-          :subtype(BSON::C-BINARY-OLD)
+        die X::BSON.new(
+          :operation<decode>, :type(BSON::Binary),
+          :error("Type $_ is deprecated")
         );
       }
 
       when BSON::C-UUID-OLD {
         # UUID (Old - deprecated)
-        die X::BSON::Deprecated.new(
-          :operation<decode binary>,
-          :type(BSON::Binary),
-          :subtype(BSON::C-UUID-OLD)
+        die X::BSON.new(
+          :operation<decode>, :type(BSON::Binary),
+          :subtype("Type $_ is deprecated")
         );
       }
 

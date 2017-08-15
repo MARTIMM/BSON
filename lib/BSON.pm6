@@ -52,26 +52,6 @@ class X::BSON is Exception {
 }
 
 #------------------------------------------------------------------------------
-class X::BSON::Deprecated is Exception {
-  has $.operation;                      # Operation encode, decode
-  has $.type;                           # Type to encode/decode
-  has Int $.subtype;                    # Subtype of type
-
-  method message () {
-    my Str $m;
-    if ?$!subtype {
-      $m = "subtype '$!subtype' of BSON '$!type'";
-    }
-
-    else {
-      $m = "BSON type '$!type'"
-    }
-
-    return "\n$!operation error: $m is deprecated\n";
-  }
-}
-
-#------------------------------------------------------------------------------
 class X::BSON::Undefined is Exception {
   has $.operation;                      # Operation encode, decode
   has $.type;                           # Type to encode/decode

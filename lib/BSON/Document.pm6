@@ -482,7 +482,6 @@ class Document does Associative {
       CATCH {
 #say .WHAT;
         when X::BSON                    { .rethrow; }
-        when X::BSON::Deprecated        { .rethrow; }
 
         default {
           note "Error at $?FILE $?LINE: $_";
@@ -787,9 +786,9 @@ class Document does Associative {
         # DBPointer - deprecated
         # "\x0C" e_name string (byte*12)
         #
-        die X::BSON::Deprecated(
-          operation => 'encoding DBPointer',
-          type => '0x0C'
+        die X::BSON.new(
+          :operation('encoding DBPointer'), :type('0x0C'),
+          :error('DBPointer is deprecated')
         );
       }
 }}
