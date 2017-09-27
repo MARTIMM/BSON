@@ -673,6 +673,14 @@ class Document does Associative {
 
     given $p.value {
 
+	  when Rat {
+		  # Only handle Rat if it can be converted without precision loss
+		  if .Num.Rat(0) == $_ {
+			  $_ .= Num;
+		  }
+		  proceed;
+	  }
+
       when Num {
         # Double precision
         # "\x01" e_name Num
