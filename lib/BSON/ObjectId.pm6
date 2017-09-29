@@ -68,8 +68,6 @@ class ObjectId {
   #
   multi submethod BUILD ( Buf:D :$bytes ) {
 
-note "OID :bytes {$?LINE}: ", $bytes, ', ', $bytes.elems;
-
     die X::BSON.new(
       :operation('new()'), :type('ObjectId'),
       :error('Byte buffer too short/long')
@@ -84,7 +82,6 @@ note "OID :bytes {$?LINE}: ", $bytes, ', ', $bytes.elems;
         $!oid[4..6].list ==> map { $_.fmt('%02x') }
         ).join('').decode;
       CATCH {
-note "OID :bytes {$?LINE}: ", .message;
 
         default {
           $!machine-id = 'No utf-8 encoded machine name';
