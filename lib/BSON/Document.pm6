@@ -588,7 +588,7 @@ class Document does Associative {
       loop ( my $idx = 0; $idx < @!keys.elems; $idx++) {
         my $key = @!keys[$idx];
 #note "$*THREAD.id(), $key, ", @!values[$idx], ', ',
-     %!promises{$key}.defined ?? %!promises{$key}.status !! 'promise processed';
+#     %!promises{$key}.defined ?? %!promises{$key}.status !! 'promise processed';
 
         # Test if a promise is created to calculate stuff in parallel
         if %!promises{$key}.defined {
