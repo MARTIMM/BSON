@@ -679,13 +679,16 @@ class Document does Associative {
 
     given $p.value {
 
-	  when Rat {
-		  # Only handle Rat if it can be converted without precision loss
-		  if $accept-rat || .Num.Rat(0) == $_ {
-			  $_ .= Num;
-		  }
-		  proceed;
-	  }
+  	  when Rat {
+  		  # Only handle Rat if it can be converted without precision loss
+  		  if $accept-rat || .Num.Rat(0) == $_ {
+  			  $_ .= Num;
+  		  }
+
+        # Now that Rat is converted to Num, proceed to encode the Num. But
+        # when the Rat stays a Rat, it will end up in an exception (?)
+        proceed;
+  	  }
 
       when Num {
         # Double precision
