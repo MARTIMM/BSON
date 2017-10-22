@@ -778,7 +778,7 @@ class Document does Associative {
         #
         $b = [~] Buf.new(BSON::C-DATETIME),
                  encode-e-name($p.key),
-                 encode-int64(.posix);
+                 encode-int64(((.posix+.second-.whole-second)*1000).Int);
       }
 
       when not .defined {
@@ -1097,8 +1097,8 @@ class Document does Associative {
 
         %!promises{$key} = Promise.start( {
             @!values[$idx] = DateTime.new(
-              decode-int64( $!encoded-document, $i),
-              :timezone($*TZ)
+              decode-int64( $!encoded-document, $i) / 1000,
+              :timezone(0)
             );
 
             $!encoded-document.subbuf(
