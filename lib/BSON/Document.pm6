@@ -778,7 +778,7 @@ class Document does Associative {
         #
         $b = [~] Buf.new(BSON::C-DATETIME),
                  encode-e-name($p.key),
-                 encode-int64(((.posix+.second-.whole-second)*1000).Int);
+                 encode-int64((( .posix + .second - .whole-second) * 1000).Int);
       }
 
       when not .defined {
