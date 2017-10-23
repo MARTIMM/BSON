@@ -203,8 +203,8 @@ subtest "Simplified encode Rat test", {
   is $d<a>, 3.5, "Number is 3.5";
   ok $d<a> ~~ Num, "Number is of type Num";
 
-  my Rat $n = 1/331234567890987123;
-  ok $n.Num.Rat != $n, "Rat number not of same accuracy as Num";
+  my Rat $n = 1.23847682734687263487623449827398724987234982374;
+  ok $n.Num.Rat(0) != $n, "Rat number not of same precision as Num";
 
   $d .= new;
   throws-like {
@@ -218,7 +218,7 @@ subtest "Simplified encode Rat test", {
   $d<a> = $n;
   $b = $d.encode;
   $d .= new($b);
-  ok $d<a>.Rat != $n, "Number is not equal to $n";
+  ok $d<a>.Rat(0) != $n, "Number is not equal to $n";
   ok $d<a> ~~ Num, "Number is of type Num";
 }
 

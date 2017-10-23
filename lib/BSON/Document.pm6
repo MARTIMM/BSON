@@ -681,7 +681,7 @@ class Document does Associative {
 
   	  when Rat {
   		  # Only handle Rat if it can be converted without precision loss
-  		  if $accept-rat || .Num.Rat(1e-16) == $_ {
+  		  if $accept-rat || .Num.Rat(0) == $_ {
   			  $_ .= Num;
   		  }
 
