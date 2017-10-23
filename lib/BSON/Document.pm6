@@ -287,6 +287,12 @@ class Document does Associative {
     $value;
   }
 
+  # Enable BSON::Document to be destructured.
+  method Capture ( BSON::Document:D: --> Capture ) {
+
+    return (self.keys Z=> self.values).Capture;
+  }
+
   #-----------------------------------------------------------------------------
   method EXISTS-KEY ( Str $key --> Bool ) {
     self.find-key($key).defined;
