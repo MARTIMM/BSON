@@ -223,6 +223,27 @@ subtest "Simplified encode Rat test", {
 }
 
 #-------------------------------------------------------------------------------
+subtest "Document desctructure tests", {
+
+  # Create a document and bind it to a hash
+  my %doc := BSON::Document.new: (
+    a => 10,
+    b => 11
+  );
+
+  # Create a sub with a sub-signature
+  my $sub = sub ( % ( :$a, :$b, :$c=12)) {
+    is $a, 10, 'a = 10';
+    is $b, 11, 'b = 11';
+    is $c, 12, 'c = 12';
+  };
+
+  # When calling, the Capture method is called to return a hash of the
+  # documents contents
+  $sub(%doc);
+}
+
+#-------------------------------------------------------------------------------
 subtest "Exception tests", {
 
   # Hash tests done above

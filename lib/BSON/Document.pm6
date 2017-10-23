@@ -287,6 +287,7 @@ class Document does Associative {
     $value;
   }
 
+  #-----------------------------------------------------------------------------
   # Enable BSON::Document to be destructured.
   method Capture ( BSON::Document:D: --> Capture ) {
 
