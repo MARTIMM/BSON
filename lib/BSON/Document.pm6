@@ -32,11 +32,18 @@ class Document does Associative {
   has Promise %!promises;
 
   # Keep this value global to the class. Any old or new object has the same
-  # settings
-  #
+  # settings. With these flags also the same set as an attribute. Therefore
+  # we can keep these also to 'instance only'.
+  # Test is like; $!autovivify || $autovivify
   my Bool $autovivify = False;
   my Bool $accept-hash = False;
-  my Bool $accept-rat = False;
+  my Bool $convert-rat = False;
+  my Bool $accept-loss = False;
+
+  has Bool $!autovivify = False;
+  has Bool $!accept-hash = False;
+  has Bool $!convert-rat = False;
+#  has Bool $!accept-loss = False;
 
   #----------------------------------------------------------------------------
   # Make new document and initialize with a list of pairs
@@ -232,18 +239,31 @@ class Document does Associative {
   }
 
   #----------------------------------------------------------------------------
-  submethod autovivify ( Bool $avvf = True ) {
-    $autovivify = $avvf;
+#TODO instance-only doesn't have much use. When True one still cannot
+# assign this '$d<a><b><c> = 56;' because the flagis not inherited by the
+# created document 'b' and therefore will not create 'c'.
+
+  method autovivify ( Bool :$on = True, Bool :$instance-only = False ) {
+    $!autovivify = $on;
+    $autovivify = $on && !$instance-only;
   }
 
   #----------------------------------------------------------------------------
-  submethod accept-hash ( Bool $acch = True ) {
-    $accept-hash = $acch;
+  method accept-hash ( Bool :$accept = True, Bool :$instance-only = False ) {
+    $!accept-hash = $accept;
+    $accept-hash = $accept && !$instance-only;
   }
 
   #----------------------------------------------------------------------------
-  submethod accept-rat ( Bool $accr = True ) {
-    $accept-rat = $accr;
+  method convert-rat (
+    Bool $accept = True,
+    Bool :$accept-precision-loss = False,
+    Bool :$instance-only = False
+  ) {
+
+    $!convert-rat = $accept;
+    $convert-rat = $accept && !$instance-only;
+    $accept-loss = $accept-precision-loss;
   }
 
   #----------------------------------------------------------------------------
@@ -272,11 +292,11 @@ class Document does Associative {
   # Associative role methods
   #----------------------------------------------------------------------------
   method AT-KEY ( Str $key --> Any ) {
-#note "At-key($?LINE): $key, $autovivify";
+#note "At-key($?LINE): $key, {$!autovivify || $autovivify}";
 
     my $value;
     my Int $idx = self.find-key($key);
-#note "Key: $key, {$idx//'-'}, $autovivify";
+#note "Key: $key, {$idx//'-'}";
 
     if $idx.defined {
 #note "return @!values[$idx]";
@@ -284,7 +304,7 @@ class Document does Associative {
     }
 
     # No key found so its undefined, check if we must make a new entry
-    elsif $autovivify {
+    elsif $!autovivify || $autovivify {
 #note 'autovivify';
       $value = BSON::Document.new;
       self{$key} = $value;
@@ -425,7 +445,7 @@ class Document does Associative {
 
 #note "$*THREAD.id(), Hash, Asign-key($?LINE): $key => ", $new;
 
-    if ! $accept-hash {
+    unless $!accept-hash || $accept-hash {
       die X::BSON.new(
         :operation("\$d<$key> = {$new.perl}"), :type<Hash>,
         :error("Cannot use hash values.\nSet accept-hash if you really want to")
@@ -721,15 +741,37 @@ class Document does Associative {
 #        $b = [~] Buf.new()
 #      }
 
+  	  when FatRat {
+        # encode as binary FatRat
+        # not yet implemented when proceding
+        proceed;
+      }
+
   	  when Rat {
   		  # Only handle Rat if it can be converted without precision loss
-  		  if $accept-rat || .Num.Rat(0) == $_ {
-  			  $_ .= Num;
+  		  if $!convert-rat || $convert-rat {
+          if $accept-loss || .Num.Rat(0) == $_ {
+    			  $_ .= Num;
+
+            # Now that Rat is converted to Num, proceed to encode the Num. But
+            # when the Rat stays a Rat, it will end up in an exception.
+            proceed;
+          }
+
+          else {
+            die X::BSON.new(
+              :operation<encode>,
+              :type($_),
+              :error('Rat can not be converted without losing pecision')
+            );
+          }
   		  }
 
-        # Now that Rat is converted to Num, proceed to encode the Num. But
-        # when the Rat stays a Rat, it will end up in an exception.
-        proceed;
+        else {
+          # encode as binary Rat
+          # not yet implemented when proceding
+          proceed;
+        }
   	  }
 
       when Num {
@@ -917,7 +959,11 @@ class Document does Associative {
 
         }}
 
-        die X::BSON.new( :operation<encode>, :type($_), :error('Not yet implemented'));
+        die X::BSON.new(
+          :operation<encode>,
+          :type($_),
+          :error('Not yet implemented')
+        );
       }
 
       default {
