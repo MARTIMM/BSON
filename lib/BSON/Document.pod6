@@ -141,11 +141,11 @@ implemented and <empty> is a future thingy.>
 
 =head1 Operators
 
-=head2 x{}
+=head2 postcircumfix { }
 
   $d{'full address'} = 'my-street 45, new york';
 
-=head2 x<>
+=head2 postcircumfix < >
 
   $d<name> = 'Mr Foo and Mrs Bar';
 
