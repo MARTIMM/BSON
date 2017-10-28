@@ -204,6 +204,15 @@ subtest "Document nesting 2", {
 subtest "Simplified encode Rat test", {
 
   my BSON::Document $d .= new;
+
+  throws-like {
+    $d<a> = 3.5;
+    $d.encode;
+  }, X::BSON, 'Binary Rat not yet implemented',
+  :message(/:s Not yet implemented/);
+
+  $d .= new;
+  $d.convert-rat(:accept);
   $d<a> = 3.5;
   my Buf $b = $d.encode;
   $d .= new($b);
@@ -217,17 +226,17 @@ subtest "Simplified encode Rat test", {
   throws-like {
     $d<a> = $n;
     $b = $d.encode;
-  }, X::BSON, 'Rat is not yet implemented',
-  :message(/:s Not yet implemented/);
+  }, X::BSON, 'Rat can not be converted without losing pecision',
+  :message(/:s without losing pecision/);
 
   $d .= new;
-  $d.accept-rat( :accept, :instance-only);
+  $d.convert-rat( :accept, :accept-precision-loss ,:instance-only);
   $d<a> = $n;
   $b = $d.encode;
   $d .= new($b);
   ok $d<a>.Rat(0) != $n, "Number is not equal to $n";
   ok $d<a> ~~ Num, "Number is of type Num";
-#  $d.accept-rat(:!accept);
+#  $d.convert-rat(:!accept);
 }
 
 #-------------------------------------------------------------------------------
