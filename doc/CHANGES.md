@@ -2,6 +2,8 @@ See [semantic versioning](http://semver.org/). Please note point 4. on
 that page: *Major version zero (0.y.z) is for initial development. Anything may
 change at any time. The public API should not be considered stable*.
 
+* 0.11.1
+  * Added attributes for the flags autovivify, accept-hash and accept-rat(this will be renamed later). The methods are also modified.
 * 0.11.0
   * Added a method Capture to return a Capture of the contents of a BSON::Document. Thanks to Dan Zwell.
 * 0.10.3
