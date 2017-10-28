@@ -57,7 +57,7 @@ subtest "Ban the hash", {
     }, X::BSON, 'Cannot use hashes when assigning',
     :message(/:s Cannot use hash values/);
 
-  $d.accept-hash(True);
+  $d.accept-hash(:accept);
   $d<q> = {
     a => 120, b => 121, c => 122, d => 123, e => 124, f => 125, g => 126,
     h => 127, i => 128, j => 129, k => 130, l => 131, m => 132, n => 133,
@@ -68,12 +68,13 @@ subtest "Ban the hash", {
   my $x = $d<q>.keys.sort;
   nok $x eqv $d<q>.keys.List, 'Not same order';
 
-  $d.autovivify(True);
+  $d.autovivify(:on);
 
   $d<e><f><g> = {b => 30};
   is $d<e><f><g><b>, 30, "Autovivified hash value $d<e><f><g><b>";
 
-  $d.autovivify(False);
+  $d.autovivify(:!on);
+  $d.accept-hash(:!accept);
 }
 
 #-------------------------------------------------------------------------------
@@ -165,7 +166,7 @@ subtest "Document nesting 2", {
     # which are by default 16.
     my Num $count = 0.1e0;
     my BSON::Document $d .= new;
-    $d.autovivify(True);
+    $d.autovivify(:on);
 
     for ('zxnbcvzbnxvc-aa', *.succ ... 'zxnbcvzbnxvc-bz') -> $char {
       $d{$char} = ($count += 2.44e0);
@@ -195,7 +196,7 @@ subtest "Document nesting 2", {
     $dsub .= new($d.encode);
     is-deeply $dsub, $d, 'document the same after encoding/decoding';
 
-    $d.autovivify(False);
+    $d.autovivify(:!on);
   }
 #}
 
@@ -220,12 +221,13 @@ subtest "Simplified encode Rat test", {
   :message(/:s Not yet implemented/);
 
   $d .= new;
-  $d.accept-rat;
+  $d.accept-rat( :accept, :instance-only);
   $d<a> = $n;
   $b = $d.encode;
   $d .= new($b);
   ok $d<a>.Rat(0) != $n, "Number is not equal to $n";
   ok $d<a> ~~ Num, "Number is of type Num";
+#  $d.accept-rat(:!accept);
 }
 
 #-------------------------------------------------------------------------------
@@ -278,7 +280,7 @@ subtest "Slice assignment", {
   my BSON::Document $d .= new;
   $d<test-assign> = 12345;
 
-#$d.autovivify;
+$d.autovivify(:on);
   $d<firstname lastname> = <John Doe>;
   is $d<firstname>, 'John', "firstname set to $d<firstname>";
   is $d<lastname>, 'Doe', "lastname set to $d<lastname>";
@@ -297,6 +299,7 @@ subtest "Slice assignment", {
   my Buf $b = $d.encode;
   note "$?LINE, ", $b;
   diag "$?LINE, $d.new($b).perl()";
+$d.autovivify(:!on);
 }
 }}
 

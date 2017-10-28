@@ -32,11 +32,16 @@ class Document does Associative {
   has Promise %!promises;
 
   # Keep this value global to the class. Any old or new object has the same
-  # settings
-  #
+  # settings. With these flags also the same set as an attribute. Therefore
+  # we can keep these also to 'instance only'.
+  # Test is like; $!autovivify || $autovivify
   my Bool $autovivify = False;
   my Bool $accept-hash = False;
   my Bool $accept-rat = False;
+
+  has Bool $!autovivify = False;
+  has Bool $!accept-hash = False;
+  has Bool $!accept-rat = False;
 
   #----------------------------------------------------------------------------
   # Make new document and initialize with a list of pairs
@@ -232,18 +237,21 @@ class Document does Associative {
   }
 
   #----------------------------------------------------------------------------
-  submethod autovivify ( Bool $avvf = True ) {
-    $autovivify = $avvf;
+  method autovivify ( Bool :$on = True, :$instance-only = False ) {
+    $!autovivify = $on;
+    $autovivify = $on && !$instance-only;
   }
 
   #----------------------------------------------------------------------------
-  submethod accept-hash ( Bool $acch = True ) {
-    $accept-hash = $acch;
+  method accept-hash ( Bool :$accept = True, :$instance-only = False ) {
+    $!accept-hash = $accept;
+    $accept-hash = $accept && !$instance-only;
   }
 
   #----------------------------------------------------------------------------
-  submethod accept-rat ( Bool $accr = True ) {
-    $accept-rat = $accr;
+  method accept-rat ( Bool $accept = True, :$instance-only = False ) {
+    $!accept-rat = $accept;
+    $accept-rat = $accept && !$instance-only;
   }
 
   #----------------------------------------------------------------------------
@@ -272,11 +280,11 @@ class Document does Associative {
   # Associative role methods
   #----------------------------------------------------------------------------
   method AT-KEY ( Str $key --> Any ) {
-#note "At-key($?LINE): $key, $autovivify";
+#note "At-key($?LINE): $key, {$!autovivify || $autovivify}";
 
     my $value;
     my Int $idx = self.find-key($key);
-#note "Key: $key, {$idx//'-'}, $autovivify";
+#note "Key: $key, {$idx//'-'}";
 
     if $idx.defined {
 #note "return @!values[$idx]";
@@ -284,7 +292,7 @@ class Document does Associative {
     }
 
     # No key found so its undefined, check if we must make a new entry
-    elsif $autovivify {
+    elsif $!autovivify || $autovivify {
 #note 'autovivify';
       $value = BSON::Document.new;
       self{$key} = $value;
@@ -425,7 +433,7 @@ class Document does Associative {
 
 #note "$*THREAD.id(), Hash, Asign-key($?LINE): $key => ", $new;
 
-    if ! $accept-hash {
+    unless $!accept-hash || $accept-hash {
       die X::BSON.new(
         :operation("\$d<$key> = {$new.perl}"), :type<Hash>,
         :error("Cannot use hash values.\nSet accept-hash if you really want to")
@@ -723,7 +731,7 @@ class Document does Associative {
 
   	  when Rat {
   		  # Only handle Rat if it can be converted without precision loss
-  		  if $accept-rat || .Num.Rat(0) == $_ {
+  		  if $!accept-rat || $accept-rat || .Num.Rat(0) == $_ {
   			  $_ .= Num;
   		  }
 
