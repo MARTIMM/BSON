@@ -11,6 +11,7 @@ use BSON::ObjectId;
 use BSON::Regex;
 use BSON::Javascript;
 use BSON::Binary;
+
 #use BSON::Decimal128;
 
 class Decimal128 { }
@@ -549,7 +550,7 @@ class Document does Associative {
         }
       }
 
-      $b;
+      $b
     });
   }
 
@@ -1052,21 +1053,22 @@ class Document does Associative {
       # 64-bit floating point
       when BSON::C-DOUBLE {
 
+        my $c = -> $i is copy {
+          my $v = decode-double( $!encoded-document, $i);
+#note "DBL: $key, $idx = @!values[$idx]";
+
+          # Return total section of binary data
+          ( $v, $!encoded-document.subbuf(
+                  $decode-start ..^            # At bson code
+                  ($i + BSON::C-DOUBLE-SIZE)   # $i is at code + key further
+                )
+          )
+        }
+
         my Int $i = $!index;
         $!index += BSON::C-DOUBLE-SIZE;
 #note "DBL Subbuf: ", $!encoded-document.subbuf( $i, BSON::C-DOUBLE-SIZE);
-
-        %!promises{$key} = Promise.start( {
-            @!values[$idx] = decode-double( $!encoded-document, $i);
-#note "DBL: $key, $idx = @!values[$idx]";
-
-            # Return total section of binary data
-            $!encoded-document.subbuf(
-              $decode-start ..^               # At bson code
-              ($i + BSON::C-DOUBLE-SIZE)      # $i is at code + key further
-            );
-          }
-        );
+        %!promises{$key} = Promise.start( { $c($i) } );
       }
 
       # String type
@@ -1079,11 +1081,13 @@ class Document does Associative {
         $!index += BSON::C-INT32-SIZE + $nbr-bytes;
 
         %!promises{$key} = Promise.start( {
-            @!values[$idx] = decode-string( $!encoded-document, $i);
-            $!encoded-document.subbuf(
-              $decode-start ..^
-              ($i + BSON::C-INT32-SIZE + $nbr-bytes)
-            );
+            my $v = decode-string( $!encoded-document, $i);
+
+            ( $v, $!encoded-document.subbuf(
+                    $decode-start ..^
+                    ($i + BSON::C-INT32-SIZE + $nbr-bytes)
+                  )
+            )
           }
         );
       }
@@ -1101,10 +1105,9 @@ class Document does Associative {
 
         my BSON::Document $d .= new;
         $d.decode($!encoded-document.subbuf($i ..^ ($i + $doc-size)));
-        @!values[$idx] = $d;
 
         %!promises{$key} = Promise.start( {
-            $!encoded-document.subbuf( $decode-start ..^ ($i + $doc-size));
+            ( $d, $!encoded-document.subbuf( $decode-start ..^ ($i + $doc-size)))
           }
         );
       }
@@ -1121,9 +1124,9 @@ class Document does Associative {
             my BSON::Document $d .= new;
 
             $d.decode($!encoded-document.subbuf($i ..^ ($i + $doc-size)));
-            @!values[$idx] = [$d.values];
+            my $v = [$d.values];
 
-            $!encoded-document.subbuf( $decode-start ..^ ($i + $doc-size));
+            ( $v, $!encoded-document.subbuf( $decode-start ..^ ($i + $doc-size)))
           }
         );
       }
@@ -1141,13 +1144,14 @@ class Document does Associative {
         $!index += BSON::C-INT32-SIZE + 1 + $buf-size;
 
         %!promises{$key} = Promise.start( {
-            @!values[$idx] = BSON::Binary.decode(
+            my $v = BSON::Binary.decode(
               $!encoded-document, $i, :$buf-size
             );
 
-            $!encoded-document.subbuf(
-              $decode-start ..^ ($i + 1 + $buf-size)
-            );
+            ( $v, $!encoded-document.subbuf(
+                    $decode-start ..^ ($i + 1 + $buf-size)
+                  )
+            )
           }
         );
       }
@@ -1159,8 +1163,8 @@ class Document does Associative {
         $!index += 12;
 
         %!promises{$key} = Promise.start( {
-            @!values[$idx] = BSON::ObjectId.decode( $!encoded-document, $i);
-            $!encoded-document.subbuf($decode-start ..^ ($i + 12));
+            my $v = BSON::ObjectId.decode( $!encoded-document, $i);
+            ( $v, $!encoded-document.subbuf($decode-start ..^ ($i + 12)))
           }
         );
       }
@@ -1172,8 +1176,8 @@ class Document does Associative {
         $!index++;
 
         %!promises{$key} = Promise.start( {
-            @!values[$idx] = $!encoded-document[$i] ~~ 0x00 ?? False !! True;
-            $!encoded-document.subbuf($decode-start .. ($i + 1));
+            my $v = $!encoded-document[$i] ~~ 0x00 ?? False !! True;
+            ( $v, $!encoded-document.subbuf($decode-start .. ($i + 1)))
           }
         );
       }
@@ -1184,14 +1188,15 @@ class Document does Associative {
         $!index += BSON::C-INT64-SIZE;
 
         %!promises{$key} = Promise.start( {
-            @!values[$idx] = DateTime.new(
+            my $v = DateTime.new(
               decode-int64( $!encoded-document, $i) / 1000,
               :timezone(0)
             );
 
-            $!encoded-document.subbuf(
-              $decode-start ..^ ($i + BSON::C-INT64-SIZE)
-            );
+            ( $v, $!encoded-document.subbuf(
+                    $decode-start ..^ ($i + BSON::C-INT64-SIZE)
+                  )
+            )
           }
         );
       }
@@ -1199,9 +1204,8 @@ class Document does Associative {
       # Null value -> Any
       when BSON::C-NULL {
         %!promises{$key} = Promise.start( {
-            @!values[$idx] = Any;
             my $i = $!index;
-            $!encoded-document.subbuf($decode-start ..^ $i);
+            ( Any, $!encoded-document.subbuf($decode-start ..^ $i))
           }
         );
       }
@@ -1223,12 +1227,12 @@ class Document does Associative {
         my $i3 = $!index;
 
         %!promises{$key} = Promise.start( {
-            @!values[$idx] = BSON::Regex.new(
+            my $v = BSON::Regex.new(
               :regex(decode-cstring( $!encoded-document, $i1)),
               :options(decode-cstring( $!encoded-document, $i2))
             );
 
-            $!encoded-document.subbuf($decode-start ..^ $i3);
+            ( $v, $!encoded-document.subbuf($decode-start ..^ $i3))
           }
         );
       }
@@ -1246,10 +1250,12 @@ class Document does Associative {
         $!index += (BSON::C-INT32-SIZE + $buf-size);
 
         %!promises{$key} = Promise.start( {
-            @!values[$idx] = BSON::Javascript.decode( $!encoded-document, $i);
-            $!encoded-document.subbuf(
-              $decode-start ..^ ($i + BSON::C-INT32-SIZE + $buf-size)
-            );
+            my $v = BSON::Javascript.decode( $!encoded-document, $i);
+
+            ( $v, $!encoded-document.subbuf(
+                    $decode-start ..^ ($i + BSON::C-INT32-SIZE + $buf-size)
+                  )
+            )
           }
         );
       }
@@ -1266,13 +1272,13 @@ class Document does Associative {
         my Int $i3 = $!index;
 
         %!promises{$key} = Promise.start( {
-            @!values[$idx] = BSON::Javascript.decode(
+            my $v = BSON::Javascript.decode(
               $!encoded-document, $i1,
               :bson-doc(BSON::Document.new),
               :scope(Buf.new($!encoded-document[$i2 ..^ ($i2 + $js-size)]))
             );
 
-            $!encoded-document.subbuf($decode-start ..^ $i3);
+            ( $v, $!encoded-document.subbuf($decode-start ..^ $i3))
           }
         );
       }
@@ -1284,11 +1290,12 @@ class Document does Associative {
         $!index += BSON::C-INT32-SIZE;
 
         %!promises{$key} = Promise.start( {
-            @!values[$idx] = decode-int32( $!encoded-document, $i);
+            my $v = decode-int32( $!encoded-document, $i);
 
-            $!encoded-document.subbuf(
-              $decode-start ..^ ($i + BSON::C-INT32-SIZE)
-            );
+            ( $v, $!encoded-document.subbuf(
+                    $decode-start ..^ ($i + BSON::C-INT32-SIZE)
+                  )
+            )
           }
         );
       }
@@ -1304,12 +1311,13 @@ class Document does Associative {
 #                decode-uint64( $!encoded-document, $i)
 #              )
 #            );
-            @!values[$idx] = decode-uint64( $!encoded-document, $i);
+            my $v = decode-uint64( $!encoded-document, $i);
 #note "Timestamp: ", @!values[$idx];
 
-            $!encoded-document.subbuf(
-              $decode-start ..^ ($i + BSON::C-UINT64-SIZE)
-            );
+            ( $v, $!encoded-document.subbuf(
+                    $decode-start ..^ ($i + BSON::C-UINT64-SIZE)
+                  )
+            )
           }
         );
       }
@@ -1321,11 +1329,13 @@ class Document does Associative {
         $!index += BSON::C-INT64-SIZE;
 
         %!promises{$key} = Promise.start( {
-            @!values[$idx] = decode-int64( $!encoded-document, $i);
+            my $v = decode-int64( $!encoded-document, $i);
 
-            $!encoded-document.subbuf(
-              $decode-start ..^ ($i + BSON::C-INT64-SIZE)
-            );
+            # return value and encoded snippet
+            ( $v, $!encoded-document.subbuf(
+                    $decode-start ..^ ($i + BSON::C-INT64-SIZE)
+                  )
+            )
           }
         );
       }
@@ -1378,7 +1388,7 @@ class Document does Associative {
           # Return the Buffer slices in each entry so it can be
           # concatenated again when encoding
 #note "$*THREAD.id() Before wait for result of $key";
-          @!encoded-entries[$idx] = %!promises{$key}.result;
+          ( @!values[$idx], @!encoded-entries[$idx]) = %!promises{$key}.result;
 #note "$*THREAD.id() After wait for $key";
         } # if
       } # loop
