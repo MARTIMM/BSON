@@ -12,7 +12,7 @@ subtest "subdocs", {
   $d<b><a> = 11;
   $d<c><b><a> = 12;
 
-  diag $d.perl;
+#  diag $d.perl;
 
   ok $d<b> ~~ BSON::Document, 'subdoc at b';
   is $d<b><a>, 11, 'is 11';
@@ -35,7 +35,7 @@ subtest "subdoc and array", {
 
   $d<b><a> = [^5];
 
-  diag $d.perl;
+#  diag $d.perl;
 
   is-deeply $d<b><a>, [^5], 'is ^5';
 
@@ -124,12 +124,12 @@ subtest "Big, wide and deep nesting", {
     $d<x4><x2><x3>{$char} = $dsub.clone;
   }
 
-note "Encode big document";
+#note "Encode big document";
   my Buf $b = $d.encode;
-note "Done encoding";
-note "Decode big document";
+#note "Done encoding";
+#note "Decode big document";
   $dsub .= new($b);
-note "Done decoding";
+#note "Done decoding";
 
   is-deeply $dsub, $d, 'document the same after encoding/decoding';
 

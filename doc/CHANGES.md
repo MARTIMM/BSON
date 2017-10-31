@@ -3,7 +3,7 @@ that page: *Major version zero (0.y.z) is for initial development. Anything may
 change at any time. The public API should not be considered stable*.
 
 * 0.11.4
-  * Bug partly fixed; hangups while encoding. Threads are only started when encode() is called.
+  * Bug fixed; hangups while encoding. Threads are only started when encode() is called.
 * 0.11.3
   * Bug fixed; Crashes solved. Changed decoding on threads in such a way that results are returned as a result instead of changing the results array directly.
 * 0.11.2
@@ -17,7 +17,7 @@ change at any time. The public API should not be considered stable*.
 * 0.10.2
   * Changed precision in test for Rat
 * 0.10.1
-  * Bug fixed; Datetime was not in converted to miliseconds when encoding and
+  * Bug fixed; Datetime was not converted to miliseconds when encoding and
   when decoding not converted to seconds. Thanks to Dan Zwell.
 * 0.10.0
   * Rat to Num conversion when there is no loss of accuracy. Thanks to Dan Zwell.
