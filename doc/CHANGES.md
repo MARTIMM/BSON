@@ -2,9 +2,36 @@ See [semantic versioning](http://semver.org/). Please note point 4. on
 that page: *Major version zero (0.y.z) is for initial development. Anything may
 change at any time. The public API should not be considered stable*.
 
+* 0.11.5
+  * Modified Javascript class to encode the scope immediately on instantiation instead of later when the document is encoded as a whole.
+* 0.11.4
+  * Bug fixed; hangups while encoding. Threads are only started when encode() is called.
+* 0.11.3
+  * Bug fixed; Crashes solved. Changed decoding on threads in such a way that results are returned as a result instead of changing the results array directly.
+* 0.11.2
+  * Renamed accept-rat variables and method in convert-rat. If not set, it will be converted to binary. If set, it checks for precision loss before converting to Num. if that is accepted too, all Rat's are converted.
+* 0.11.1
+  * Added attributes for the flags autovivify, accept-hash and accept-rat(this will be renamed later). The methods are also modified.
+* 0.11.0
+  * Added a method Capture to return a Capture of the contents of a BSON::Document. Thanks to Dan Zwell.
+* 0.10.3
+  * Changed precision in test for Rat. accept-rat will be used different later
+* 0.10.2
+  * Changed precision in test for Rat
+* 0.10.1
+  * Bug fixed; Datetime was not converted to miliseconds when encoding and
+  when decoding not converted to seconds. Thanks to Dan Zwell.
+* 0.10.0
+  * Rat to Num conversion when there is no loss of accuracy. Thanks to Dan Zwell.
+* 0.9.38
+  * Bugfix handling timestamps. This will become a class object later.
+* 0.9.37
+  * Removed Digest::MD5 in favor of OpenSSL::Digest after seeing strange errors.
 * 0.9.36
   * Remove native implementation of encode/decode int23/int64 because benchmarks show that it is slower that pure perl.
   * Fixed. In test 300-document.t it seems that a bug is found when handling a very large document. It is about encoding a double.
+  * try/catch replaced with throws-like in tests.
+  * all BSON exceptions replaced by one X::BSON.
 * 0.9.35
   * Quick fix to read a timestamp as an unsigned 64 bit integer. will become an object later. timestamp really is an object of 2 integers; an increment and a timestamp
 * 0.9.34

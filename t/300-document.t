@@ -43,8 +43,7 @@ subtest "Initialize document", {
 
   # Init via hash inhibited
   throws-like { $d .= new: ppp => 100, qqq => ( d => 110, e => 120); },
-    X::BSON::Parse-document,
-    'Cannot use hashes on init',
+    X::BSON, 'Cannot use hashes on init',
     :message(/:s Cannot use hash values on init/);
 }
 
@@ -55,11 +54,10 @@ subtest "Ban the hash", {
   throws-like {
       $d<q> = {a => 20};
       is $d<q><a>, 20, "Hash value $d<q><a>";
-    }, X::BSON::Parse-document,
-    'Cannot use hashes when assigning',
+    }, X::BSON, 'Cannot use hashes when assigning',
     :message(/:s Cannot use hash values/);
 
-  $d.accept-hash(True);
+  $d.accept-hash(:accept);
   $d<q> = {
     a => 120, b => 121, c => 122, d => 123, e => 124, f => 125, g => 126,
     h => 127, i => 128, j => 129, k => 130, l => 131, m => 132, n => 133,
@@ -70,10 +68,13 @@ subtest "Ban the hash", {
   my $x = $d<q>.keys.sort;
   nok $x eqv $d<q>.keys.List, 'Not same order';
 
-  $d.autovivify(True);
+  $d.autovivify(:on);
 
   $d<e><f><g> = {b => 30};
   is $d<e><f><g><b>, 30, "Autovivified hash value $d<e><f><g><b>";
+
+  $d.autovivify(:!on);
+  $d.accept-hash(:!accept);
 }
 
 #-------------------------------------------------------------------------------
@@ -98,7 +99,7 @@ subtest "Test document, associative", {
   throws-like {
       my $x = 10;
       $d<e> := $x;
-    }, X::BSON::Parse-document,
+    }, X::BSON, 'Cannot use binding',
     :message(/:s Cannot use binding/);
 }
 
@@ -117,83 +118,116 @@ subtest "Test document, other", {
 }
 
 #-------------------------------------------------------------------------------
-subtest "Document nesting 1", {
+subtest "Simplified encode Rat test", {
 
-  # Try nesting with BSON::Document
-  #
   my BSON::Document $d .= new;
-  $d<a> = 10;
-  $d<b> = 11;
-  $d<c> = BSON::Document.new: ( p => 1, q => 2);
-  $d<c><a> = 100;
-  $d<c><b> = 110;
 
-  is $d<c><b>, 110, "\$d<c><b> = $d<c><b>";
-  is $d<c><p>, 1, "\$d<c><p> = $d<c><p>";
-}
-
-#-------------------------------------------------------------------------------
-subtest "Document nesting 2", {
-
-  # Try nesting with k => v
-  #
-  my BSON::Document $d .= new;
-  $d<abcdef> = a1 => 10, bb => 11;
-  is $d<abcdef><a1>, 10, "sub document \$d<abcdef><a1> = $d<abcdef><a1>";
-
-  $d<abcdef><b1> = q => 255;
-  is $d<abcdef><b1><q>, 255,
-     "sub document \$d<abcdef><b1><q> = $d<abcdef><b1><q>";
+  throws-like {
+    $d<a> = 3.5;
+    $d.encode;
+  }, X::BSON, 'Binary Rat not yet implemented',
+  :message(/:s Not yet implemented/);
 
   $d .= new;
-  $d<a> = v1 => (v2 => 'v3');
-  is $d<a><v1><v2>, 'v3', "\$d<a><v1><v2> = $d<a><v1><v2>";
-  $d<a><v1><w3> = 110;
-  is $d<a><v1><w3>, 110, "\$d<a><v1><w3> = $d<a><v1><w3>";
+  $d.convert-rat(:accept);
+  $d<a> = 3.5;
+  my Buf $b = $d.encode;
+  $d .= new($b);
+  is $d<a>, 3.5, "Number is 3.5";
+  ok $d<a> ~~ Num, "Number is of type Num";
+
+  my Rat $n = 1.23847682734687263487623449827398724987234982374;
+  ok $n.Num.Rat(0) != $n, "Rat number not of same precision as Num";
+
+  $d .= new;
+  throws-like {
+    $d<a> = $n;
+    $b = $d.encode;
+  }, X::BSON, 'Rat can not be converted without losing pecision',
+  :message(/:s without losing pecision/);
+
+  $d .= new;
+  $d.convert-rat( :accept, :accept-precision-loss ,:instance-only);
+  $d<a> = $n;
+  $b = $d.encode;
+  $d .= new($b);
+  ok $d<a>.Rat(0) != $n, "Number is not equal to $n";
+  ok $d<a> ~~ Num, "Number is of type Num";
+#  $d.convert-rat(:!accept);
 }
 
 #-------------------------------------------------------------------------------
-# Test to see if no hangup takes place when making a special doc
-# on ubuntu docker (Gabor) this test seems to fail. On Travis(Ubuntu) or Fedora
-# it works fine. So test only when on TRAVIS
+subtest "Document desctructure tests", {
 
-#if %*ENV<TRAVIS>:exists or '/home/marcel/Languages/Perl6'.IO ~~ :d {
-  subtest "Big, wide and deep nesting", {
+  # Create a document and bind it to a hash
+  my %doc := BSON::Document.new: (
+    a => 10,
+    b => 11
+  );
 
-    # Keys must be sufficiently long and value complex enough to keep a
-    # thread busy causing the process to runout of available threads
-    # which are by default 16.
-    my Num $count = 0.1e0;
-    my BSON::Document $d .= new;
-    for ('zxnbcvzbnxvc-aa', *.succ ... 'zxnbcvzbnxvc-bz') -> $char {
-      $d{$char} = ($count += 2.44e0);
-    }
+  # Create a sub with a sub-signature
+  my $sub = sub ( % ( :$a, :$b, :$c=12)) {
+    is $a, 10, 'a = 10';
+    is $b, 11, 'b = 11';
+    is $c, 12, 'c = 12';
+  };
 
-    my BSON::Document $dsub .= new;
-    for ('uqwteuyqwte-aa', *.succ ... 'uqwteuyqwte-bz') -> $char {
-      $dsub{$char} = ($count += 2.1e0);
-    }
+  # When calling, the Capture method is called to return a hash of the
+  # documents contents
+  $sub(%doc);
+}
 
-    for ('uqwteuyqwte-da', *.succ ... 'uqwteuyqwte-dz') -> $char {
-      $d<x1>{$char} = ($count += 2.1e0);
-      $d<x2><x1>{$char} = $dsub.clone;
-      $d<x2><x2><x3>{$char} = $dsub.clone;
-    }
+#-------------------------------------------------------------------------------
+#`{{
+subtest "reassignment test", {
 
-    for ('jhgsajhgasjdg-ca', *.succ ... 'jhgsajhgasjdg-cz') -> $char {
-      $d{$char} = ($count -= 0.02e0);
-    }
+  my BSON::Document $d .= new;
+  $d<a> = 1;
+  $d<b> = 2;
+  ok $d<test-assign> ~~ BSON::TemporaryContainer, 'Temporary container';
+  ok $d<test-assign2> ~~ BSON::TemporaryContainer, 'Temporary container';
+  ok $d<test-assign3> ~~ BSON::TemporaryContainer, 'Temporary container';
+  $d<test-assign> = 12345;
+  $d<test-assign> = 54321;
+  $d<test-assign2> = 890;
+  diag $d.perl;
 
-    for ('uqwteuyqwte-ea', *.succ ... 'uqwteuyqwte-ez') -> $char {
-      $d<x3>{$char} = $dsub.clone;
-      $d<x4><x1>{$char} = $dsub.clone;
-      $d<x4><x2><x3>{$char} = $dsub.clone;
-    }
+  my Buf $b = $d.encode;
+  $d .= new($b);
+  diag $d.perl;
+  is $d<test-assign>, 54321, "Value is $d<test-assign>";
+}
+}}
 
-    $dsub .= new($d.encode);
-    is-deeply $dsub, $d, 'document the same after encoding/decoding';
-  }
-#}
+#-------------------------------------------------------------------------------
+#`{{
+subtest "Slice assignment", {
+
+  my BSON::Document $d .= new;
+  $d<test-assign> = 12345;
+
+$d.autovivify(:on);
+  $d<firstname lastname> = <John Doe>;
+  is $d<firstname>, 'John', "firstname set to $d<firstname>";
+  is $d<lastname>, 'Doe', "lastname set to $d<lastname>";
+
+  my %x = %(a => 10, b => 11, c => 12);
+  my @keys = <a c>;
+  $d{@keys} = %x{@keys};
+
+  is $d<a>, 10, 'Key a set';
+  is $d<b>, Any, 'Key b not set';
+  is $d<c>, 12, 'Key c set';
+
+  $d<p q r> = ('a', 'b', (a => 11));
+  diag "$?LINE, $d.perl()";
+
+  my Buf $b = $d.encode;
+  note "$?LINE, ", $b;
+  diag "$?LINE, $d.new($b).perl()";
+$d.autovivify(:!on);
+}
+}}
 
 #-------------------------------------------------------------------------------
 subtest "Exception tests", {
@@ -205,32 +239,28 @@ subtest "Exception tests", {
       my BSON::Document $d .= new;
       $d<js> = BSON::Javascript.new(:javascript(''));
       $d.encode;
-    }, X::BSON::Parse-document,
-    'empty javascript',
+    }, X::BSON, 'empty javascript',
     :message(/:s cannot process empty javascript code/);
 
   throws-like {
       my BSON::Document $d .= new;
       $d<int1> = 1762534762537612763576215376534;
       $d.encode;
-    }, X::BSON::Parse-document,
-    'too large',
+    }, X::BSON, 'too large',
     :message(/:s Number too large/);
 
   throws-like {
       my BSON::Document $d .= new;
       $d<int2> = -1762534762537612763576215376534;
       $d.encode;
-    }, X::BSON::Parse-document,
-    'too small',
+    }, X::BSON, 'too small',
     :message(/:s Number too small/);
 
   throws-like {
       my BSON::Document $d .= new;
       $d{"Double\0test"} = 1.2.Num;
       $d.encode;
-    }, X::BSON::Parse-document,
-    '0x00 in string',
+    }, X::BSON, '0x00 in string',
     :message(/:s Forbidden 0x00 sequence in/);
 
   throws-like {
@@ -241,8 +271,7 @@ subtest "Exception tests", {
       # Now use encoded buffer and take a slice from it rendering it currupt.
       my BSON::Document $d2 .= new;
       $d2.decode(Buf.new($b[0 ..^ ($b.elems - 4)]));
-    }, X::BSON::Parse-document,
-    'not enough',
+    }, X::BSON, 'not enough',
     :message(/:s Not enaugh characters left/);
 
   throws-like {
@@ -255,8 +284,7 @@ subtest "Exception tests", {
       );
 
       my BSON::Document $d .= new($b);
-    }, X::BSON::Parse-document,
-    'size does not match',
+    }, X::BSON, 'size does not match',
     :message(/:s Size of document\(.*\) does not match/);
 
   throws-like {
@@ -266,8 +294,8 @@ subtest "Exception tests", {
       my BSON::Document $d .= new;
       $d{"A"} = $a;
       $d.encode;
-    }, X::BSON::Parse-document,
-    :message(/:s BSON type/);
+    }, X::BSON, 'Not a BSON type',
+    :message(/'encode() on A<' \d* '>, error: Not yet implemented'/);
 
   throws-like {
       my $b = Buf.new(
@@ -280,8 +308,8 @@ subtest "Exception tests", {
 
       my BSON::Document $d .= new($b);
     },
-    X::BSON::NYS,
-    :message(/:s BSON type \'160\' is not supported/);
+    X::BSON, 'type is not implemented',
+    :message(/ 'decode() on 160, error: BSON code \'0xa0\' not implemented'/);
 
   throws-like {
       my $b = Buf.new(
@@ -294,13 +322,10 @@ subtest "Exception tests", {
       );
 
       my BSON::Document $d .= new($b);
-    }, X::BSON::Parse-document,
-    'Missing trailing 0x00',
+    }, X::BSON, 'Missing trailing 0x00',
     :message(/:s Missing trailing 0x00/);
-
 }
 
 #-------------------------------------------------------------------------------
 # Cleanup
-done-testing();
-exit(0);
+done-testing;
