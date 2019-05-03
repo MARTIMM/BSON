@@ -66,7 +66,7 @@ class ObjectId {
   #-----------------------------------------------------------------------------
   # A buffer of 12 bytes
   #
-  multi submethod BUILD ( Buf:D :$bytes ) {
+  multi submethod BUILD ( Buf:D :$bytes! ) {
 
     die X::BSON.new(
       :operation('new()'), :type('ObjectId'),
@@ -174,6 +174,6 @@ class ObjectId {
     Int:D $index is copy,
     --> BSON::ObjectId
   ) {
-    BSON::ObjectId.new(:bytes($b[$index ..^ ($index + 12)]));
+    BSON::ObjectId.new(:bytes(Buf.new($b[ ^12 + $index ])));
   }
 }
