@@ -25,7 +25,6 @@ class ObjectId {
 
   #-----------------------------------------------------------------------------
   # A string of 24 hexadecimal characters.
-  #
   multi submethod BUILD ( Str:D :$string! ) {
 
     die X::BSON.new(
@@ -64,8 +63,7 @@ class ObjectId {
   }
 
   #-----------------------------------------------------------------------------
-  # A buffer of 12 bytes
-  #
+  # A buffer of 12 bytes. All data is little endian encoded.
   multi submethod BUILD ( Buf:D :$bytes! ) {
 
     die X::BSON.new(
@@ -75,11 +73,11 @@ class ObjectId {
 
     $!oid = $bytes;
 
-    $!time = :16( ($!oid[0..3].list ==> map { $_.fmt('%02x') }).join('') );
+    $!time = :16( ($!oid[3...0].list ==> map { $_.fmt('%02x') }).join('') );
 
     try {
       $!machine-id = (
-        $!oid[4..6].list ==> map { $_.fmt('%02x') }
+        $!oid[6...4].list ==> map { $_.fmt('%02x') }
         ).join('').decode;
       CATCH {
 
@@ -89,18 +87,17 @@ class ObjectId {
       }
     }
 
-    $!pid = :16( ($!oid[7..8].list ==> map { $_.fmt('%02x') }).join('') );
+    $!pid = :16( ($!oid[8,7].list ==> map { $_.fmt('%02x') }).join('') );
 
-    $!count = :16( ($!oid[9..11].list ==> map { $_.fmt('%02x') }).join('') );
+    $!count = :16( ($!oid[11...9].list ==> map { $_.fmt('%02x') }).join('') );
   }
 
   #-----------------------------------------------------------------------------
   # Only given a machine name and a count
   # See also: http://docs.mongodb.org/manual/reference/object-id
-  #
   multi submethod BUILD ( Str:D :$machine-name!, Int:D :$count! ) {
 
-    $!machine-id = md5($machine-name.encode)>>.fmt('%02x').join('').substr( 0, 6);
+    $!machine-id = md5($machine-name.encode)>>.fmt('%02x').join('');
     $!time = time;
     $!pid = $*PID;
     $!count = $count;
@@ -114,7 +111,7 @@ class ObjectId {
   #
   multi submethod BUILD ( ) {
 
-    $!machine-id = md5((~$*KERNEL).encode)>>.fmt('%02x').join('').substr( 0, 6);
+    $!machine-id = md5((~$*KERNEL).encode)>>.fmt('%02x').join('');
     $!time = time;
     $!pid = $*PID;
     $!count = 0xFFFFFF.rand.Int;
@@ -124,38 +121,34 @@ class ObjectId {
 
   #-----------------------------------------------------------------------------
   method perl ( --> Str ) {
-    my Str $string = $!oid.list.fmt('%02x');
-    $string ~~ s:g/\s+//;
+    #my Str $string = $!oid.list.fmt('%02x');
+    #$string ~~ s:g/\s+//;
+    my Str $string = $!oid>>.fmt('%02x').join;
     [~] 'BSON::ObjectId.new(', ":string('0x$string')", ')';
   }
 
   #-----------------------------------------------------------------------------
+  # Generate object id. All data is little endian encoded.
   method !generate-oid ( ) {
 
     my @numbers = ();
 
-    # Generate object id
-    #
     # Time in 4 bytes => no substr needed
-    #
     for $!time.fmt('%08x').comb(/../)[3...0] -> $hexnum {
       @numbers.push: :16($hexnum);
     }
 
     # Machine id in 3 bytes
-    #
     for $!machine-id.fmt('%6.6s').comb(/../)[2...0] -> $hexnum {
       @numbers.push: :16($hexnum);
     }
 
     # Process id in 2 bytes
-    #
     for $!pid.fmt('%04x').comb(/../)[1,0] -> $hexnum {
       @numbers.push: :16($hexnum);
     }
 
     # Result of count truncated to 3 bytes
-    #
     for $!count.fmt('%08x').comb(/../)[2...0] -> $hexnum {
       @numbers.push: :16($hexnum);
     }
@@ -164,8 +157,8 @@ class ObjectId {
   }
 
   #-----------------------------------------------------------------------------
-  method encode ( ) {
-    $!oid;
+  method encode ( --> Buf ) {
+    $!oid
   }
 
   #-----------------------------------------------------------------------------
