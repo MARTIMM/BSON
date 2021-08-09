@@ -279,7 +279,6 @@ subtest {
   is $d<array>[[2]], 345, 'A[[2]] = 345';
 
   is $d<oid>.oid.elems, 12, 'Length of object id ok';
-  is $d<oid>.pid, $*PID, "Pid = $*PID";
 
   is $d<dtime>.utc, $datetime.utc, 'Date and time ok';
 

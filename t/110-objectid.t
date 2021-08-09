@@ -50,7 +50,6 @@ subtest {
 
   is $o.oid.elems, 12, 'Length oid ok';
   ok $time <= $o.time <= $time + 1, 'Time between this and the next second';
-  is $o.pid, $*PID, "Process is $*PID";
 
 }, 'Object id encoding/decoding';
 
