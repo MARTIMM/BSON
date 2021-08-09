@@ -2,6 +2,9 @@ See [semantic versioning](http://semver.org/). Please note point 4. on
 that page: *Major version zero (0.y.z) is for initial development. Anything may
 change at any time. The public API should not be considered stable*.
 
+* 2021-08-09 0.11.7
+  * Test fixes, issues 32, 33
+
 * 2019-05-03 0.11.6
   * Bugfixes
 * 0.11.5

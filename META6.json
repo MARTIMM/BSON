@@ -1,22 +1,17 @@
 {
+  "version": "0.11.7",
+  "description": "BSON encoding/decoding, used in MongoDB drivers",
+  "name": "BSON",
+
+  "perl": "6",
+  "license": "Artistic-2.0",
+  "tags": [ "bson", "mongodb", "serialize"],
+
   "authors": [
     "Marcel Timmerman",
     "Paweł Pabian"
   ],
-  "history": [
-    "Paweł Pabian worked on it from 2011 until January 2015",
-    "Marcel Timmerman took over in Januari 2015 and is working on it until the present day"
-  ],
-  "depends": [
-    "OpenSSL",
-    "UUID"
-  ],
-  "build-depends": [ ],
-  "test-depends": [ ],
-  "tags": [ "bson", "mongodb", "serialize"],
-  "description": "BSON encoding/decoding, used in MongoDB drivers",
-  "license": "Artistic-2.0",
-  "name": "BSON",
+
   "provides": {
     "BSON":                     "lib/BSON.pm6",
     "BSON::Binary":             "lib/BSON/Binary.pm6",
@@ -25,7 +20,19 @@
     "BSON::ObjectId":           "lib/BSON/ObjectId.pm6",
     "BSON::Regex":              "lib/BSON/Regex.pm6"
   },
-  "source-url": "git://github.com/MARTIMM/BSON.git",
-  "perl": "6",
-  "version": "0.11.6.1"
+
+  "history": [
+    "Paweł Pabian worked on it from 2011 until January 2015",
+    "Marcel Timmerman took over in Januari 2015 and is working on it until the present day"
+  ],
+
+  "depends": [
+    "OpenSSL",
+    "UUID"
+  ],
+
+  "build-depends": [ ],
+  "test-depends": [ ],
+
+  "source-url": "git://github.com/MARTIMM/BSON.git"
 }

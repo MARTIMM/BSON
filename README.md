@@ -1,22 +1,20 @@
-# BSON support
+# ![Face](logotype/logo_32x32.png) BSON support
 
+<!--
 ![Face](logotype/logo_32x32.png) [![Build Status](https://travis-ci.org/MARTIMM/BSON.svg?branch=master)](https://travis-ci.org/MARTIMM/BSON) [![AppVeyor Build Status](https://ci.appveyor.com/api/projects/status/github/MARTIMM/bson?branch=master&passingText=Windows%20-%20OK&failingText=Windows%20-%20FAIL&pendingText=Windows%20-%20pending&svg=true)](https://ci.appveyor.com/project/MARTIMM/bson/branch/master) [![License](http://martimm.github.io/label/License-label.svg)](http://www.perlfoundation.org/artistic_license_2_0)
+-->
 
-Implements [BSON specification][spec].
 
-## Installing BSON
+![T][travis-svg] ![A][appveyor-svg] ![L][license-svg]
 
-Use zef to install the package like so.
-```
-$ zef install BSON
-```
+[travis-svg]: https://travis-ci.com/MARTIMM/BSON.svg?branch=master
+[travis-run]: https://travis-ci.com/MARTIMM/BSON
 
-When installing MongoDB, BSON will be installed automatically as a dependency.
+[appveyor-svg]: https://ci.appveyor.com/api/projects/status/github/MARTIMM/BSON?branch=master&passingText=Windows%20-%20OK&failingText=Windows%20-%20FAIL&pendingText=Windows%20-%20pending&svg=true
+[appveyor-run]: https://ci.appveyor.com/project/MARTIMM/BSON/branch/master
 
-## Version PERL 6 and MoarVM
-
-This module is tested using the latest perl6 version on MoarVM
-
+[license-svg]: https://martimm.github.io/label/License-label.svg
+[licence-lnk]: https://www.perlfoundation.org/artistic_license_2_0
 
 ## Synopsis
 
@@ -57,11 +55,36 @@ $new-doc.decode($enc-doc);
 ## Documentation
 
 BSON/Document.pod
+* [ 🔗 Website]()<!--https://martimm.github.io/raku-mongodb-driver/-->
+* [ 🔗 Travis-ci run on master branch][travis-run]
+* [ 🔗 Appveyor run on master branch][appveyor-run]
+* [ 🔗 License document][licence-lnk]
+* [ 🔗 Release notes](https://martimm.github.io/raku-mongodb-driver/content-docs/about/release-notes.html)
+* [ 🔗 Issues](https://github.com/MARTIMM/raku-mongodb-driver/issues)
+
+<!--
 * [BSON::Binary][Binary]
 * [BSON::Document][Document]
 
 * [Release notes][notes]
 * [Bugs, todo][todo]
+-->
+
+
+Implements [BSON specification][spec].
+
+## Installing BSON
+
+Use zef to install the package like so.
+```
+$ zef install BSON
+```
+
+When installing MongoDB, BSON will be installed automatically as a dependency.
+
+## Version of Raku and MoarVM
+
+This module is tested using the latest Raku version on MoarVM
 
 
 ## Authors
