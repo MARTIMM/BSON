@@ -38,7 +38,7 @@ my BSON::Regex $rex .= new( :regex('abc|def'), :options<is>);
 #my $c = 0;
 my $b = Bench.new;
 $b.timethese(
-  50, {
+  500, {
     '32 inserts' => sub {
       my BSON::Document $d .= new;
 #say "C: ", $c++;

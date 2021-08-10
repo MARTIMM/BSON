@@ -24,25 +24,33 @@ Timing 3000 iterations ....
 
 Conclusion: it is not worth to keep the emulated encode/decode for double (Num). The emulated code was the original implementation before NativeCall was explored.
 
+
 ### Int types in `int.pl6`
 
 Timing 3000 iterations ...
 
-| Date | What | n per sec|
-|------|------|----------|
-| 20170812 | rakudo 2017.07-91-g7e08f74, MoarVM 2017.07-15-g0729f84
-||32 bit integer encode | 32494.3486
-||32 bit integer decode | 62385.0167
-||32 bit native integer decode | 22999.6250
-||64 bit integer encode | 26438.7454
-||64 bit integer decode | 50397.2193
-||64 bit native integer decode | 21226.7633
+32re: n per sec for 32 bit integer encode
+32rd: n per sec for 32 bit integer decode
+32nd: n per sec for 32 bit native integer decode
+64re: n per sec for 64 bit integer encode
+64rd: n per sec for 64 bit integer decode
+64nd: n per sec for 64 bit native integer decode
+
+pv1: rakudo 2017.07-91-g7e08f74, MoarVM 2017.07-15-g0729f84
+pv2: v2021.07-7-gb7f088b5a, MoarVM 2021.07-8-g860cc6550
+
+| Date     | What | 32re | 32rd | 32nd | 64re | 64rd | 64nd
+|----------|------|------|------|------|------|------|------|
+| 20170812 | pv1  | 32494| 62385| 22999| 26438| 50397| 21226
+| 20210809 | pv2  | 20672| 30034|      | 19406| 23713| |
 
 Conclusion: it is not worth to do native decode for any type of integer.
+note 20210809; seems to be slower, what happened?
 
 ## Benchmark documents with only one type
 
 While promises are used to speedup the tests a little, some other tests are devised to look into the difference per BSON type. I imagine that some of the types are so simple to encode/decode that setting up a thread for the calculations would take more overhead than that it would speed up. These tests are made to find out if some types can be taken out of the concurrent setup because the overhead of setting up a thread might take longer than encoding or decoding that particular type.
+
 
 ### Int types in `bench-doc-int.pl6`
 Timing 2000 iterations ...
@@ -56,31 +64,38 @@ Timing 2000 iterations ...
 || 64 bit int with Promise decode | 927.0989
 
 
-## Document encoding/decoding
+## Document encoding/decoding, bench-document.pl6
 
 Tests of encoding two series of 16 types, inserted into a newly created document. Then the result is decoded again.
+
 
 ### Test notes and measurements
 Timing 50 iterations ...
 
-| Date | What | n per sec |
-|------|------|-----------|
-|| With use of Promises on encoding as well as decoding| 6.1938
-|| Removed Promises on decoding (dropped) | 5.2109
-|| After some cleanup of D1 | 7.1333
-|| Replaced Hash $!data with @!values in D1 | 7.1726
-|| Replaced %!promises with @!promises (dropped) | 6.8958
-|| Optional use of autovivify and hashes, restorage of buf parts | 4.4182
-|| A few methods modified into subs | 5.2739
-|| Removing Positional role (dropped) | 4.9585
-|| Bugfixes and improvements. Perl 2015 12 24 | 6.3937
-|| Native encoding/decoding for doubles | 7.7066
-| 20160610 | 2016.06-178-gf7c6e60, MoarVM 2016.06-9-g8fc21d5 | 18.0171
-| 20161108 | 2016.10-204-g824b29f, MoarVM 2016.10-37-gf769569 | 19.8041
-| 20170225 | 017.02-56-g9f10434, MoarVM 2017.02-7-g3d85900 | 20.9844
-| 20170225 | Dropped positional role from BSON::Document | 21.7285
-| 20170718 | 2017.07-19-g1818ad2, bugfix hangup decoding | 14.7199
-| 20171101 | 2017.10-25-gbaed02bf7 MoarVM 2017.10, lot of fixes | 15.9207
+| Date     | What                                                | n per sec |
+|----------|-----------------------------------------------------|-----------|
+|| With use of Promises on encoding as well as decoding          |  6.1938
+|| Removed Promises on decoding (dropped)                        |  5.2109
+|| After some cleanup of D1                                      |  7.1333
+|| Replaced Hash $!data with @!values in D1                      |  7.1726
+|| Replaced %!promises with @!promises (dropped)                 |  6.8958
+|| Optional use of autovivify and hashes, restorage of buf parts |  4.4182
+|| A few methods modified into subs                              |  5.2739
+|| Removing Positional role (dropped)                            |  4.9585
+|| Bugfixes and improvements. Perl 2015 12 24                    |  6.3937
+|| Native encoding/decoding for doubles                          |  7.7066
+| 20160610 | 2016.06-178-gf7c6e60, MoarVM 2016.06-9-g8fc21d5     | 18.0171
+| 20161108 | 2016.10-204-g824b29f, MoarVM 2016.10-37-gf769569    | 19.8041
+| 20170225 | 017.02-56-g9f10434, MoarVM 2017.02-7-g3d85900       | 20.9844
+| 20170225 | Dropped positional role from BSON::Document         | 21.7285
+| 20170718 | 2017.07-19-g1818ad2, bugfix hangup decoding         | 14.7199
+| 20171101 | 2017.10-25-gbaed02bf7 MoarVM 2017.10, lot of fixes  | 15.9207
+
+500 iterations
+| Date     | What                                                | n per sec |
+|----------|-----------------------------------------------------|-----------|
+| 20210809 | v2021.07-7-gb7f088b5a, MoarVM 2021.07-8-g860cc6550  | 42.020
+
 
 ###  Original BSON methods with hashes.
 * I think this was about 2015 06 or so. In the mean time Hashing should be faster too!
