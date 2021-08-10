@@ -8,96 +8,73 @@ use OpenSSL::Digest;
 
 #-------------------------------------------------------------------------------
 # Information about object id construction can be found at
-# http://docs.mongodb.org/manual/reference/object-id/
-# Here it will be used when the argument to encode() is undefined.
+#   http://docs.mongodb.org/manual/reference/object-id
+#   https://github.com/mongodb/specifications/blob/master/source/objectid.rst
 #
 class ObjectId {
 
-  # Represents ObjectId BSON type described in
-  # http://dochub.mongodb.org/core/objectids
-  #
+  my Int $random-base-per-application-run;
+
   has Buf $.oid;
 
+  # == ObjectId.getTimestamp()
   has Int $.time;
   has Str $.machine-id;
   has Int $.pid;
   has Int $.count;
 
   #-----------------------------------------------------------------------------
+  # See also:
+  #   http://docs.mongodb.org/manual/reference/object-id
+  #   https://github.com/mongodb/specifications/blob/master/source/objectid.rst
+  #
   # A string of 24 hexadecimal characters.
   multi submethod BUILD ( Str:D :$string! ) {
 
+    # Check length
     die X::BSON.new(
       :type<ObjectId>, :operation('new()'),
       :error('String too short or nonhexadecimal')
     ) unless $string ~~ m/ ^ <xdigit>**24 $ /;
 
 
-    $!oid .= new: ($string.comb(/../) ==> map { :16($_) });
-
-    $!time = :16(
-      ( $!oid[3...0].list ==> map { $_.fmt('%02x') }
-      ).reverse.join('')
-    );
-
-    try {
-      $!machine-id = (
-        $!oid[6...4].list ==> map { $_.fmt('%02x') }
-        ).reverse.join('').decode;
-      CATCH {
-        default {
-          $!machine-id = 'Not defined';
-        }
-      }
-    }
-
-    $!pid = :16(
-      ( $!oid[8,7].list ==> map { $_.fmt('%02x') }
-      ).reverse.join('')
-    );
-
-    $!count = :16(
-      ( $!oid[11...9].list ==> map { $_.fmt('%02x') }
-      ).reverse.join('')
-    );
+    # Split into bytes
+    $!oid .= new: $string.comb(/../).map({ :16($_) });
+    self.BUILD( :bytes($!oid), :oid-is-set);
   }
 
   #-----------------------------------------------------------------------------
   # A buffer of 12 bytes. All data is little endian encoded.
-  multi submethod BUILD ( Buf:D :$bytes! ) {
+  multi submethod BUILD ( Buf:D :$bytes!, Bool :$oid-is-set = False ) {
 
     die X::BSON.new(
       :operation('new()'), :type('ObjectId'),
       :error('Byte buffer too short/long')
     ) unless $bytes.elems == 12;
 
-    $!oid = $bytes;
+    $!oid = $bytes unless $oid-is-set;
 
-    $!time = :16( ($!oid[3...0].list ==> map { $_.fmt('%02x') }).join('') );
+    # Time stamp must be little endian encoded in 4 bytes
+    $!time = :16( ( $!oid[3...0].map({ $_.fmt('%02x') }) ).reverse.join('') );
 
-    try {
-      $!machine-id = (
-        $!oid[6...4].list ==> map { $_.fmt('%02x') }
-        ).join('').decode;
-      CATCH {
+    # Machine id is stored together with pid of process. Originally 2 bytes
+    # but modern systems take more than that. So machine id now gets 2
+    # chars/bytes of the machines os name. The pid will take 3 bytes with a
+    # total of this field, 5 bytes.
+    $!machine-id = $!oid[ 4, 5]>>.chr.join;
 
-        default {
-          $!machine-id = 'No utf-8 encoded machine name';
-        }
-      }
-    }
+    $!pid = :16( ( $!oid[6..8].map( { $_.fmt('%02x') } )).join );
 
-    $!pid = :16( ($!oid[8,7].list ==> map { $_.fmt('%02x') }).join('') );
-
-    $!count = :16( ($!oid[11...9].list ==> map { $_.fmt('%02x') }).join('') );
+    $!count = :16( ( $!oid[9..11].map( { $_.fmt('%02x') } ) ).join );
   }
 
   #-----------------------------------------------------------------------------
   # Only given a machine name and a count
-  # See also: http://docs.mongodb.org/manual/reference/object-id
-  multi submethod BUILD ( Str:D :$machine-name!, Int:D :$count! ) {
+  multi submethod BUILD (
+    Str:D :$machine-name!, Int:D :$count!
+  ) is DEPRECATED("one of the other inits") {
 
-    $!machine-id = md5($machine-name.encode)>>.fmt('%02x').join('');
+    $!machine-id = $machine-name.substr( 0, 2);
     $!time = time;
     $!pid = $*PID;
     $!count = $count;
@@ -107,24 +84,31 @@ class ObjectId {
 
   #-----------------------------------------------------------------------------
   # No arguments. Generated id.
-  # See also: http://docs.mongodb.org/manual/reference/object-id
-  #
   multi submethod BUILD ( ) {
 
-    $!machine-id = md5((~$*KERNEL).encode)>>.fmt('%02x').join('');
+    # Initialize with first value
+    $random-base-per-application-run //= 0xffffff.rand.Int;
+
+    # Machine id of only 2 letters
+    $!machine-id = $*KERNEL.Str.substr( 0, 2);
     $!time = time;
     $!pid = $*PID;
-    $!count = 0xFFFFFF.rand.Int;
+    $!count = $random-base-per-application-run++;
 
     self!generate-oid;
   }
 
   #-----------------------------------------------------------------------------
   method perl ( --> Str ) {
+    [~] 'BSON::ObjectId.new(', ":string('0x{ self.Str }')", ')'
+  }
+
+  #-----------------------------------------------------------------------------
+  # == ObjectId.toString()
+  method Str ( --> Str ) {
     #my Str $string = $!oid.list.fmt('%02x');
     #$string ~~ s:g/\s+//;
-    my Str $string = $!oid>>.fmt('%02x').join;
-    [~] 'BSON::ObjectId.new(', ":string('0x$string')", ')';
+    $!oid>>.fmt('%02x').join;
   }
 
   #-----------------------------------------------------------------------------
@@ -133,27 +117,21 @@ class ObjectId {
 
     my @numbers = ();
 
-    # Time in 4 bytes => no substr needed
-    for $!time.fmt('%08x').comb(/../)[3...0] -> $hexnum {
-      @numbers.push: :16($hexnum);
-    }
+    # Time in 4 bytes big endian encoded => no substr needed
+    @numbers.push: |$!time.fmt('%08x').comb(/../)[3...0];
 
-    # Machine id in 3 bytes
-    for $!machine-id.fmt('%6.6s').comb(/../)[2...0] -> $hexnum {
-      @numbers.push: :16($hexnum);
-    }
+    # Machine id in 2 bytes
+    @numbers.push: |$!machine-id.comb>>.ord>>.base(16);
 
-    # Process id in 2 bytes
-    for $!pid.fmt('%04x').comb(/../)[1,0] -> $hexnum {
-      @numbers.push: :16($hexnum);
-    }
+    # Process id in 3 bytes. On 64 bit systems it is 2²². Look for it in
+    # file /proc/sys/kernel/pid_max. => 3 bytes - 2 bits. It is configurable
+    # by writing a max into that file, so it can be larger.
+    @numbers.push: |($!pid +& 0xFFFFFF).fmt('%06x').comb(/../);
 
     # Result of count truncated to 3 bytes
-    for $!count.fmt('%08x').comb(/../)[2...0] -> $hexnum {
-      @numbers.push: :16($hexnum);
-    }
+    @numbers.push: |($!count +& 0xFFFFFF).fmt('%06x').comb(/../);
 
-    $!oid .= new(@numbers);
+    $!oid .= new(|@numbers.map({:16($_)}));
   }
 
   #-----------------------------------------------------------------------------
@@ -162,11 +140,7 @@ class ObjectId {
   }
 
   #-----------------------------------------------------------------------------
-  method decode (
-    Buf:D $b,
-    Int:D $index is copy,
-    --> BSON::ObjectId
-  ) {
+  method decode ( Buf:D $b, Int:D $index is copy --> BSON::ObjectId ) {
     BSON::ObjectId.new(:bytes(Buf.new($b[ ^12 + $index ])));
   }
 }
