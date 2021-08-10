@@ -6,6 +6,8 @@ use v6;
 #------------------------------------------------------------------------------
 unit package BSON:auth<github:MARTIMM>;
 
+use NativeCall;
+
 use BSON;
 use BSON::ObjectId;
 use BSON::Regex;
@@ -72,9 +74,16 @@ class Document does Associative {
 
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   # Make new document and initialize with a byte array. This will call
-  # decode.
+  # decode from BUILD( Buf :$buf! ).
   multi method new ( Buf $b ) {
     self.bless(:buf($b));
+  }
+
+  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  # Make new document and initialize with a native byte array. This will call
+  # decode from BUILD( CArray[byte] :$bytes! ).
+  multi method new ( CArray[byte] $b ) {
+    self.bless(:bytes($b));
   }
 
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -129,6 +138,20 @@ class Document does Associative {
 
     # Decode buffer data
     self.decode($buf);
+  }
+
+  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  # Make new document and initialize with a pair
+  # No default value! is handled by new() above
+  multi submethod BUILD ( CArray[byte] :$bytes! ) {
+
+    self!initialize;
+
+    my Buf $length-field .= new($bytes[0..3]);
+    my Int $doc-size = decode-int32( $length-field, 0);
+
+    # And get all bytes into the Buf and convert it back to a BSON document
+    self.decode(Buf.new( $bytes[0..($doc-size-1)] ));
   }
 
   #----------------------------------------------------------------------------

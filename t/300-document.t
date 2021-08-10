@@ -1,6 +1,9 @@
 use v6;
 use Test;
+use NativeCall;
+
 use BSON::Document;
+
 
 #-------------------------------------------------------------------------------
 subtest "Empty document", {
@@ -20,7 +23,6 @@ subtest "Empty document", {
 subtest "Initialize document", {
 
   # Init via Seq
-  #
   my BSON::Document $d .= new: ('a' ... 'z') Z=> 120..145;
 
   is $d<a>, 120, "\$d<a> = $d<a>";
@@ -28,7 +30,6 @@ subtest "Initialize document", {
   is $d.elems, 26, "{$d.elems} elements";
 
   # Add one element, encode and decode using new(Buf)
-  #
   $d<aaa> = 11;
   my Buf $b2 = $d.encode;
   my BSON::Document $d2 .= new($b2);
@@ -36,7 +37,6 @@ subtest "Initialize document", {
   is $d2<aaa>, 11, "Item is $d2<aaa>";
 
   # Init via list
-  #
   $d .= new: (ppp => 100, qqq => ( d => 110, e => 120));
   is $d<ppp>, 100, "\$d<ppp> = $d<ppp>";
   is $d<qqq><d>, 110, "\$d<qqq><d> = $d<qqq><d>";
@@ -45,6 +45,29 @@ subtest "Initialize document", {
   throws-like { $d .= new: ppp => 100, qqq => ( d => 110, e => 120); },
     X::BSON, 'Cannot use hashes on init',
     :message(/:s Cannot use hash values on init/);
+
+
+  my BSON::Document $bson .= new: (
+    :int-number(-10),
+    :num-number(-2.34e-3),
+    strings => BSON::Document.new(( :s1<abc>, :s2<def>, :s3<xyz> ))
+  );
+
+  # And store it in a native array of bytes
+  my $bytes = CArray[byte].new($bson.encode);
+
+  my BSON::Document $bson2 .= new($bytes);
+  is-deeply
+    ( $bson2<int-number>, $bson2<num-number>, $bson2<strings><s2>),
+    ( -10, -234e-5, 'def'), '.new(CArray[byte])';
+
+  # Also store it in a Buf
+  my Buf $buf .= new($bson.encode);
+
+  my BSON::Document $bson3 .= new($buf);
+  is-deeply
+    ( $bson3<int-number>, $bson3<num-number>, $bson3<strings><s2>),
+    ( -10, -234e-5, 'def'), '.new(Buf)';
 }
 
 #-------------------------------------------------------------------------------
@@ -157,7 +180,7 @@ subtest "Simplified encode Rat test", {
 }
 
 #-------------------------------------------------------------------------------
-subtest "Document desctructure tests", {
+subtest "Document destructure tests", {
 
   # Create a document and bind it to a hash
   my %doc := BSON::Document.new: (
