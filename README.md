@@ -1,5 +1,7 @@
 # ![Face](logotype/logo_32x32.png) BSON support
 
+Implements [BSON specification][spec].
+
 <!--
 ![Face](logotype/logo_32x32.png) [![Build Status](https://travis-ci.org/MARTIMM/BSON.svg?branch=master)](https://travis-ci.org/MARTIMM/BSON) [![AppVeyor Build Status](https://ci.appveyor.com/api/projects/status/github/MARTIMM/bson?branch=master&passingText=Windows%20-%20OK&failingText=Windows%20-%20FAIL&pendingText=Windows%20-%20pending&svg=true)](https://ci.appveyor.com/project/MARTIMM/bson/branch/master) [![License](http://martimm.github.io/label/License-label.svg)](http://www.perlfoundation.org/artistic_license_2_0)
 -->
@@ -18,8 +20,7 @@
 
 ## Synopsis
 
-A BSON::Document class has been developed. This structure will keep the order and because of that there is no need for cumbersome operations. At the moment it is much slower than the hashed variant even with the encoding happening in the
-background and parallel.
+The main entry point is  B<BSON::Document>. This structure is a Hash like object but will keep the order of its keys and because of that there is no need for cumbersome operations. At the moment it is much slower than the hashed variant even with the encoding happening in the background and parallel.
 
 ```
 use BSON::Document;
@@ -70,8 +71,6 @@ BSON/Document.pod
 * [Bugs, todo][todo]
 -->
 
-
-Implements [BSON specification][spec].
 
 ## Installing BSON
 
