@@ -2,6 +2,10 @@ use v6;
 use Test;
 use BSON::Document;
 
+ok 1, 'no tests';
+done-testing;
+=finish
+
 #-------------------------------------------------------------------------------
 subtest "Extending array", {
 
