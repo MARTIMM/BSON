@@ -4,6 +4,7 @@ use NativeCall;
 #------------------------------------------------------------------------------
 package BSON:auth<github:MARTIM> {
   # BSON type codes
+##`{{
   constant C-DOUBLE             = 0x01;
   constant C-STRING             = 0x02;
   constant C-DOCUMENT           = 0x03;
@@ -23,6 +24,15 @@ package BSON:auth<github:MARTIM> {
   constant C-TIMESTAMP          = 0x11;
   constant C-INT64              = 0x12;
   constant C-DECIMAL128         = 0x13;
+#}}
+#`{{
+  enum BsonTypes is export <<
+    C-DOUBLE=1 C-STRING C-DOCUMENT C-ARRAY C-BINARY C-UNDEFINED C-OBJECTID
+    C-BOOLEAN C-DATETIME C-NULL C-REGEX C-DBPOINTER C-JAVASCRIPT C-DEPRECATED
+    C-JAVASCRIPT-SCOPE C-INT32 C-TIMESTAMP C-INT64 C-DECIMAL128
+  >>;
+}}
+
   constant C-MIN-KEY            = 0xFF;
   constant C-MAX-KEY            = 0x7F;
 
@@ -77,30 +87,41 @@ sub encode-string ( Str:D $s --> Buf ) is export {
 
 #------------------------------------------------------------------------------
 sub encode-int32 ( Int:D $i --> Buf ) is export {
-  my int $ni = $i;
 
-  return Buf.new(
+  Buf.new.write-int32( 0, $i, LittleEndian);
+
+#`{{
+  my int $ni = $i;
+  Buf.new(
     $ni +& 0xFF, ($ni +> 0x08) +& 0xFF,
     ($ni +> 0x10) +& 0xFF, ($ni +> 0x18) +& 0xFF
   );
+}}
 }
 
 #------------------------------------------------------------------------------
 sub encode-int64 ( Int:D $i --> Buf ) is export {
 
+  Buf.new.write-int64( 0, $i, LittleEndian);
+
+#`{{
   # No tests for too large/small numbers because it is called from
   # enc-element normally where it is checked
   my int $ni = $i;
-  return Buf.new( $ni +& 0xFF, ($ni +> 0x08) +& 0xFF,
-                  ($ni +> 0x10) +& 0xFF, ($ni +> 0x18) +& 0xFF,
-                  ($ni +> 0x20) +& 0xFF, ($ni +> 0x28) +& 0xFF,
-                  ($ni +> 0x30) +& 0xFF, ($ni +> 0x38) +& 0xFF
-                );
+  Buf.new( $ni +& 0xFF, ($ni +> 0x08) +& 0xFF,
+           ($ni +> 0x10) +& 0xFF, ($ni +> 0x18) +& 0xFF,
+           ($ni +> 0x20) +& 0xFF, ($ni +> 0x28) +& 0xFF,
+           ($ni +> 0x30) +& 0xFF, ($ni +> 0x38) +& 0xFF
+         )
+}}
 }
 
 #------------------------------------------------------------------------------
 sub encode-uint64 ( UInt:D $i --> Buf ) is export {
 
+  Buf.new.write-uint64( 0, $i, LittleEndian);
+
+#`{{
   # No tests for too large/small numbers because it is called from
   # enc-element normally where it is checked
   my int $ni = $i;
@@ -109,17 +130,21 @@ sub encode-uint64 ( UInt:D $i --> Buf ) is export {
                   ($ni +> 0x20) +& 0xFF, ($ni +> 0x28) +& 0xFF,
                   ($ni +> 0x30) +& 0xFF, ($ni +> 0x38) +& 0xFF
                 );
+}}
 }
 
 #------------------------------------------------------------------------------
 # encode Num in buf little endian
 sub encode-double ( Num:D $r --> Buf ) is export {
 
-  state $little-endian = little-endian();
+  Buf.new.write-num64( 0, $r, LittleEndian);
+
+#`{{
+#  state $little-endian = little-endian();
 
   my Buf $b;
   my CArray[num64] $na .= new($r);
-  if $little-endian {
+  if $*KERNEL.endian ~~ LittleEndian {
     $b .= new(nativecast( CArray[uint8], $na)[^8]);
   }
 
@@ -128,6 +153,7 @@ sub encode-double ( Num:D $r --> Buf ) is export {
   }
 
   $b;
+}}
 }
 
 
@@ -161,9 +187,10 @@ sub decode-cstring ( Buf:D $b, Int:D $index is rw --> Str ) is export {
 }
 
 #------------------------------------------------------------------------------
-sub decode-string ( Buf:D $b, Int:D $index is copy --> Str ) is export {
+sub decode-string ( Buf:D $b, Int:D $index --> Str ) is export {
 
-  my $size = decode-int32( $b, $index);
+  #my $size = decode-int32( $b, $index);
+  my $size = $b.read-uint32( $index, LittleEndian);
   my $end-string-at = $index + 4 + $size - 1;
 
   # Check if there are enough letters left
@@ -184,6 +211,9 @@ sub decode-string ( Buf:D $b, Int:D $index is copy --> Str ) is export {
 #------------------------------------------------------------------------------
 sub decode-int32 ( Buf:D $b, Int:D $index --> Int ) is export {
 
+  $b.read-int32( $index, LittleEndian);
+
+#`{{
   # Check if there are enough letters left
   #
   die X::BSON.new(
@@ -205,11 +235,14 @@ sub decode-int32 ( Buf:D $b, Int:D $index --> Int ) is export {
   #
   $ni = (0xffffffff +& (0xffffffff+^$ni) +1) * -1  if $ni +& 0x80000000;
   return $ni;
+}}
 }
 
 #------------------------------------------------------------------------------
 sub decode-int64 ( Buf:D $b, Int:D $index --> Int ) is export {
 
+  $b.read-int64( $index, LittleEndian);
+#`{{
   # Check if there are enough letters left
   #
   die X::BSON.new(
@@ -223,12 +256,16 @@ sub decode-int64 ( Buf:D $b, Int:D $index --> Int ) is export {
                $b[$index + 6] +< 0x30 +| $b[$index + 7] +< 0x38
                ;
   return $ni;
+}}
 }
 
 #------------------------------------------------------------------------------
 # decode unsigned 64 bit integer
 sub decode-uint64 ( Buf:D $b, Int:D $index --> UInt ) is export {
 
+  $b.read-uint64( $index, LittleEndian);
+
+#`{{
   # Check if there are enough letters left
   die X::BSON.new(
     :operation<decode>, :type<int64>,
@@ -241,13 +278,17 @@ sub decode-uint64 ( Buf:D $b, Int:D $index --> UInt ) is export {
                $b[$index + 6] +< 0x30 +| $b[$index + 7] +< 0x38
                ;
   return $ni;
+}}
 }
 
 #------------------------------------------------------------------------------
 # decode to Num from buf little endian
 sub decode-double ( Buf:D $b, Int:D $index --> Num ) is export {
 
-  state $little-endian = little-endian();
+  $b.read-num64( $index, LittleEndian);
+
+#`{{
+#  state $little-endian = little-endian();
 
   # Check if there are enough letters left
   die X::BSON.new(
@@ -256,7 +297,7 @@ sub decode-double ( Buf:D $b, Int:D $index --> Num ) is export {
   ) if $b.elems - $index < 8;
 
   my Buf[uint8] $ble;
-  if $little-endian {
+  if $*KERNEL.endian ~~ LittleEndian {
     $ble .= new($b.subbuf( $index, 8));
   }
 
@@ -265,8 +306,10 @@ sub decode-double ( Buf:D $b, Int:D $index --> Num ) is export {
   }
 
   nativecast( CArray[num64], $ble)[0];
+}}
 }
 
+#`{{
 #------------------------------------------------------------------------------
 sub little-endian ( --> Bool ) is export {
 
@@ -275,3 +318,4 @@ sub little-endian ( --> Bool ) is export {
 
   $j[0] == 0x01;
 }
+}}
