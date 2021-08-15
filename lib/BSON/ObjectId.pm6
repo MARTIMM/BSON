@@ -19,7 +19,7 @@ class ObjectId {
 
   # == ObjectId.getTimestamp()
   has Int $.time;
-  has Str $.machine-id;
+#  has Str $.machine-id;
   has Int $.pid;
   has Int $.count;
 
@@ -39,7 +39,7 @@ class ObjectId {
 
 
     # Split into bytes
-    $!oid .= new: $string.comb(/../).map({ :16($_) });
+    $!oid .= new( $string.comb(2).map({ .parse-base(16) }) );
     self.BUILD( :bytes($!oid), :oid-is-set);
   }
 
@@ -61,7 +61,7 @@ class ObjectId {
     # but modern systems take more than that. So machine id now gets 2
     # chars/bytes of the machines os name. The pid will take 3 bytes with a
     # total of this field, 5 bytes.
-    $!machine-id = $!oid[ 4, 5]>>.chr.join;
+#    $!machine-id = $!oid[ 4, 5]>>.chr.join;
 
     $!pid = :16( ( $!oid[6..8].map( { $_.fmt('%02x') } )).join );
 
@@ -74,7 +74,7 @@ class ObjectId {
     Str:D :$machine-name!, Int:D :$count!
   ) is DEPRECATED("one of the other inits") {
 
-    $!machine-id = $machine-name.substr( 0, 2);
+#    $!machine-id = $machine-name.substr( 0, 2);
     $!time = time;
     $!pid = $*PID;
     $!count = $count;
@@ -90,7 +90,7 @@ class ObjectId {
     $random-base-per-application-run //= 0xffffff.rand.Int;
 
     # Machine id of only 2 letters
-    $!machine-id = $*KERNEL.Str.substr( 0, 2);
+#    $!machine-id = $*KERNEL.Str.substr( 0, 2);
     $!time = time;
     $!pid = $*PID;
     $!count = $random-base-per-application-run++;
@@ -118,20 +118,20 @@ class ObjectId {
     my @numbers = ();
 
     # Time in 4 bytes big endian encoded => no substr needed
-    @numbers.push: |$!time.fmt('%08x').comb(/../)[3...0];
+    @numbers.push: |$!time.fmt('%08x').comb(2)[3...0];
 
     # Machine id in 2 bytes
-    @numbers.push: |$!machine-id.comb>>.ord>>.base(16);
+#    @numbers.push: |$!machine-id.comb>>.ord>>.base(16);
 
-    # Process id in 3 bytes. On 64 bit systems it is 2²². Look for it in
-    # file /proc/sys/kernel/pid_max. => 3 bytes - 2 bits. It is configurable
-    # by writing a max into that file, so it can be larger.
-    @numbers.push: |($!pid +& 0xFFFFFF).fmt('%06x').comb(/../);
+    # Process id in 5 bytes. On 64 bit systems the pid might be 2²². Look for
+    # it in file /proc/sys/kernel/pid_max. => 3 bytes - 2 bits. It is
+    # configurable by writing a max into that file, so it can be larger.
+    @numbers.push: |($!pid +& 0xFFFFFFFFFF).fmt('%010x').comb(2);
 
     # Result of count truncated to 3 bytes
-    @numbers.push: |($!count +& 0xFFFFFF).fmt('%06x').comb(/../);
+    @numbers.push: |($!count +& 0xFFFFFF).fmt('%06x').comb(2);
 
-    $!oid .= new(|@numbers.map({:16($_)}));
+    $!oid .= new(|@numbers.map({ .parse-base(16) }));
   }
 
   #-----------------------------------------------------------------------------
