@@ -4,49 +4,61 @@ use v6;
 # when perl evolves.
 
 #------------------------------------------------------------------------------
-unit package BSON:auth<github:MARTIMM>;
+#unit package BSON:auth<github:MARTIMM>;
 
 use NativeCall;
+#use trace;
 
 use BSON;
 use BSON::ObjectId;
 use BSON::Regex;
 use BSON::Javascript;
 use BSON::Binary;
-
 #use BSON::Decimal128;
 
-class Decimal128 { }
+use Hash::Ordered;
+
+class BSON::Decimal128 { }
 
 #class TemporaryContainer { }
 
 #------------------------------------------------------------------------------
-class Document does Associative {
+class BSON::Document:auth<github:MARTIMM>:ver<0.2.0> does Associative #`{{ }} #`{{does Hash::Ordered;}} {
 
   subset Index of Int where $_ >= 0;
 
-  has Str @!keys;
-  has @!values;
+  #has Str @!keys;
+  #has @!values;
 
   has Buf $!encoded-document;
   has Buf @!encoded-entries;
   has Index $!index = 0;
 
-  has Promise %!promises;
+  has %!promises is Hash::Ordered;
 
   # Keep this value global to the class. Any old or new object has the same
   # settings. With these flags also the same set as an attribute. Therefore
   # we can keep these also to 'instance only'.
   # Test is like; $!autovivify || $autovivify
-  my Bool $autovivify = False;
-  my Bool $accept-hash = False;
+#  my Bool $autovivify = False;
+#  my Bool $accept-hash = False;
   my Bool $convert-rat = False;
   my Bool $accept-loss = False;
 
-  has Bool $!autovivify = False;
-  has Bool $!accept-hash = False;
+#  has Bool $!autovivify = False;
+#  has Bool $!accept-hash = False;
   has Bool $!convert-rat = False;
 #  has Bool $!accept-loss = False;
+
+  has %.document is Hash::Ordered;# handles <elems kv pairs keys>;
+
+
+#`{{
+  #----------------------------------------------------------------------------
+  sub circumfix:('<','>')($key) is export {
+    note "start", $key, "end"
+  }
+}}
 
   #----------------------------------------------------------------------------
   # Make new document and initialize with a list of pairs
@@ -62,6 +74,21 @@ class Document does Associative {
   multi method new ( Pair $p ) {
     my List $pairs = $p.List;
     self.bless(:$pairs);
+  }
+
+  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  # Make new document and initialize with a pair
+  # No default value! is handled by new() above
+  multi method new ( Hash::Ordered $ho ) {
+    self.bless(:$ho);
+  }
+
+  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  multi method new ( Hash $p ) {
+    die X::BSON.new(
+      :operation("new: Hash $p.gist()"), :type<Hash>,
+      :error("Arguments cannot be Hash")
+    );
   }
 
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -96,7 +123,7 @@ class Document does Associative {
         :operation("new: " ~ capture.gist), :type<capture>,
         :error(
           "Cannot use hash values on init.\n",
-          "Set accept-hash and use assignments later"
+#          "Set accept-hash and use assignments later"
         )
       );
     }
@@ -105,18 +132,56 @@ class Document does Associative {
   }
 
   #----------------------------------------------------------------------------
+  sub pair-decode ( %doc, Pair $pair ) {
+
+#note "LOP: $pair.key(), $pair.value()";
+    given $pair.value {
+      when List {
+        %doc{$pair.key} = %();# is Hash::Ordered;
+        for |$pair.value -> $v {
+          pair-decode( %doc{$pair.key}, $v);
+        }
+      }
+
+#          when Hash::Ordered {
+#          }
+
+#          when BSON::Document {
+#          }
+
+      when Hash {
+        die X::BSON.new(
+          :operation("new: List $pair.gist()"), :type<Hash>,
+          :error("Value of pair cannot be a Hash")
+        );
+      }
+
+      default {
+        %doc{$pair.key} = $pair.value;
+      }
+    }
+  }
+  
+  #----------------------------------------------------------------------------
+  multi submethod BUILD ( Hash::Ordered $ho ) {
+  }
+
+  #----------------------------------------------------------------------------
   multi submethod BUILD ( List :$pairs! ) {
+#note "build pairs: $pairs";
 
     self!initialize;
 
+
     # self{x} = y will end up at ASSIGN-KEY
     for @$pairs -> $pair {
-#note "P: ", $pair.perl, ', ', $pair.value.defined;
+#note "P: ", $pair.perl;
+    pair-decode( %!document, $pair);
+#`{{
       die X::BSON.new(
         :operation("new: List $pairs.gist()"), :type<List>,
         :error("Pair not defined")
       ) unless ?$pair;
-
       die X::BSON.new(
         :operation("new: List $pairs.gist()"), :type<List>,
         :error("Key of pair not defined or empty")
@@ -126,8 +191,31 @@ class Document does Associative {
         :operation("new: List $pairs.gist()"), :type<List>,
         :error("Value of pair not defined")
       ) unless $pair.value.defined;
+}}
 
-      self{$pair.key} = $pair.value;
+#note "V: $pair.key(), ", $pair.value.WHAT;
+#`{{
+      given $pair.value {
+        when Hash {
+        }
+
+        when List {
+
+          %!document{$pair.key} = %();
+          for |$pair.value -> Pair $v {
+note "LOP: $v.key(), $v.value()";
+            %!document{$pair.key}{$v.key} = $v.value;
+          }
+        }
+
+#        when Hash {
+#        }
+
+        default {
+          %!document{$pair.key} = $pair.value;
+        }
+      }
+}}
     }
   }
 
@@ -148,7 +236,8 @@ class Document does Associative {
     self!initialize;
 
     my Buf $length-field .= new($bytes[0..3]);
-    my Int $doc-size = decode-int32( $length-field, 0);
+#    my Int $doc-size = decode-int32( $length-field, 0);
+    my Int $doc-size = $length-field.read-uint32( 0, LittleEndian);
 
     # And get all bytes into the Buf and convert it back to a BSON document
     self.decode(Buf.new( $bytes[0..($doc-size-1)] ));
@@ -157,8 +246,9 @@ class Document does Associative {
   #----------------------------------------------------------------------------
   method !initialize ( ) {
 
-    @!keys = ();
-    @!values = ();
+#    @!keys = ();
+#    @!values = ();
+    %!document = %();
 
     $!encoded-document = Buf.new();
     @!encoded-entries = ();
@@ -196,6 +286,7 @@ class Document does Associative {
         $value = $item // 'Nil';
       }
 
+#note "v: $value";
       given $value {
         when $value ~~ BSON::Document {
           $perl ~= '  ' x $indent unless $key.defined;
@@ -267,15 +358,21 @@ class Document does Associative {
 # assign this '$d<a><b><c> = 56;' because the flagis not inherited by the
 # created document 'b' and therefore will not create 'c'.
 
-  method autovivify ( Bool :$on = True, Bool :$instance-only = False ) {
-    $!autovivify = $on;
-    $autovivify = $on && !$instance-only;
+  method autovivify
+    ( Bool :$on = True, Bool :$instance-only = False )
+    is DEPRECATED("list of Pair of Hash::Ordered")
+ {
+#    $!autovivify = $on;
+#    $autovivify = $on && !$instance-only;
   }
 
   #----------------------------------------------------------------------------
-  method accept-hash ( Bool :$accept = True, Bool :$instance-only = False ) {
-    $!accept-hash = $accept;
-    $accept-hash = $accept && !$instance-only;
+  method accept-hash
+    ( Bool :$accept = True, Bool :$instance-only = False )
+    is DEPRECATED("list of Pair of Hash::Ordered")
+  {
+#    $!accept-hash = $accept;
+#    $accept-hash = $accept && !$instance-only;
   }
 
   #----------------------------------------------------------------------------
@@ -290,6 +387,7 @@ class Document does Associative {
     $accept-loss = $accept-precision-loss;
   }
 
+#`{{
   #----------------------------------------------------------------------------
   method find-key ( Str:D $key --> Int ) {
 
@@ -299,14 +397,24 @@ class Document does Associative {
 
     Int
   }
+}}
 
-
+##`{{
   #----------------------------------------------------------------------------
   # Associative role methods
   #----------------------------------------------------------------------------
   method AT-KEY ( Str $key --> Any ) {
-#note "At-key($?LINE): $key, {$!autovivify || $autovivify}";
+note "At-key: $key, {%!document{$key}//'-'}, ", %!document{$key}.WHAT;
 
+    if %!document{$key}.defined {
+      %!document{$key}
+    }
+
+    else {
+      my %h is Hash::Ordered = %();
+      %!document{$key} = %h;
+    }
+#`{{
     my $value;
     my Int $idx = self.find-key($key);
 
@@ -335,24 +443,29 @@ class Document does Associative {
 
       return-rw @!values[$idx];
     }
+}}
   }
 
   #----------------------------------------------------------------------------
   # Enable BSON::Document to be destructured.
   method Capture ( BSON::Document:D: --> Capture ) {
-
-    return (self.keys Z=> self.values).Capture;
+note "Capture";
+    (%!document.keys Z=> %!document.keys.values).Capture
+#    return (self.keys Z=> self.values).Capture;
   }
 
   #----------------------------------------------------------------------------
   method EXISTS-KEY ( Str $key --> Bool ) {
-
-    self.find-key($key).defined;
+note "EXISTS-KEY: $key";
+    %!document{$key}:exists
+#    self.find-key($key).defined;
   }
 
   #----------------------------------------------------------------------------
   method DELETE-KEY ( Str $key --> Any ) {
-
+note "DELETE-KEY: $key";
+    %!document{$key}:delete
+#`{{
     my $value;
     if (my Int $idx = self.find-key($key)).defined {
       $value = @!values.splice( $idx, 1);
@@ -361,13 +474,22 @@ class Document does Associative {
     }
 
     $value;
+}}
   }
 
   #----------------------------------------------------------------------------
   # All assignments of values which become or already are BSON::Documents
   # will not be encoded in parallel.
-  multi method ASSIGN-KEY ( Str:D $key, BSON::Document:D $new --> Nil ) {
+  #multi method ASSIGN-KEY ( Str:D $key, BSON::Document:D $new --> Nil ) {
+  method ASSIGN-KEY ( Str:D $key, Any:D $new --> Nil ) {
+note "ASSIGN-KEY: $key";
+    die X::BSON.new(
+      :operation("assign: Hash $new.gist()"), :type<Hash>,
+      :error("Cannot use hashes when assigning'")
+    ) if $new ~~ Hash;
 
+    %!document{$key} = $new;
+#`{{
 #note "Asign-key($?LINE): $key => ", $new.WHAT;
 
     my Str $k = $key;
@@ -377,8 +499,10 @@ class Document does Associative {
     $idx //= @!keys.elems;
     @!keys[$idx] = $k;
     @!values[$idx] = $v;
+}}
   }
 
+#`{{
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   multi method ASSIGN-KEY ( Str:D $key, List:D $new --> Nil ) {
 
@@ -476,18 +600,23 @@ class Document does Associative {
     @!keys[$idx] = $k;
     @!values[$idx] = $v;
   }
+}}
 
   #----------------------------------------------------------------------------
   # Cannot use binding because when value changes this object cannot know that
   # the location is changed. This is nessesary to encode the key, value pair.
   #
   method BIND-KEY ( Str $key, \new ) {
-
+note "BIND-KEY: $key";
+    %!document{$key} := new;
+#`{{
     die X::BSON.new(
       :operation("\$d<$key> := {new}"), :type<any>,
       :error("Cannot use binding")
     );
+}}
   }
+#}}
 
   #----------------------------------------------------------------------------
   # Must be defined because of Associative sources of of()
@@ -496,53 +625,65 @@ class Document does Associative {
     BSON::Document;
   }
 
+#`{{
   #----------------------------------------------------------------------------
   method CALL-ME ( |capture ) {
     die "Call me capture: ", capture.perl;
   }
-
+}}
   #----------------------------------------------------------------------------
   # And some extra methods
   #----------------------------------------------------------------------------
   method elems ( --> Int ) {
-
-    @!keys.elems;
+    %!document.elems
+#    @!keys.elems;
   }
 
   #----------------------------------------------------------------------------
   method kv ( --> List ) {
-
+    (|%!document.kv)
+#`{{
     my @kv-list;
     loop ( my $i = 0; $i < @!keys.elems; $i++) {
       @kv-list.push( @!keys[$i], @!values[$i]);
     }
 
     @kv-list;
+}}
   }
 
   #----------------------------------------------------------------------------
   method pairs ( --> List ) {
 
+#while my $cf = callframe($++) {
+#  note $cf.gist;
+#}
+
+    note self.defined;
+    (|%!document.pairs)
+#`{{
     my @pair-list;
     loop ( my $i = 0; $i < @!keys.elems; $i++) {
       @pair-list.push: ( @!keys[$i] => @!values[$i]);
     }
 
     @pair-list;
+}}
   }
 
   #----------------------------------------------------------------------------
   method keys ( --> List ) {
-
-    @!keys.list;
+    |%!document.keys
+#    @!keys.list;
   }
 
   #----------------------------------------------------------------------------
   method values ( --> List ) {
-
-    @!values.list;
+    |%!document.values
+#    @!values.list;
   }
 
+#`{{
   #----------------------------------------------------------------------------
 #TODO very slow method
   method modify-array ( Str $key, Str $operation, $data --> List ) {
@@ -555,6 +696,7 @@ class Document does Associative {
       self{$key} = $array;
     }
   }
+}}
 
   #----------------------------------------------------------------------------
   # Encoding document
@@ -565,7 +707,17 @@ class Document does Associative {
 
     # encode all in parallel except for Arrays and Documents. This level must
     # be done first.
-    #loop ( my $idx = 0; $idx < @!keys.elems; $idx++) {
+
+    for %!document.keys -> $k {
+      my $v = %!document{$k};
+      next if $v ~~ any(Array|BSON::Document|Hash::Ordered);
+
+      %!promises{$k} = Promise.start( {
+          self!encode-element: ($k => $v);
+        }
+      );
+    }
+#`{{
     for ^@!keys.elems -> $idx {
       my $v = @!values[$idx];
       next if $v ~~ any(Array|BSON::Document);
@@ -576,20 +728,58 @@ class Document does Associative {
         }
       );
     }
-
+}}
     await %!promises.values;
 
-    #loop ( $idx = 0; $idx < @!keys.elems; $idx++) {
+    my $idx = 0;
+    for %!document.keys -> $k {
+      @!encoded-entries[$idx] = %!promises{$k}.result
+        if %!promises{$k}.defined;
+
+      $idx++;
+    }
+
+
+#`{{
     for ^@!keys.elems -> $idx {
       my $key = @!keys[$idx];
       next unless %!promises{$key}.defined;
       @!encoded-entries[$idx] = %!promises{$key}.result;
     }
-
+}}
     %!promises = ();
 
+    $idx = 0;
+    for %!document.keys -> $k {
+      given %!document{$k} {
+        when Array {
+          # The document for an array is a normal BSON document with integer
+          # values for the keys counting with 0 and continuing sequentially.
+          # For example, the array ['red', 'blue'] would be encoded as the
+          # document ('0': 'red', '1': 'blue'). The keys must be in ascending
+          # numerical order.
+          my $pairs = (for .kv -> $ka, $va { "$ka" => $va });
+          my BSON::Document $d .= new($pairs);
+          @!encoded-entries[$idx] =
+            [~] Buf.new(BSON::C-ARRAY), encode-e-name($k), $d.encode;
+        }
+
+        when BSON::Document {
+          @!encoded-entries[$idx] =
+            [~] Buf.new(BSON::C-DOCUMENT), encode-e-name($k), .encode;
+        }
+
+        when Hash::Ordered {
+          @!encoded-entries[$idx] =
+            [~] Buf.new(BSON::C-DOCUMENT), encode-e-name($k), .encode;
+        }
+      }
+
+      $idx++;
+    }
+
+#`{{
     # filling the gaps of arays and nested documents
-    #loop ( $idx = 0; $idx < @!keys.elems; $idx++) {
     for ^@!keys.elems -> $idx {
       my $key = @!keys[$idx];
       if @!values[$idx] ~~ Array {
@@ -612,6 +802,7 @@ class Document does Associative {
                                       @!values[$idx].encode;
       }
     }
+}}
 
     # if there are entries
     $!encoded-document = Buf.new;
@@ -841,7 +1032,7 @@ class Document does Associative {
                  encode-uint64($p.value);
       }
 
-      when Decimal128 {
+      when BSON::Decimal128 {
         #`{{
         $b = [~] Buf.new(BSON::C-DECIMAL128),
                  encode-e-name($p.key),
@@ -873,8 +1064,8 @@ class Document does Associative {
 
     $!encoded-document = $data;
 
-    @!keys = ();
-    @!values = ();
+#    @!keys = ();
+#    @!values = ();
     @!encoded-entries = ();
 
     # document decoding start: init index
@@ -883,18 +1074,20 @@ class Document does Associative {
     # decode the document, then wait for any started parallel tracks
     # first get the size of the (nested-)document
     my Int $doc-size = decode-int32( $!encoded-document, $!index);
+#note 'doc size: ', $doc-size;
 
     # step to the document content
     $!index += BSON::C-INT32-SIZE;
 
     # decode elements until end of doc (byte 0x00)
     while $!encoded-document[$!index] !~~ 0x00 {
-
+#note "index: $!index, $!encoded-document[$!index]";
       self!decode-element;
     }
 
     # step over the last byte: index should now be the doc size
     $!index++;
+#note "index: $!index == $doc-size";
 
     # check size of document with final byte location
     die X::BSON.new(
@@ -921,12 +1114,13 @@ class Document does Associative {
     # Get the key value, Index is adjusted to just after the 0x00
     # of the string.
     my Str $key = decode-e-name( $!encoded-document, $!index);
-#note "$*THREAD.id() $key found, type $bson-code, idx now $!index";
+#note "$*THREAD.id() $key found, type 0x$bson-code.fmt('%02x'), idx now $!index";
 
     # Keys are pushed in the proper order as they are seen in the
     # byte buffer.
-    my Int $idx = @!keys.elems;
-    @!keys[$idx] = $key;              # index on new location == push()
+#    my Int $idx = @!keys.elems;
+#    @!keys[$idx] = $key;              # index on new location == push()
+    my Int $idx = @!encoded-entries.elems;
     my Int $size;
 
     given $bson-code {
@@ -1185,7 +1379,7 @@ class Document does Associative {
 
         %!promises{$key} = Promise.start( {
             my $v = decode-int32( $!encoded-document, $i);
-
+#note 'C-INT32:, ', $v;
             ( $v, $!encoded-document.subbuf(
                     $decode-start ..^ ($i + BSON::C-INT32-SIZE)
                   )
@@ -1271,9 +1465,25 @@ class Document does Associative {
 
   #----------------------------------------------------------------------------
   method !process-decode-promises {
+#note 'process-decode-promises: ', %!promises.elems, ', ', %!promises.keys;
 
-    if %!promises.elems {
+#    if %!promises.elems {
       await Promise.allof(%!promises.values);
+      my $idx = 0;
+      for %!promises.keys -> $key {
+
+#        if %!promises{$key}:exists {
+          # Return the Buffer slices in each entry so it can be
+          # concatenated again when encoding
+#note "$*THREAD.id() Before wait for result of $key";
+          ( %!document{$key}, @!encoded-entries[$idx]) = %!promises{$key}.result;
+#note %!document{$key};
+          $idx++;
+#note "$*THREAD.id() After wait for $key";
+#        } # if
+      } # for
+
+#`{{
       loop ( my $idx = 0; $idx < @!keys.elems; $idx++) {
         my $key = @!keys[$idx];
 #note "$*THREAD.id() Prom from $key, $idx, {%!promises{$key}:exists}";
@@ -1286,8 +1496,9 @@ class Document does Associative {
 #note "$*THREAD.id() After wait for $key";
         } # if
       } # loop
+}}
 
       %!promises = ();
-    } # if
+#    } # if
   } # method
 }
