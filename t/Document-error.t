@@ -1,6 +1,6 @@
 use v6;
 use Test;
-use NativeCall;
+#use NativeCall;
 
 use BSON::Document;
 

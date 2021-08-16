@@ -3,7 +3,7 @@ use Test;
 use BSON::Document;
 
 #-------------------------------------------------------------------------------
-subtest {
+subtest "Document encoding", {
 
   my BSON::Document $d .= new: ('a' ... 'd') Z=> 121..124;
   is $d<a>, 121, "\$<a> = $d<a>";
@@ -55,10 +55,10 @@ subtest {
   $edoc = $d.encode;
   is-deeply $edoc, $etst, 'Encoded document still correct after addition';
 
-}, "Document encoding associative";
+};
 
 #-------------------------------------------------------------------------------
-subtest {
+subtest "Document decoding", {
   my BSON::Document $d .= new;
   my Buf $new-data = Buf.new(
     0x2d, 0x00 xx 3,
@@ -71,8 +71,7 @@ subtest {
   $d.decode($new-data);
 
   is $d<key0>, 122, "\$d<key0> => $d<key0>";
-
-}, "Document decoding";
+};
 
 #-------------------------------------------------------------------------------
 # Cleanup
