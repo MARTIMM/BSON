@@ -2,9 +2,12 @@ See [semantic versioning](http://semver.org/). Please note point 4. on
 that page: *Major version zero (0.y.z) is for initial development. Anything may
 change at any time. The public API should not be considered stable*.
 
+* 2021-08-11 0.12.1
+  * Improved reading and writing of integer and real numbers in buffers.
+
 * 2021-08-10 0.12.0
   * Improve ObjectId and obsoleted one init method.
-  * Added a BUILD method to **BSON::Document** to accept a native byte array `CArray[byte]`. This comes in handy when users want to serialize a BSON document and use it for other purposes. One such example which came to pass was when it was made possible to store data in a **Gnome::GObject::Object** so that a GTK+ widget could carry extra data in its native widget. 
+  * Added a BUILD method to **BSON::Document** to accept a native byte array `CArray[byte]`. This comes in handy when users want to serialize a BSON document and use it for other purposes. One such example which came to pass was when it was made possible to store data in a **Gnome::GObject::Object** so that a GTK+ widget could carry extra data in its native widget.
 
 * 2021-08-09 0.11.7
   * Test fixes, issues 32, 33
