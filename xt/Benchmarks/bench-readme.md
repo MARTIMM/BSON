@@ -42,7 +42,6 @@ pv2: v2021.07-7-gb7f088b5a, MoarVM 2021.07-8-g860cc6550
 | Date     | What | 32re | 32rd | 32nd | 64re | 64rd | 64nd
 |----------|------|------|------|------|------|------|------|
 | 20170812 | pv1  | 32494| 62385| 22999| 26438| 50397| 21226
-| 20210809 | pv2  | 20672| 30034|      | 19406| 23713| |
 
 Conclusion: it is not worth to do native decode for any type of integer.
 note 20210809; seems to be slower, what happened?
@@ -74,34 +73,29 @@ Timing 50 iterations ...
 
 | Date     | What                                                | n per sec |
 |----------|-----------------------------------------------------|-----------|
-|| With use of Promises on encoding as well as decoding          |  6.1938
-|| Removed Promises on decoding (dropped)                        |  5.2109
-|| After some cleanup of D1                                      |  7.1333
-|| Replaced Hash $!data with @!values in D1                      |  7.1726
-|| Replaced %!promises with @!promises (dropped)                 |  6.8958
-|| Optional use of autovivify and hashes, restorage of buf parts |  4.4182
-|| A few methods modified into subs                              |  5.2739
-|| Removing Positional role (dropped)                            |  4.9585
-|| Bugfixes and improvements. Perl 2015 12 24                    |  6.3937
-|| Native encoding/decoding for doubles                          |  7.7066
-| 20160610 | 2016.06-178-gf7c6e60, MoarVM 2016.06-9-g8fc21d5     | 18.0171
-| 20161108 | 2016.10-204-g824b29f, MoarVM 2016.10-37-gf769569    | 19.8041
-| 20170225 | 017.02-56-g9f10434, MoarVM 2017.02-7-g3d85900       | 20.9844
-| 20170225 | Dropped positional role from BSON::Document         | 21.7285
-| 20170718 | 2017.07-19-g1818ad2, bugfix hangup decoding         | 14.7199
-| 20171101 | 2017.10-25-gbaed02bf7 MoarVM 2017.10, lot of fixes  | 15.9207
+|| With use of Promises on encoding as well as decoding          |   6.19
+|| Removed Promises on decoding (dropped)                        |   5.21
+|| After some cleanup of D1                                      |   7.13
+|| Replaced Hash $!data with @!values in D1                      |   7.17
+|| Replaced %!promises with @!promises (dropped)                 |   6.90
+|| Optional use of autovivify and hashes, restorage of buf parts |   4.42
+|| A few methods modified into subs                              |   5.27
+|| Removing Positional role (dropped)                            |   4.96
+|| Bugfixes and improvements. Perl 2015 12 24                    |   6.39
+|| Native encoding/decoding for doubles                          |   7.71
+| 20160610 | 2016.06-178-gf7c6e60, MoarVM 2016.06-9-g8fc21d5     |  18.0
+| 20161108 | 2016.10-204-g824b29f, MoarVM 2016.10-37-gf769569    |  19.8
+| 20170225 | 017.02-56-g9f10434, MoarVM 2017.02-7-g3d85900       |  21.0
+| 20170225 | Dropped positional role from BSON::Document         |  21.7
+| 20170718 | 2017.07-19-g1818ad2, bugfix hangup decoding         |  14.7
+| 20171101 | 2017.10-25-gbaed02bf7 MoarVM 2017.10, lot of fixes  |  15.9
 
 500 iterations
 | Date     | What                                                | n per sec |
 |----------|-----------------------------------------------------|-----------|
-| 20210809 | v2021.07-7-gb7f088b5a, MoarVM 2021.07-8-g860cc6550  | 42.020
-
+| 20210809 | v2021.07-7-gb7f088b5a, MoarVM 2021.07-8-g860cc6550  |  42.0
+| 20210811 | idem. improve encoding and decoding                 |  46.5
 
 ###  Original BSON methods with hashes.
 * I think this was about 2015 06 or so. In the mean time Hashing should be faster too!
   3.1644 wallclock secs @ 15.8006/s (n=50)
-
-
-### Worries
-- Tests sometimes crashes with coredumps. Is it Bench or BSON::Document??
-Segmentation fault (core dumped)

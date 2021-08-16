@@ -1,10 +1,8 @@
 #!/usr/bin/env perl6
 
 use v6;
-use lib './Test';
-
-# Hangs when this low or lower use setenv, set etc
-#%*ENV<RAKUDO_MAX_THREADS> = 2;
+use lib '/home/marcel/Languages/Raku/Projects/BSON/xt/Test',
+        '/home/marcel/Languages/Raku/Projects/BSON/lib';
 
 use Bench;
 use BSON::Document;
