@@ -2,6 +2,9 @@ See [semantic versioning](http://semver.org/). Please note point 4. on
 that page: *Major version zero (0.y.z) is for initial development. Anything may
 change at any time. The public API should not be considered stable*.
 
+* 2021-08-11 0.13.0
+  * Major rewrite of module **BSON::Document**. Refactoring code into **BSON::Ordered**, **BSON::Encode** and **BSON::Decode**.
+
 * 2021-08-11 0.12.1
   * Improved reading and writing of integer and real numbers in buffers.
 
