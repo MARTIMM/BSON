@@ -2,16 +2,21 @@ use v6;
 use Test;
 use BSON::Document;
 
+ok 1, '-';
+done-testing;
+=finish
+
 #-------------------------------------------------------------------------------
 subtest "Autovivication", {
 
   my BSON::Document $d .= new;
-  $d.autovivify(:on);
 
   #                ||||
-  # Differs here   vvvv
-  $d<a><b><c><d><e><f1><g><h><i><j><h><i><j> = ('a' ... 'z') Z=> 120..145;
-  $d<a><b><c><d><e><f2><g><h><i><j><h><i><j> = ('a' ... 'z') Z=> 120..145;
+  # Differs here   vvvv <f1> / <f2>
+  $d<a><b><c><d><e><f1><g><h><i><j><h><i><j> =
+    Hash::Ordered.new(('a' ... 'z') Z=> 120..145);
+  $d<a><b><c><d><e><f2><g><h><i><j><h><i><j> =
+    Hash::Ordered.new(('a' ... 'z') Z=> 120..145);
 
   is $d<a><b><c><d><e><f1><g><h><i><j><h><i><j><a>,
      120,

@@ -57,6 +57,7 @@ $b.timethese(
       $d<null> = Any;
       $d<rex> = $rex;
 
+      # same set but other keys
       $d<ab> = -203.345.Num;
       $d<aa> = 1234;
       $d<av> = 4295392664;
@@ -73,6 +74,8 @@ $b.timethese(
       $d<adtime> = $datetime;
       $d<anull> = Any;
       $d<arex> = $rex;
+
+#note "\nDoc; ", '-' x 75, $d.raku, '-' x 80;
 
       my BSON::Document $d2 .= new;
 #note 'encode';

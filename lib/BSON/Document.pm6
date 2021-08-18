@@ -3,9 +3,7 @@ use v6.d;
 #TODO There are some *-native() and *-emulated() subs kept for later benchmarks
 # when perl evolves.
 
-#------------------------------------------------------------------------------
-#unit package BSON:auth<github:MARTIMM>;
-
+#-------------------------------------------------------------------------------
 use NativeCall;
 #use trace;
 
@@ -19,23 +17,115 @@ use BSON::Encode;
 use BSON::Decode;
 
 use Hash::Ordered;
+use Method::Also;
 
-#class TemporaryContainer { }
-
-#------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 unit class BSON::Document:auth<github:MARTIMM>:ver<0.2.0>;
+also does Associative;
 #also does Hash::Ordered;
-also does BSON::Encode;
-also does BSON::Decode;
+#also does BSON::Encode;
+#also does BSON::Decode;
 
-#------------------------------------------------------------------------------
-has %.document is Hash::Ordered;# handles <elems kv pairs keys>;
+#-------------------------------------------------------------------------------
+has %.document is Hash::Ordered;    # handles <elems kv pairs keys>;
+has BSON::Encode $!encode-object;
+has BSON::Decode $!decode-object;
+
+#-------------------------------------------------------------------------------
+# Associative role methods
+#
+# We only need to handle top level entries. deeper levels
+# are processed by Hash::Ordered
+#-------------------------------------------------------------------------------
+# Example: note $d<x>;
+method AT-KEY ( Str $key --> Any ) {
+note "AT-KEY $key";
+  %!document{$key} = Hash::Ordered.new unless %!document{$key}.defined;
+  return-rw %!document{$key};
+}
+
+#-------------------------------------------------------------------------------
+# Example: $d<x> = 'y';
+multi method ASSIGN-KEY ( Str:D $key, Seq:D $new --> Nil ) {
+note "ASSIGN-KEY Seq $key, ", $new.WHAT;
+  self.ASSIGN-KEY( $key, $new.List);
+}
+
+multi method ASSIGN-KEY ( Str:D $key, Any:D $new --> Nil ) {
+note "ASSIGN-KEY Any $key, ", $new.WHAT;
+  %!document{$key} = walk-tree( Hash::Ordered.new, $new);
+}
+
+#-------------------------------------------------------------------------------
+# Example: $d<y> := $y;
+method BIND-KEY ( Str $key, \new ) {
+  %!document{$key} := new;
+}
+
+#-------------------------------------------------------------------------------
+# Example: $d<x>:exists;
+method EXISTS-KEY ( Str $key --> Bool ) {
+  %!document{$key}:exists
+}
+
+#-------------------------------------------------------------------------------
+# Example: $d<x>:delete;
+method DELETE-KEY ( Str $key --> Any ) {
+  %!document{$key}:delete
+}
+
+#-------------------------------------------------------------------------------
+method elems ( --> Int ) {
+  %!document.elems
+#    @!keys.elems;
+}
+
+#-------------------------------------------------------------------------------
+method kv ( --> List ) {
+  (|%!document.kv)
+#`{{
+  my @kv-list;
+  loop ( my $i = 0; $i < @!keys.elems; $i++) {
+    @kv-list.push( @!keys[$i], @!values[$i]);
+  }
+
+  @kv-list;
+}}
+}
+
+#-------------------------------------------------------------------------------
+method pairs ( --> List ) {
+
+#while my $cf = callframe($++) {
+#  note $cf.gist;
+#}
+
+  note self.defined;
+  (|%!document.pairs)
+#`{{
+  my @pair-list;
+  loop ( my $i = 0; $i < @!keys.elems; $i++) {
+    @pair-list.push: ( @!keys[$i] => @!values[$i]);
+  }
+
+  @pair-list;
+}}
+}
+
+#-------------------------------------------------------------------------------
+method keys ( --> List ) {
+  %!document.keys.List
+}
+
+#-------------------------------------------------------------------------------
+method values ( --> List ) {
+  %!document.values.List
+}
 
 
-
-
-
-#------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
+# Initializing
+#---------------------------------------------------------------------------------
 # - %options must be empty. If not, it is a Hash -> illegal
 # - @arguments can be;
 #   - List of Pair
@@ -54,22 +144,28 @@ method new( **@arguments, *%options ) {
   self.bless(:@arguments);
 }
 
+#-------------------------------------------------------------------------------
 submethod BUILD ( :@arguments ) {
 
+  $!encode-object .= new;
+  $!decode-object .= new;
   %!document = Hash::Ordered.new;
-print "\n";
-
-note 'new: ', @arguments.gist;
-#  my %h is Hash::Ordered;
 
   # every entry in bson must have a name so Array can not be a top level item
   # all top level items are Pair or binary.
   for @arguments -> $item {
-note 'new item: ', $item.WHAT;
+#note 'new item: ', $item.WHAT;
 
     given $item {
       when Pair {
         %!document{$item.key} = walk-tree( %!document, $item.value);
+      }
+
+      when Array {
+        die X::BSON.new(
+          :operation("new: type Array cannot be a top level object"),
+          :type($item.^name), :error("Unsupported type")
+        );
       }
 
       when List {
@@ -81,10 +177,11 @@ note 'new item: ', $item.WHAT;
       }
 
       when Hash::Ordered {
-        %!document = $item;
+        %!document = |walk-tree( Hash::Ordered.new, $item);
       }
 
       when Buf {
+        %!document = self.decode($item);
       }
 
       when CArray[byte] {
@@ -98,50 +195,32 @@ note 'new item: ', $item.WHAT;
       }
     }
   }
-note 'new %!document: ', %!document;
+#note 'new %!document: ', %!document;
 }
 
-
-#----------------------------------------------------------------------------
-#`{{
-multi sub walk-tree ( %doc, $item -> Any ) {
-  check-item( %doc, $key, $item);
-  given $item {
-    when Pair {
-        walk-tree( %h, $item.key, $item.value)
-      }
-    }
-
-    when Hash {
-      die X::BSON.new(
-        :operation("List $item.gist()"), :type<Hash>,
-        :error("Values cannot be Hash")
-      );
-    }
-
-    default {
-      $item
-    }
-  }
-}
-}}
-
-#----------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 sub walk-tree ( %doc, $item --> Any ) {
-#  check-item( %doc, $key, $item);
-#  my %doc is Hash::Ordered;
-
-note 'wt0: ', ($item//'-').WHAT, ', ', $item//'-';
 
   given $item {
     when !.defined {
-note 'Undefined item';
+      die X::BSON.new(
+        :operation("List $item"), :type<Hash>,
+        :error("Values cannot be undefined")
+      );
+    }
+
+    when Seq {
+      for @$item -> Pair $i {
+note "Seq: $i.key(), $i.value()";
+        %doc{$i.key} = walk-tree( Hash::Ordered.new, $i.value);
+      }
+
+note "Seq: ", %doc.WHAT;
+      return %doc;
     }
 
     when Array {
       my Array $a = [];
-#      my %h is Hash::Ordered;
-
       for @$item -> $i {
         $a.push: walk-tree( Hash::Ordered.new, $i);
       }
@@ -150,45 +229,13 @@ note 'Undefined item';
     }
 
     when Pair {
-note "wt1: $item.key(), $item.value()";
+note "wt1 Pair: $item.key(), $item.value()";
       %doc{$item.key} = walk-tree( Hash::Ordered.new, $item.value);
       return %doc;
-
-#      if $item.value.^can('elems')
-#      %doc{$item.key} := my %m is Hash::Ordered;
-#      %doc{$item.key} = walk-tree( %doc, $item.value);
-#`{{
-      given $item.value {
-        when List {
-          %doc{$item.key} = %();# is Hash::Ordered;
-          for |$item.value -> $v {
-            walk-tree( %doc{$item.key}, $v);
-          }
-        }
-
-  #          when Hash::Ordered {
-  #          }
-
-  #          when BSON::Document {
-  #          }
-
-        when Hash {
-          die X::BSON.new(
-            :operation("new: List $item.gist()"), :type<Hash>,
-            :error("Values cannot be a Hash")
-          );
-        }
-
-        default {
-          %doc{$item.key} = $item.value;
-        }
-      }
-}}
     }
 
     # A List should only contain Pair and is inserted in doc as kv pairs
     when List {
-note "wt2: $item";
       for @$item -> Pair $i {
         %doc{$i.key} = walk-tree( Hash::Ordered.new, $i.value);
       }
@@ -197,106 +244,102 @@ note "wt2: $item";
     }
 
     when BSON::Document {
-note "wt3: $item.perl()";
       return $item.document;
     }
 
     when Hash::Ordered {
-note "wt4: $item";
-      return $item;
-    }
-#`{{
-    when Hash::Ordered {
-note "wt3: $item";
-      my BSON::Document $d;
-      my %m is Hash::Ordered;
-      %doc{$item.key} := %m;
+note "wt2 HO: $item.keys(), $item.values()";
       for $item.keys -> $k {
-        $d.new($item{$k});
-        %doc{$item.key}{$k} = $d.document;
+        %doc{$k} = walk-tree( Hash::Ordered.new, $item{$k});
       }
-
       return %doc;
     }
-}}
 
     when Hash {
       die X::BSON.new(
-        :operation("List $item.gist()"), :type<Hash>,
+        :operation("List $item"), :type<Hash>,
         :error("Values cannot be Hash")
       );
     }
 
     default {
-      return $item;
+      return $item ~~ Rat ?? $item.Num !! $item;
     }
   }
 }
 
 
+#-------------------------------------------------------------------------------
+method raku ( Int :$indent is copy = 0 --> Str ) is also<perl> {
+  my $s = [~] "\n", '  ' x $indent, "BSON::Document.new: (\n";
+  for %!document.keys -> $key {
+    $s ~= [~] '  ' x $indent + 1, $key, ' => ',
+          show-tree( %!document{$key}, $indent + 1), "\n";
+  }
+  $s ~= [~] '  ' x $indent, ");\n";
 
+  $s
+}
 
+#-------------------------------------------------------------------------------
+sub show-tree ( $item, $indent is copy --> Str ) {
 
+  my Str $s = '';
+#note $item, ', ', $item.^name ~~ 'Hash::Ordered' ?? 'HO' !! $item.WHAT;
 
-
-
-
-
-
-
-
-=finish
-
-#------------------------------------------------------------------------------
-sub check-item ( %doc, $key, $item ) {
   given $item {
-    when !.defined {
-note 'Undefined item';
-    }
-
     when Array {
-      my Array $a = [];
+      $s = "[\n";
+      $indent++;
       for @$item -> $i {
-        walk-tree( %h, $i);
+        $s ~= [~] '  ' x $indent, show-tree( $i, $indent), "\n";
       }
-    }
-
-    when Pair {
-note "wt1: $item.key(), $item.value()";
+      $indent--;
+      $s ~= [~] '  ' x $indent, "],";
     }
 
     when List {
-note "wt2: $item";
-      my BSON::Document $d;
-      %doc{$item.key} = [];
-      for |$item -> $i {
-        $d.new($i);
-        %doc{$item.key}.push: $d.document;
+      $s = "(\n";
+      $indent++;
+      for @$item -> $i {
+        $s ~= [~] '  ' x $indent, $i.key, ' => ',
+              show-tree( $i.value, $indent), "\n";
       }
+      $indent--;
+      $s ~= [~] '  ' x $indent, "),";
     }
 
     when Hash::Ordered {
-note "wt3: $item";
-      my BSON::Document $d;
-      my %m is Hash::Ordered;
-      %doc{$item.key} := %m;
-      for $item.keys -> $k {
-        $d.new($item{$k});
-        %doc{$item.key}{$k} = $d.document;
+      $s = [~] "BSON::Document.new((\n";
+      $indent++;
+      for $item.keys -> $key {
+        $s ~= [~] '  ' x $indent, $key, ' => ',
+              show-tree( $item{$key}, $indent), "\n";
       }
+      $indent--;
+      $s ~= [~] '  ' x $indent, ")),";
     }
 
-    when Hash {
-      die X::BSON.new(
-        :operation("List $item.gist()"), :type<Hash>,
-        :error("Values cannot be Hash")
-      );
+    when Str {
+      $s = [~] "'", $item, "',";
     }
 
     default {
-      return $item;
+      $s = [~] $item, ",";
     }
   }
+
+  $s
+}
+
+#-------------------------------------------------------------------------------
+method decode ( Buf $b --> Any ) {
+  $!decode-object.decode($b);
+}
+
+#-------------------------------------------------------------------------------
+method encode ( --> Buf ) {
+  $!encode-object.encode(%!document);
 }
 
 
@@ -307,10 +350,19 @@ note "wt3: $item";
 
 =finish
 
-#------------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+#---------------------------------------------------------------------------------
 subset Index of Int where $_ >= 0;
 
-#------------------------------------------------------------------------------
+#---------------------------------------------------------------------------------
 #has Str @!keys;
 #has @!values;
 
@@ -338,13 +390,13 @@ has %.document is Hash::Ordered;# handles <elems kv pairs keys>;
 
 
 #`{{
-#----------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 sub circumfix:('<','>')($key) is export {
   note "start", $key, "end"
 }
 }}
 
-#----------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 # Make new document and initialize with a list of pairs
 #TODO better type checking:  List $pairs where all($_) ~~ Pair
 #TODO better API
@@ -424,7 +476,7 @@ multi method new ( |capture ) {
 }
 }}
 
-#----------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 multi submethod BUILD ( Hash::Ordered :$ho ) {
 note 'BUILD ordered: ', $ho;
 
@@ -433,7 +485,7 @@ note 'BUILD ordered: ', $ho;
   walk-tree( %!document, $ho);
 }
 
-#----------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 multi submethod BUILD ( List :$pairs! ) {
 #note "build pairs: $pairs";
 note 'BUILD List';
@@ -512,7 +564,7 @@ multi submethod BUILD ( CArray[byte] :$bytes! ) {
   self.decode(Buf.new( $bytes[0..($doc-size-1)] ));
 }
 
-#----------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 sub walk-tree ( %doc, Any $item ) {
 note 'wt0: ', $item//'-';
   given $item {
@@ -579,7 +631,7 @@ note "wt3: $item";
   }
 }
 
-#----------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 method !initialize ( ) {
 
 #    @!keys = ();
@@ -592,7 +644,7 @@ method !initialize ( ) {
   %!promises = ();
 }
 
-#----------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 method perl ( Int $indent = 0, Bool :$skip-indent = False --> Str ) {
   $indent = 0 if $indent < 0;
 
@@ -605,7 +657,7 @@ method perl ( Int $indent = 0, Bool :$skip-indent = False --> Str ) {
   return $perl;
 }
 
-#----------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 method !str-pairs ( Int $indent, List $items --> Str ) {
   my Str $perl = '';
   for @$items -> $item {
@@ -684,12 +736,12 @@ method !str-pairs ( Int $indent, List $items --> Str ) {
   return $perl;
 }
 
-#----------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 submethod Str ( --> Str ) {
   self.perl;
 }
 
-#----------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 #TODO instance-only doesn't have much use. When True one still cannot
 # assign this '$d<a><b><c> = 56;' because the flagis not inherited by the
 # created document 'b' and therefore will not create 'c'.
@@ -702,7 +754,7 @@ method autovivify
 #    $autovivify = $on && !$instance-only;
 }
 
-#----------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 method accept-hash
   ( Bool :$accept = True, Bool :$instance-only = False )
   is DEPRECATED("list of Pair of Hash::Ordered")
@@ -711,7 +763,7 @@ method accept-hash
 #    $accept-hash = $accept && !$instance-only;
 }
 
-#----------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 method convert-rat (
   Bool $accept = True,
   Bool :$accept-precision-loss = False,
@@ -724,7 +776,7 @@ method convert-rat (
 }
 
 #`{{
-#----------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 method find-key ( Str:D $key --> Int ) {
 
   for ^@!keys.elems -> $i {
@@ -736,9 +788,9 @@ method find-key ( Str:D $key --> Int ) {
 }}
 
 ##`{{
-#----------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 # Associative role methods
-#----------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 method AT-KEY ( Str $key --> Any ) {
 note "At-key: $key, {%!document{$key}//'-'}, ", %!document{$key}.WHAT;
 
@@ -782,7 +834,7 @@ note "At-key: $key, {%!document{$key}//'-'}, ", %!document{$key}.WHAT;
 }}
 }
 
-#----------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 # Enable BSON::Document to be destructured.
 method Capture ( BSON::Document:D: --> Capture ) {
 note "Capture";
@@ -790,14 +842,14 @@ note "Capture";
 #    return (self.keys Z=> self.values).Capture;
 }
 
-#----------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 method EXISTS-KEY ( Str $key --> Bool ) {
 note "EXISTS-KEY: $key";
   %!document{$key}:exists
 #    self.find-key($key).defined;
 }
 
-#----------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 method DELETE-KEY ( Str $key --> Any ) {
 note "DELETE-KEY: $key";
   %!document{$key}:delete
@@ -813,7 +865,7 @@ note "DELETE-KEY: $key";
 }}
 }
 
-#----------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 # All assignments of values which become or already are BSON::Documents
 # will not be encoded in parallel.
 #multi method ASSIGN-KEY ( Str:D $key, BSON::Document:D $new --> Nil ) {
@@ -939,7 +991,7 @@ multi method ASSIGN-KEY ( Str:D $key, Any $new --> Nil ) {
 }
 }}
 
-#----------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 # Cannot use binding because when value changes this object cannot know that
 # the location is changed. This is nessesary to encode the key, value pair.
 #
@@ -955,28 +1007,28 @@ note "BIND-KEY: $key";
 }
 #}}
 
-#----------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 # Must be defined because of Associative sources of of()
-#----------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 method of ( ) {
   BSON::Document;
 }
 
 #`{{
-#----------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 method CALL-ME ( |capture ) {
   die "Call me capture: ", capture.perl;
 }
 }}
-#----------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 # And some extra methods
-#----------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 method elems ( --> Int ) {
   %!document.elems
 #    @!keys.elems;
 }
 
-#----------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 method kv ( --> List ) {
   (|%!document.kv)
 #`{{
@@ -989,7 +1041,7 @@ method kv ( --> List ) {
 }}
 }
 
-#----------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 method pairs ( --> List ) {
 
 #while my $cf = callframe($++) {
@@ -1008,20 +1060,20 @@ method pairs ( --> List ) {
 }}
 }
 
-#----------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 method keys ( --> List ) {
   |%!document.keys
 #    @!keys.list;
 }
 
-#----------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 method values ( --> List ) {
   |%!document.values
 #    @!values.list;
 }
 
 #`{{
-#----------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 #TODO very slow method
 method modify-array ( Str $key, Str $operation, $data --> List ) {
 
@@ -1035,9 +1087,9 @@ method modify-array ( Str $key, Str $operation, $data --> List ) {
 }
 }}
 
-#----------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 # Encoding document
-#----------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 # Called from user to get a complete encoded document or by a request
 # from an encoding Document to encode a subdocument or array.
 #  method encode ( $document: --> Buf ) {
@@ -1160,7 +1212,7 @@ method encode ( --> Buf ) {
   $b
 }
 
-#----------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 # Encode a key value pair. Called from the insertion methods above when a
 # key value pair is inserted.
 #
@@ -1399,9 +1451,9 @@ method !encode-element ( Pair:D $p --> Buf ) {
   $b
 }
 
-#----------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 # Decoding document
-#----------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 method decode ( Buf:D $data --> Nil ) {
 
   $!encoded-document = $data;
@@ -1444,7 +1496,7 @@ method decode ( Buf:D $data --> Nil ) {
   self!process-decode-promises;
 }
 
-#----------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 method !decode-element ( --> Nil ) {
 
   # Decode start point
@@ -1805,7 +1857,7 @@ method !decode-element ( --> Nil ) {
   } # given
 } # method
 
-#----------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 method !process-decode-promises {
 #note 'process-decode-promises: ', %!promises.elems, ', ', %!promises.keys;
 
