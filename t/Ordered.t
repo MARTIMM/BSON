@@ -6,7 +6,8 @@ print "\n";
 
 use BSON::Ordered;
 
-my BSON::Ordered $a .= new;
+class A does BSON::Ordered { }
+my A $a .= new;
 
 $a<k1> = 10;
 is $a<k1>, 10, 'assign to 1st level';
@@ -19,7 +20,7 @@ is $a<k2><a>, 11, 'assign to 2nd level';
 for ('a' ... 'f').reverse -> $c {
   $a<p>{$c} = $++;
 }
-is-deeply $a<p>.keys, [('a' ... 'f').reverse], '.keys()';
+is-deeply $a<p>.keys, ('a' ... 'f').reverse, '.keys()';
 is-deeply $a<p>.values, (0...5), '.values()';
 is-deeply $a<p>.pairs, (:0f, :1e, :2d, :3c, b => 4, a => 5), '.pairs()';
 is-deeply $a<p>.kv, ('f', 0, 'e', 1, 'd', 2, 'c', 3, 'b', 4, 'a', 5), '.kv()';
@@ -37,12 +38,15 @@ note 'j key arr: ', $a<seq><b><c><d><e><f1><g><h><i><j><h><i><j>.keys;
 $a<seq><b><c><d><e><f1> = [^10];
 note $a<seq><b><c><d><e><f1>;
 
-$a<seq> = [ 1, 2, :p(10)];
-note $a<seq>;
+$a<seq> = [ 1, 2, :p(10), (:z<b>,:zz<bb>, :za<ab>)];
+note '$a<seq>[2]: ', $a<seq>[2];
 
+$a<seq><b> = BSON::Ordered.new(('a' ... 'z') Z=> 120..145);
 
 note 'doc keys: ', $a.document.keys;
 note 'key arr: ', $a.keys;
+
+note "\nDoc; ", '-' x 75, $a.raku, '-' x 80;
 
 #-------------------------------------------------------------------------------
 done-testing;

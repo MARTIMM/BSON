@@ -3,17 +3,7 @@ use Test;
 use NativeCall;
 
 use BSON::Document;
-use Hash::Ordered;
-
-my BSON::Document $d .= new;
-$d<abcdef> = a1 => 10, bb => 11;
-$d<abcdef><b1> = q => 255;
-
-note "\nDoc; ", '-' x 75, $d.raku, '-' x 80;
-
-#-------------------------------------------------------------------------------
-done-testing;
-=finish
+#use BSON::Document;
 
 #-------------------------------------------------------------------------------
 subtest "Document associative tests", {
@@ -31,16 +21,17 @@ subtest "Document associative tests", {
   $d{'f'} = ⅓;
   is-approx $d<f>, ⅓, 'assign Rat to key -> convert to Num';
 
-  $d<seq><b> = Hash::Ordered.new(('a' ... 'z') Z=> 120..145);
+  $d<seq><b> = BSON::Document.new(('a' ... 'z') Z=> 120..145);
   is $d<seq><b><c>, 122, 'assign Seq to key';
   $d<seq>:delete;
+note "\nDoc; ", '-' x 75, $d.raku, '-' x 80;
 
   is $d<b>:delete, 11, ':delete key';
   nok $d<b>:exists, ':exists key';
 
   is-deeply $d.keys, <a c d e f>, '.keys()';
   is-deeply $d.values, (
-      True, False, 'dfg', Hash::Ordered.new((:p<z>, :x(2e-2))), ⅓.Num
+      True, False, 'dfg', BSON::Document.new((:p<z>, :x(2e-2))), ⅓.Num
     ), '.values()';
 
   my $y = 12345;
@@ -52,10 +43,10 @@ subtest "Document associative tests", {
   $d .= new: (
     insert => 'famous_people',
     documents => [
-      Hash::Ordered.new((
+      BSON::Document.new((
         name => 'Larry',
         surname => 'Wall',
-        languages => Hash::Ordered.new((
+        languages => BSON::Document.new((
           Perl0 => 'introduced Perl to my officemates.',
           Perl1 => 'introduced Perl to the world',
           Perl2 => "introduced Henry Spencer's regular expression package.",
@@ -68,7 +59,7 @@ subtest "Document associative tests", {
       )),
     ]
   );
-#  note "\nDoc; ", '-' x 75, $d.raku, '-' x 80;
+#note "\nDoc; ", '-' x 75, $d.raku, '-' x 80;
 
 #note "\nentry: ", $d<documents>[0]<languages>;
 
@@ -81,7 +72,7 @@ subtest "Document associative tests", {
 #-------------------------------------------------------------------------------
 subtest 'Associative assign errors', {
   my BSON::Document $d .= new: ( :a(10), :b(11));
-#  note "\nDoc; ", $d.raku;
+  note "\nDoc; ", $d.raku;
 
   throws-like {
     $d<c> = %( :c(11));

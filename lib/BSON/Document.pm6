@@ -16,21 +16,22 @@ use BSON::Decimal128;
 use BSON::Encode;
 use BSON::Decode;
 
-use Hash::Ordered;
-use Method::Also;
+use BSON::Ordered;
+#use Method::Also;
 
 #-------------------------------------------------------------------------------
 unit class BSON::Document:auth<github:MARTIMM>:ver<0.2.0>;
-also does Associative;
-#also does Hash::Ordered;
+also does BSON::Ordered;
+#also does Associative;
 #also does BSON::Encode;
 #also does BSON::Decode;
 
 #-------------------------------------------------------------------------------
-has %.document is Hash::Ordered;    # handles <elems kv pairs keys>;
 has BSON::Encode $!encode-object;
 has BSON::Decode $!decode-object;
 
+#`{{
+has %.document is Hash::Ordered;    # handles <elems kv pairs keys>;
 #-------------------------------------------------------------------------------
 # Associative role methods
 #
@@ -122,10 +123,11 @@ method values ( --> List ) {
   %!document.values.List
 }
 
+}}
 
 #-------------------------------------------------------------------------------
 # Initializing
-#---------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 # - %options must be empty. If not, it is a Hash -> illegal
 # - @arguments can be;
 #   - List of Pair
@@ -149,7 +151,7 @@ submethod BUILD ( :@arguments ) {
 
   $!encode-object .= new;
   $!decode-object .= new;
-  %!document = Hash::Ordered.new;
+
 
   # every entry in bson must have a name so Array can not be a top level item
   # all top level items are Pair or binary.
@@ -158,7 +160,7 @@ submethod BUILD ( :@arguments ) {
 
     given $item {
       when Pair {
-        %!document{$item.key} = walk-tree( %!document, $item.value);
+        self{$item.key} = walk-tree( $!document, $item.value);
       }
 
       when Array {
@@ -168,20 +170,28 @@ submethod BUILD ( :@arguments ) {
         );
       }
 
+      when Seq {
+        for @$item -> Pair $p {
+          self{$p.key} = walk-tree( Hash::Ordered.new, $p.value);
+        }
+      }
+
       when List {
-        %!document = walk-tree( Hash::Ordered.new, $item);
+        for @$item -> Pair $p {
+          self{$p.key} = walk-tree( Hash::Ordered.new, $p.value);
+        }
       }
 
       when BSON::Document {
-        %!document = $item.document;
+        $!document = $item.document;
       }
 
-      when Hash::Ordered {
-        %!document = |walk-tree( Hash::Ordered.new, $item);
+      when BSON::Ordered {
+        $!document = BSON::Ordered.new;
       }
 
       when Buf {
-        %!document = self.decode($item);
+        $!document = self.decode($item);
       }
 
       when CArray[byte] {
@@ -195,9 +205,10 @@ submethod BUILD ( :@arguments ) {
       }
     }
   }
-#note 'new %!document: ', %!document;
+#note 'new $!document: ', $!document;
 }
 
+#`{{
 #-------------------------------------------------------------------------------
 sub walk-tree ( %doc, $item --> Any ) {
 
@@ -331,6 +342,7 @@ sub show-tree ( $item, $indent is copy --> Str ) {
 
   $s
 }
+}}
 
 #-------------------------------------------------------------------------------
 method decode ( Buf $b --> Any ) {
@@ -339,7 +351,7 @@ method decode ( Buf $b --> Any ) {
 
 #-------------------------------------------------------------------------------
 method encode ( --> Buf ) {
-  $!encode-object.encode(%!document);
+  $!encode-object.encode($!document);
 }
 
 

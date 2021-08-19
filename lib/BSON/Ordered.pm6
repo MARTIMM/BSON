@@ -1,4 +1,5 @@
 use v6.d;
+use Method::Also;
 
 #`{{
   Despite the nice module of Elizabeth, Hash::Ordered doesn't work for me. Two
@@ -16,7 +17,7 @@ use v6.d;
     which need converting.
 }}
 
-unit class BSON::Ordered:auth<github:MARTIMM>:ver<0.1.0>;
+unit role BSON::Ordered:auth<github:MARTIMM>:ver<0.1.0>;
 also does Associative;
 
 has Hash $.document = %();      # keys and values are stored here
@@ -43,7 +44,7 @@ method AT-KEY ( Str $key --> Any ) {
 #}
 
 multi method ASSIGN-KEY ( Str:D $key, Any:D $new --> Nil ) {
-#note "ASSIGN-KEY Any $key, $new, ", $new.WHAT;
+note "ASSIGN-KEY Any $key, $new, ", $new.WHAT;
   unless $!document{$key}:exists {
     $!key-array.push: $key;
   }
@@ -54,22 +55,29 @@ multi method ASSIGN-KEY ( Str:D $key, Any:D $new --> Nil ) {
 #-------------------------------------------------------------------------------
 # Example: $d<y> := $y;
 method BIND-KEY ( Str $key, \new ) {
-note "BIND-KEY ";
+#note "BIND-KEY ";
   $!document{$key} := new;
 }
 
 #-------------------------------------------------------------------------------
 # Example: $d<x>:exists;
 method EXISTS-KEY ( Str $key --> Bool ) {
-note "EXISTS-KEY ";
+#note "EXISTS-KEY ";
   $!document{$key}:exists
 }
 
 #-------------------------------------------------------------------------------
 # Example: $d<x>:delete;
 method DELETE-KEY ( Str $key --> Any ) {
-note "DELETE-KEY ";
-  $!document{$key}:delete
+#note "DELETE-KEY ";
+  loop ( my Int $i = 0; $i < $!key-array.elems; $i++ ) {
+    if $!key-array[$i] eq $key {
+      $!key-array.splice( $i, 1);
+      last;
+    }
+  }
+
+  $!document{$key}:delete;
 }
 
 #-------------------------------------------------------------------------------
@@ -97,23 +105,27 @@ method pairs ( --> Seq ) {
 }
 
 #-------------------------------------------------------------------------------
-method keys ( --> List ) {
+method keys ( --> Seq ) {
 #note ".keys\()";
-  $!key-array
+  gather for @$!key-array -> $k {
+    take $k;
+  }
 }
 
 #-------------------------------------------------------------------------------
-method values ( --> List ) {
+method values ( --> Seq ) {
 #note ".values\()";
-  $!document{@$!key-array}.list
+  gather for $!document{@$!key-array} -> $v {
+    take $v;
+  }
 }
 
 #-------------------------------------------------------------------------------
-sub walk-tree ( %doc, $item --> Any ) {
+sub walk-tree ( %doc, $item --> Any ) is export {
 
   given $item {
     when !.defined {
-note "Any";
+#note "Any";
       die X::BSON.new(
         :operation("List $item"), :type<Hash>,
         :error("Values cannot be undefined")
@@ -121,7 +133,7 @@ note "Any";
     }
 
     when Seq {
-note "Seq";
+#note "Seq";
       for @$item -> Pair $i {
         %doc{$i.key} = walk-tree( BSON::Ordered.new, $i.value);
       }
@@ -130,7 +142,7 @@ note "Seq";
     }
 
     when Array {
-note "Array";
+#note "Array";
       my Array $a = [];
       for @$item -> $i {
         $a.push: walk-tree( BSON::Ordered.new, $i);
@@ -140,14 +152,14 @@ note "Array";
     }
 
     when Pair {
-note "Pair: $item.key(), $item.value()";
+#note "Pair: $item.key(), $item.value()";
       %doc{$item.key} = walk-tree( BSON::Ordered.new, $item.value);
       return %doc;
     }
 
     # A List should only contain Pair and is inserted in doc as kv pairs
     when List {
-note "List";
+#note "List";
       for @$item -> Pair $i {
         %doc{$i.key} = walk-tree( BSON::Ordered.new, $i.value);
       }
@@ -170,7 +182,7 @@ note "wt2 HO: $item.keys(), $item.values()";
 }}
 
     when Hash {
-note "Hash";
+#note "Hash";
       die X::BSON.new(
         :operation("List $item"), :type<Hash>,
         :error("Values cannot be Hash")
@@ -182,4 +194,69 @@ note "Hash";
       return $item ~~ Rat ?? $item.Num !! $item;
     }
   }
+}
+
+#-------------------------------------------------------------------------------
+method raku ( Int :$indent is copy = 0 --> Str ) is also<perl> {
+  my $s = [~] "\n", '  ' x $indent, "BSON::Document.new: (\n";
+  for self.keys -> $key {
+    $s ~= [~] '  ' x $indent + 1, $key, ' => ',
+          show-tree( $!document{$key}, $indent + 1), "\n";
+  }
+  $s ~= [~] '  ' x $indent, ");\n";
+
+  $s
+}
+
+#-------------------------------------------------------------------------------
+sub show-tree ( $item, $indent is copy --> Str ) {
+
+  my Str $s = '';
+#note $item, ', ', $item.^name ~~ 'BSON::Ordered' ?? 'HO' !! $item.WHAT;
+
+  given $item {
+    when Array {
+      $s = "[\n";
+      $indent++;
+      for @$item -> $i {
+        $s ~= [~] '  ' x $indent, show-tree( $i, $indent), "\n";
+      }
+      $indent--;
+      $s ~= [~] '  ' x $indent, "],";
+    }
+
+    when List {
+      $s = "(\n";
+      $indent++;
+      for @$item -> $i {
+        $s ~= [~] '  ' x $indent, $i.key, ' => ',
+              show-tree( $i.value, $indent), "\n";
+      }
+      $indent--;
+      $s ~= [~] '  ' x $indent, "),";
+    }
+
+    when BSON::Ordered {
+      $s = [~] "BSON::Document.new((\n";
+      $indent++;
+#note 'BO: ', $item.keys;
+      for $item.keys -> $key {
+#note 'BO k: ', $key;
+        $s ~= [~] '  ' x $indent, $key, ' => ',
+              show-tree( $item{$key}, $indent), "\n";
+      }
+      $indent--;
+      $s ~= [~] '  ' x $indent, ")),";
+    }
+
+    when Str {
+      $s = [~] "'", $item, "',";
+    }
+
+    default {
+      $s = [~] $item, ",";
+    }
+  }
+
+  $s
 }
