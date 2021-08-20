@@ -10,7 +10,12 @@ use BSON::Javascript;
 use BSON::Binary;
 use BSON::Regex;
 use BSON::ObjectId;
+use BSON::Encode;
+use BSON::Decode;
 use UUID;
+
+my BSON::Encode $encoder;
+my BSON::Decode $decoder;
 
 my BSON::Javascript $js .= new(
   :javascript('function(x){return x;}')
@@ -77,12 +82,16 @@ $b.timethese(
 
 #note "\nDoc; ", '-' x 75, $d.raku, '-' x 80;
 
-      my BSON::Document $d2 .= new;
+      $encoder .= new;
+      my Buf $b = $encoder.encode($d);
+
+      $decoder .= new;
+      my BSON::Document $d2 = $decoder.decode($b);
+
 #note 'encode';
-      my Buf $b = $d.encode;
 #exit(0);
 #note 'decode';
-      $d2.decode($b);
+#      $d2.decode($b);
     }
   }
 );
