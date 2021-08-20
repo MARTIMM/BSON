@@ -13,8 +13,8 @@ use BSON::Regex;
 use BSON::Javascript;
 use BSON::Binary;
 use BSON::Decimal128;
-use BSON::Encode;
-use BSON::Decode;
+#use BSON::Encode;
+#use BSON::Decode;
 
 use BSON::Ordered;
 #use Method::Also;
@@ -27,8 +27,8 @@ also does BSON::Ordered;
 #also does BSON::Decode;
 
 #-------------------------------------------------------------------------------
-has BSON::Encode $!encode-object;
-has BSON::Decode $!decode-object;
+#has BSON::Encode $!encode-object;
+#has BSON::Decode $!decode-object;
 
 #`{{
 has %.document is Hash::Ordered;    # handles <elems kv pairs keys>;
@@ -143,14 +143,34 @@ method new( **@arguments, *%options ) {
     :error("Arguments cannot be Hash")
   ) if %options.elems;
 
-  self.bless(:@arguments);
+  my BSON::Document $d;
+  for @arguments -> $item {
+    given $item {
+      when Buf {
+        $d .= new;
+#note $item;
+#note $d.decode($item);
+        $d = $d.decode($item);
+#note "Decoded: ", $d;
+        last;
+      }
+
+      when CArray[byte] {
+        last;
+      }
+    }
+  }
+
+  $d //= self.bless(:@arguments);
+
+  $d
 }
 
 #-------------------------------------------------------------------------------
 submethod BUILD ( :@arguments ) {
 
-  $!encode-object .= new;
-  $!decode-object .= new;
+#  $!encode-object .= new;
+#  $!decode-object .= new;
 
 
   # every entry in bson must have a name so Array can not be a top level item
@@ -160,7 +180,7 @@ submethod BUILD ( :@arguments ) {
 
     given $item {
       when Pair {
-        self{$item.key} = walk-tree( $!document, $item.value);
+        self{$item.key} = self.walk-tree( $!document, $item.value);
       }
 
       when Array {
@@ -172,16 +192,16 @@ submethod BUILD ( :@arguments ) {
 
       when Seq {
         for @$item -> Pair $p {
-          self{$p.key} = walk-tree( Hash::Ordered.new, $p.value);
+          self{$p.key} = self.walk-tree( BSON::Ordered.new, $p.value);
         }
       }
 
       when List {
         for @$item -> Pair $p {
-          self{$p.key} = walk-tree( Hash::Ordered.new, $p.value);
+          self{$p.key} = self.walk-tree( BSON::Ordered.new, $p.value);
         }
       }
-
+#`{{
       when BSON::Document {
         $!document = $item.document;
       }
@@ -191,11 +211,14 @@ submethod BUILD ( :@arguments ) {
       }
 
       when Buf {
-        $!document = self.decode($item);
+        $!document = self.decode($item).document;
+        last;
       }
 
       when CArray[byte] {
+        last;
       }
+}}
 
       default {
         die X::BSON.new(
@@ -344,15 +367,22 @@ sub show-tree ( $item, $indent is copy --> Str ) {
 }
 }}
 
+#`{{
 #-------------------------------------------------------------------------------
-method decode ( Buf $b --> Any ) {
-  $!decode-object.decode($b);
+method decode ( Buf $b --> BSON::Document ) {
+  $!decode-object.decode( BSON::Document.new, $b)
 }
 
 #-------------------------------------------------------------------------------
 method encode ( --> Buf ) {
-  $!encode-object.encode($!document);
+  $!encode-object.encode(self)
 }
+}}
+
+#-------------------------------------------------------------------------------
+#method bytes ( Buf $b --> Str ) {
+#  $!decode-object.bytes($b)
+#}
 
 
 

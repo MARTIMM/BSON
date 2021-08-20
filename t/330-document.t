@@ -2,10 +2,6 @@ use v6;
 use Test;
 use BSON::Document;
 
-ok 1, '-';
-done-testing;
-=finish
-
 #-------------------------------------------------------------------------------
 subtest "Autovivication", {
 

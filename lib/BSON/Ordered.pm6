@@ -1,5 +1,8 @@
 use v6.d;
+
 use Method::Also;
+
+use BSON;
 
 #`{{
   Despite the nice module of Elizabeth, Hash::Ordered doesn't work for me. Two
@@ -31,7 +34,7 @@ method AT-KEY ( Str $key --> Any ) {
 #note "AT-KEY $key";
   unless $!document{$key}:exists {
     $!key-array.push: $key;
-    $!document{$key} = BSON::Ordered.new
+    $!document{$key} = self.new
   }
   return-rw $!document{$key};
 }
@@ -44,12 +47,12 @@ method AT-KEY ( Str $key --> Any ) {
 #}
 
 multi method ASSIGN-KEY ( Str:D $key, Any:D $new --> Nil ) {
-note "ASSIGN-KEY Any $key, $new, ", $new.WHAT;
+#note "ASSIGN-KEY Any $key, $new, ", $new.WHAT;
   unless $!document{$key}:exists {
     $!key-array.push: $key;
   }
 
-  $!document{$key} = walk-tree( BSON::Ordered.new, $new);
+  $!document{$key} = self.walk-tree( self.new, $new);
 }
 
 #-------------------------------------------------------------------------------
@@ -121,7 +124,7 @@ method values ( --> Seq ) {
 }
 
 #-------------------------------------------------------------------------------
-sub walk-tree ( %doc, $item --> Any ) is export {
+method walk-tree ( %doc, $item --> Any ) {
 
   given $item {
     when !.defined {
@@ -135,7 +138,7 @@ sub walk-tree ( %doc, $item --> Any ) is export {
     when Seq {
 #note "Seq";
       for @$item -> Pair $i {
-        %doc{$i.key} = walk-tree( BSON::Ordered.new, $i.value);
+        %doc{$i.key} = self.walk-tree( self.new, $i.value);
       }
 
       return %doc;
@@ -145,7 +148,7 @@ sub walk-tree ( %doc, $item --> Any ) is export {
 #note "Array";
       my Array $a = [];
       for @$item -> $i {
-        $a.push: walk-tree( BSON::Ordered.new, $i);
+        $a.push: self.walk-tree( self.new, $i);
       }
 
       return $a;
@@ -153,7 +156,7 @@ sub walk-tree ( %doc, $item --> Any ) is export {
 
     when Pair {
 #note "Pair: $item.key(), $item.value()";
-      %doc{$item.key} = walk-tree( BSON::Ordered.new, $item.value);
+      %doc{$item.key} = self.walk-tree( self.new, $item.value);
       return %doc;
     }
 
@@ -161,7 +164,7 @@ sub walk-tree ( %doc, $item --> Any ) is export {
     when List {
 #note "List";
       for @$item -> Pair $i {
-        %doc{$i.key} = walk-tree( BSON::Ordered.new, $i.value);
+        %doc{$i.key} = self.walk-tree( self.new, $i.value);
       }
 
       return %doc;
@@ -172,10 +175,10 @@ sub walk-tree ( %doc, $item --> Any ) is export {
     }
 }}
 #`{{
-    when BSON::Ordered {
+    when self {
 note "wt2 HO: $item.keys(), $item.values()";
       for $item.keys -> $k {
-        %doc{$k} = walk-tree( BSON::Ordered.new, $item{$k});
+        %doc{$k} = self.walk-tree( self.new, $item{$k});
       }
       return %doc;
     }

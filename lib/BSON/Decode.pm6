@@ -6,25 +6,31 @@ use BSON::Binary;
 use BSON::Decimal128;
 use BSON::Javascript;
 use BSON::Regex;
+#use BSON::Ordered;
+use BSON::Document;
 
-use Hash::Ordered;
-
-#------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 unit class BSON::Decode:auth<github:MARTIMM>:ver<0.1.0>;
+#also does BSON::Ordered;
 
-subset Index of Int where $_ >= 0;
-
-has %!document is Hash::Ordered;
-
-has Index $!index = 0;
-has %!promises is Hash::Ordered;
+has UInt $!index = 0;
+#has %!promises;
 has Buf $!encoded-document;
 has Buf @!encoded-entries;
 
-#------------------------------------------------------------------------------
-method decode ( Buf:D $data --> Hash::Ordered ) {
+#has $!document;
+
+#-------------------------------------------------------------------------------
+#submethod BUILD ( ) {
+#}
+
+#-------------------------------------------------------------------------------
+method decode ( Buf:D $data --> Any ) {
+
+  my BSON::Document $document .= new;
 
   $!encoded-document = $data;
+  @!encoded-entries = ();
 
 #    @!keys = ();
 #    @!values = ();
@@ -41,15 +47,15 @@ method decode ( Buf:D $data --> Hash::Ordered ) {
   # step to the document content
   $!index += BSON::C-INT32-SIZE;
 
-  # decode elements until end of doc (byte 0x00)
-  while $!encoded-document[$!index] !~~ 0x00 {
+  # decode elements until end of doc (last byte of document is 0x00)
 #note "index: $!index, $!encoded-document[$!index]";
-    self!decode-element;
+  while $!encoded-document[$!index] !~~ 0x00 {
+    self!decode-element($document);
+#note "  ==>> $!index, $!encoded-document[$!index]";
   }
 
   # step over the last byte: index should now be the doc size
   $!index++;
-#note "index: $!index == $doc-size";
 
   # check size of document with final byte location
   die X::BSON.new(
@@ -61,13 +67,13 @@ method decode ( Buf:D $data --> Hash::Ordered ) {
   ) if $doc-size != $!index;
 
   # wait for promises to end for this document
-  self!process-decode-promises;
+#  self!process-decode-promises;
 
-  %!document;
+  $document;
 }
 
-#----------------------------------------------------------------------------
-method !decode-element ( --> Nil ) {
+#-------------------------------------------------------------------------------
+method !decode-element ( BSON::Document $document --> Nil ) {
 
   # Decode start point
   my $decode-start = $!index;
@@ -78,7 +84,7 @@ method !decode-element ( --> Nil ) {
   # Get the key value, Index is adjusted to just after the 0x00
   # of the string.
   my Str $key = decode-e-name( $!encoded-document, $!index);
-#note "$*THREAD.id() $key found, type 0x$bson-code.fmt('%02x'), idx now $!index";
+#note "de: $key found, type 0x$bson-code.fmt('%02x'), idx now $!index";
 
   # Keys are pushed in the proper order as they are seen in the
   # byte buffer.
@@ -109,18 +115,19 @@ method !decode-element ( --> Nil ) {
       my Int $i = $!index;
       $!index += BSON::C-DOUBLE-SIZE;
 #note "DBL Subbuf: ", $!encoded-document.subbuf( $i, BSON::C-DOUBLE-SIZE);
-      %!promises{$key} = Promise.start( {
+#      %!promises{$key} = Promise.start( {
           my $v = decode-double( $!encoded-document, $i);
 #note "DBL: $key, $idx = @!values[$idx]";
 
           # Return total section of binary data
-          ( $v, $!encoded-document.subbuf(
+          ( $document{$key}, @!encoded-entries[$idx]) = (
+            $v, $idx, $!encoded-document.subbuf(
                   $decode-start ..^            # At bson code
                   ($i + BSON::C-DOUBLE-SIZE)   # $i is at code + key further
                 )
           )
-        }
-      );
+#        }
+#      );
     }
 
     # String type
@@ -132,37 +139,49 @@ method !decode-element ( --> Nil ) {
       # Step over the size field and the null terminated string
       $!index += BSON::C-INT32-SIZE + $nbr-bytes;
 
-      %!promises{$key} = Promise.start( {
+#      %!promises{$key} = Promise.start( {
           my $v = decode-string( $!encoded-document, $i);
 
-          ( $v, $!encoded-document.subbuf(
+          ( $document{$key}, @!encoded-entries[$idx]) = (
+            $v, $!encoded-document.subbuf(
                   $decode-start ..^
                   ($i + BSON::C-INT32-SIZE + $nbr-bytes)
                 )
           )
-        }
-      );
+#        }
+#      );
     }
 
     # Nested document
     when BSON::C-DOCUMENT {
       my Int $i = $!index;
       my Int $doc-size = decode-int32( $!encoded-document, $i);
-      $!index += $doc-size;
 
       # Wait for any threads to complete before decoding the subdocument
       # If not, the threads are eaten up and we end up waiting for
       # non-started threads.
-      self!process-decode-promises;
+#      self!process-decode-promises;
 
-      require ::('BSON::Document');
-      my $d = ::('BSON::Document').new;
-      $d.decode($!encoded-document.subbuf($i ..^ ($i + $doc-size)));
-
-      %!promises{$key} = Promise.start( {
-          ( $d, $!encoded-document.subbuf( $decode-start ..^ ($i + $doc-size)))
-        }
+      my BSON::Decode $decoder .= new;
+      my BSON::Document $d = $decoder.decode(
+        $!encoded-document.subbuf($i ..^ ($i + $doc-size))
       );
+
+#      %!promises{$key} = Promise.start( {
+      $document{$key} = $d;
+      @!encoded-entries[$idx] = $!encoded-document.subbuf(
+        $decode-start ..^ ($i + $doc-size)
+      );
+#          ( $document{$key}, @!encoded-entries[$idx]) =
+#            ( $d, $!encoded-document.subbuf(
+#                $decode-start ..^ ($i + $doc-size)
+#              )
+#            );
+
+      $!index = $i + $doc-size;
+#note "BD ds: $!index";
+#        }
+#      );
     }
 
     # Array code
@@ -171,18 +190,29 @@ method !decode-element ( --> Nil ) {
       my Int $i = $!index;
       my Int $doc-size = decode-int32( $!encoded-document, $!index);
       $!index += $doc-size;
+#note "A: $!index, $doc-size";
 
-      self!process-decode-promises;
-      %!promises{$key} = Promise.start( {
-          require ::('BSON::Document');
-          my $d = ::('BSON::Document').new;
-
-          $d.decode($!encoded-document.subbuf($i ..^ ($i + $doc-size)));
-          my $v = [$d.values];
-
-          ( $v, $!encoded-document.subbuf( $decode-start ..^ ($i + $doc-size)))
-        }
+#      self!process-decode-promises;
+#      %!promises{$key} = Promise.start( {
+      my BSON::Decode $decoder .= new;
+      my BSON::Document $d = $decoder.decode(
+        $!encoded-document.subbuf($i ..^ ($i + $doc-size))
       );
+
+#          my $v = [$d.values];
+
+#          ( $document{$key}, @!encoded-entries[$idx]) =
+#            ( $v, $!encoded-document.subbuf( $decode-start ..^ ($i + $doc-size)));
+
+      $document{$key} = [$d.values];
+      @!encoded-entries[$idx] = $!encoded-document.subbuf(
+        $decode-start ..^ ($i + $doc-size)
+      );
+
+      $!index = $i + $doc-size;
+#note "A ds: $!index";
+#        }
+#      );
     }
 
     # Binary code
@@ -197,17 +227,18 @@ method !decode-element ( --> Nil ) {
       # Step over size field, subtype and binary data
       $!index += BSON::C-INT32-SIZE + 1 + $buf-size;
 
-      %!promises{$key} = Promise.start( {
+#      %!promises{$key} = Promise.start( {
           my $v = BSON::Binary.decode(
             $!encoded-document, $i, :$buf-size
           );
 
-          ( $v, $!encoded-document.subbuf(
+          ( $document{$key}, @!encoded-entries[$idx]) =
+            ( $v, $!encoded-document.subbuf(
                   $decode-start ..^ ($i + 1 + $buf-size)
                 )
-          )
-        }
-      );
+            )
+#        }
+#      );
     }
 
     # Object id
@@ -216,11 +247,11 @@ method !decode-element ( --> Nil ) {
       my Int $i = $!index;
       $!index += 12;
 
-      %!promises{$key} = Promise.start( {
+#      %!promises{$key} = Promise.start( {
           my $v = BSON::ObjectId.decode( $!encoded-document, $i);
-          ( $v, $!encoded-document.subbuf($decode-start ..^ ($i + 12)))
-        }
-      );
+          ( $document{$key}, @!encoded-entries[$idx]) = ( $v, $!encoded-document.subbuf($decode-start ..^ ($i + 12)))
+#        }
+#      );
     }
 
     # Boolean code
@@ -229,11 +260,11 @@ method !decode-element ( --> Nil ) {
       my Int $i = $!index;
       $!index++;
 
-      %!promises{$key} = Promise.start( {
+#      %!promises{$key} = Promise.start( {
           my $v = $!encoded-document[$i] ~~ 0x00 ?? False !! True;
-          ( $v, $!encoded-document.subbuf($decode-start .. ($i + 1)))
-        }
-      );
+          ( $document{$key}, @!encoded-entries[$idx]) = ( $v, $!encoded-document.subbuf($decode-start .. ($i + 1)))
+#        }
+#      );
     }
 
     # Datetime code
@@ -241,27 +272,27 @@ method !decode-element ( --> Nil ) {
       my Int $i = $!index;
       $!index += BSON::C-INT64-SIZE;
 
-      %!promises{$key} = Promise.start( {
+#      %!promises{$key} = Promise.start( {
           my $v = DateTime.new(
             decode-int64( $!encoded-document, $i) / 1000,
             :timezone(0)
           );
 
-          ( $v, $!encoded-document.subbuf(
+          ( $document{$key}, @!encoded-entries[$idx]) = ( $v, $!encoded-document.subbuf(
                   $decode-start ..^ ($i + BSON::C-INT64-SIZE)
                 )
           )
-        }
-      );
+#        }
+#      );
     }
 
     # Null value -> Any
     when BSON::C-NULL {
-      %!promises{$key} = Promise.start( {
+#      %!promises{$key} = Promise.start( {
           my $i = $!index;
-          ( Any, $!encoded-document.subbuf($decode-start ..^ $i))
-        }
-      );
+          ( $document{$key}, @!encoded-entries[$idx]) = ( Any, $!encoded-document.subbuf($decode-start ..^ $i))
+#        }
+#      );
     }
 
     # regular expressions. these are perl5 like
@@ -280,15 +311,15 @@ method !decode-element ( --> Nil ) {
       $!index++;
       my $i3 = $!index;
 
-      %!promises{$key} = Promise.start( {
+#      %!promises{$key} = Promise.start( {
           my $v = BSON::Regex.new(
             :regex(decode-cstring( $!encoded-document, $i1)),
             :options(decode-cstring( $!encoded-document, $i2))
           );
 
-          ( $v, $!encoded-document.subbuf($decode-start ..^ $i3))
-        }
-      );
+          ( $document{$key}, @!encoded-entries[$idx]) = ( $v, $!encoded-document.subbuf($decode-start ..^ $i3))
+#        }
+#      );
     }
 
     # Javascript code
@@ -303,15 +334,15 @@ method !decode-element ( --> Nil ) {
       # Step over size field and the javascript text
       $!index += (BSON::C-INT32-SIZE + $buf-size);
 
-      %!promises{$key} = Promise.start( {
+#      %!promises{$key} = Promise.start( {
           my $v = BSON::Javascript.decode( $!encoded-document, $i);
 
-          ( $v, $!encoded-document.subbuf(
+          ( $document{$key}, @!encoded-entries[$idx]) = ( $v, $!encoded-document.subbuf(
                   $decode-start ..^ ($i + BSON::C-INT32-SIZE + $buf-size)
                 )
           )
-        }
-      );
+#        }
+#      );
     }
 
     # Javascript code with scope
@@ -325,17 +356,16 @@ method !decode-element ( --> Nil ) {
       $!index += (BSON::C-INT32-SIZE + $js-size + $js-scope-size);
       my Int $i3 = $!index;
 
-      %!promises{$key} = Promise.start( {
-          require ::('BSON::Document');
+#      %!promises{$key} = Promise.start( {
           my $v = BSON::Javascript.decode(
             $!encoded-document, $i1,
-            :bson-doc(::('BSON::Document').new),
+            :bson-doc(BSON::Document.new),
             :scope(Buf.new($!encoded-document[$i2 ..^ ($i2 + $js-size)]))
           );
 
-          ( $v, $!encoded-document.subbuf($decode-start ..^ $i3))
-        }
-      );
+          ( $document{$key}, @!encoded-entries[$idx]) = ( $v, $!encoded-document.subbuf($decode-start ..^ $i3))
+#        }
+#      );
     }
 
     # 32-bit Integer
@@ -344,15 +374,15 @@ method !decode-element ( --> Nil ) {
       my Int $i = $!index;
       $!index += BSON::C-INT32-SIZE;
 
-      %!promises{$key} = Promise.start( {
+#      %!promises{$key} = Promise.start( {
           my $v = decode-int32( $!encoded-document, $i);
-#note 'C-INT32:, ', $v;
-          ( $v, $!encoded-document.subbuf(
+#note $*THREAD.id, ', C-INT32:, ', $v, ', ', $!encoded-document.subbuf($decode-start ..^ ($i + BSON::C-INT32-SIZE));
+          ( $document{$key}, @!encoded-entries[$idx]) = ( $v, $!encoded-document.subbuf(
                   $decode-start ..^ ($i + BSON::C-INT32-SIZE)
                 )
           )
-        }
-      );
+#        }
+#      );
     }
 
     # timestamp
@@ -361,7 +391,7 @@ method !decode-element ( --> Nil ) {
       my Int $i = $!index;
       $!index += BSON::C-UINT64-SIZE;
 
-      %!promises{$key} = Promise.start( {
+#      %!promises{$key} = Promise.start( {
 #            @!values[$idx] = BSON::Timestamp.new( :timestamp(
 #                decode-uint64( $!encoded-document, $i)
 #              )
@@ -369,12 +399,12 @@ method !decode-element ( --> Nil ) {
           my $v = decode-uint64( $!encoded-document, $i);
 #note "Timestamp: ", @!values[$idx];
 
-          ( $v, $!encoded-document.subbuf(
+          ( $document{$key}, @!encoded-entries[$idx]) = ( $v, $!encoded-document.subbuf(
                   $decode-start ..^ ($i + BSON::C-UINT64-SIZE)
                 )
           )
-        }
-      );
+#        }
+#      );
     }
 
     # 64-bit Integer
@@ -383,16 +413,16 @@ method !decode-element ( --> Nil ) {
       my Int $i = $!index;
       $!index += BSON::C-INT64-SIZE;
 
-      %!promises{$key} = Promise.start( {
+#      %!promises{$key} = Promise.start( {
           my $v = decode-int64( $!encoded-document, $i);
 
           # return value and encoded snippet
-          ( $v, $!encoded-document.subbuf(
+          ( $document{$key}, @!encoded-entries[$idx]) = ( $v, $!encoded-document.subbuf(
                   $decode-start ..^ ($i + BSON::C-INT64-SIZE)
                 )
           )
-        }
-      );
+#        }
+#      );
     }
 
     # 128-bit Decimal
@@ -430,25 +460,35 @@ method !decode-element ( --> Nil ) {
   } # given
 } # method
 
-#----------------------------------------------------------------------------
-method !process-decode-promises {
+#`{{
+#-------------------------------------------------------------------------------
+method !process-decode-promises ( ) {
 #note 'process-decode-promises: ', %!promises.elems, ', ', %!promises.keys;
+
+  my @k = ();
+  my @v = ();
 
 #    if %!promises.elems {
     await Promise.allof(%!promises.values);
     my $idx = 0;
     for %!promises.keys -> $key {
 
-#        if %!promises{$key}:exists {
+#      if %!promises{$key}:exists {
         # Return the Buffer slices in each entry so it can be
         # concatenated again when encoding
 #note "$*THREAD.id() Before wait for result of $key";
-        ( %!document{$key}, @!encoded-entries[$idx]) = %!promises{$key}.result;
-#note %!document{$key};
+        @k[$idx] = $key;
+        ( $!document{$key}, @!encoded-entries[$idx]) = %!promises{$key}.result;
+note "$*THREAD.id(), $key, $!document{$key}";
         $idx++;
 #note "$*THREAD.id() After wait for $key";
-#        } # if
+#      } # if
     } # for
+
+    for ^$idx -> $i {
+      $!document{@k[$i]} = @v[$i];
+    }
+note $!document;
 
 #`{{
     loop ( my $idx = 0; $idx < @!keys.elems; $idx++) {
@@ -468,3 +508,18 @@ method !process-decode-promises {
     %!promises = ();
 #    } # if
 } # method
+}}
+
+#`{{
+#-------------------------------------------------------------------------------
+method bytes ( Buf $b --> Str) {
+  return $b.Str;
+
+  my Str $bytes = '';
+  for @!encoded-entries -> $idx {
+    $bytes ~= @!encoded-entries[$idx].gist ~ "\n";
+  }
+
+  $bytes
+}
+}}
