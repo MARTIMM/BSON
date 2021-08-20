@@ -3,7 +3,7 @@ that page: *Major version zero (0.y.z) is for initial development. Anything may
 change at any time. The public API should not be considered stable*.
 
 * 2021-08-11 0.13.0
-  * Major rewrite of module **BSON::Document**. Refactoring code into **BSON::Ordered**, **BSON::Encode** and **BSON::Decode**.
+  * Major rewrite of module **BSON::Document**. Refactoring code into **BSON::Ordered**, **BSON::Encode** and **BSON::Decode**. Also, according to a description of **BSON::Simple**, made by Geoffrey Broadwell (japhb on github) that `… Finally, its internal design makes it somewhat more difficult to optimize, as it was written before modern buffer handling was added to Raku and before parallelism overhead was fully understood.` So, I needed to test that and made a simple test doing calculations in parallel and without. The last part was about 10 times faster!
 
 * 2021-08-11 0.12.1
   * Improved reading and writing of integer and real numbers in buffers.
