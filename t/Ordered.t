@@ -5,6 +5,7 @@ use Test;
 print "\n";
 
 use BSON::Ordered;
+use BSON::Document;
 
 class A does BSON::Ordered { }
 my A $a .= new;
@@ -30,23 +31,15 @@ is $a<p>.elems, 6, '.elems()';
 $a<seq><b><c><d><e><f1><g><h><i><j><h><i><j> =
   (('a' ... 'z') Z=> 120..145).reverse;
 
-note 'j keys: ', $a<seq><b><c><d><e><f1><g><h><i><j><h><i><j>.document.keys;
-note 'j key arr: ', $a<seq><b><c><d><e><f1><g><h><i><j><h><i><j>.keys;
+#note 'j keys: ', $a<seq><b><c><d><e><f1><g><h><i><j><h><i><j>.document.keys;
+#note 'j key arr: ', $a<seq><b><c><d><e><f1><g><h><i><j><h><i><j>.keys;
 
 # Overwrite value of key 'f1'. Previous value is garbage collected.
 # Keys array of 'e' doesn't have to change because 'f1' is not gone.
 $a<seq><b><c><d><e><f1> = [^10];
-note $a<seq><b><c><d><e><f1>;
+is $a<seq><b><c><d><e><f1>[2], 2, 'item overwritten with array';
 
-$a<seq> = [ 1, 2, :p(10), (:z<b>,:zz<bb>, :za<ab>)];
-note '$a<seq>[2]: ', $a<seq>[2];
-
-$a<seq><b> = BSON::Ordered.new(('a' ... 'z') Z=> 120..145);
-
-note 'doc keys: ', $a.document.keys;
-note 'key arr: ', $a.keys;
-
-note "\nDoc; ", '-' x 75, $a.raku, '-' x 80;
+#note "\nDoc; ", '-' x 75, $a.raku, '-' x 80;
 
 #-------------------------------------------------------------------------------
 done-testing;

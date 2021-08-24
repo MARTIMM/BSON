@@ -3,28 +3,23 @@ use Test;
 use BSON::Document;
 
 #-------------------------------------------------------------------------------
-subtest "Autovivication", {
+subtest "Large decode test", {
 
   my BSON::Document $d .= new;
 
   #                ||||
   # Differs here   vvvv <f1> / <f2>
-  $d<a><b><c><d><e><f1><g><h><i><j><h><i><j> =
-    Hash::Ordered.new(('a' ... 'z') Z=> 120..145);
-  $d<a><b><c><d><e><f2><g><h><i><j><h><i><j> =
-    Hash::Ordered.new(('a' ... 'z') Z=> 120..145);
+  $d<a><b><c><d><e><f1><g><h><i><j><h><i><j> = ('a' ... 'z') Z=> 120..145;
+  $d<a><b><c><d><e><f2><g><h><i><j><h><i><j> = ('a' ... 'z') Z=> 120..145;
 
-  is $d<a><b><c><d><e><f1><g><h><i><j><h><i><j><a>,
-     120,
+  is $d<a><b><c><d><e><f1><g><h><i><j><h><i><j><a>, 120,
      "Very deep ...<j><a> = $d<a><b><c><d><e><f1><g><h><i><j><h><i><j><a>";
-  is $d<a><b><c><d><e><f2><g><h><i><j><h><i><j><a>,
-     120,
+  is $d<a><b><c><d><e><f2><g><h><i><j><h><i><j><a>, 120,
      "Very deep ...<j><a> = $d<a><b><c><d><e><f2><g><h><i><j><h><i><j><a>";
 
   my Buf $b = $d.encode;
 
   # Handcrafted encoded BSON data
-  #
   my Buf $etst = Buf.new(
     0x1b, 0x02, 0x00, 0x00,
       0x03, 0x61, 0x00,
@@ -147,8 +142,7 @@ subtest "Autovivication", {
 
   is-deeply $b, $etst, 'Buf compare';
 
-  my BSON::Document $d2 .= new;
-  $d2.decode($b);
+  my BSON::Document $d2 = $d.decode($b);
 
   is-deeply $d, $d2, 'structures are equal';
 

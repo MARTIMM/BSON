@@ -244,13 +244,11 @@ subtest {
   );
 
   # Encode document and compare with handcrafted byte array
-  #
   my Buf $edoc = $d.encode;
-
   is-deeply $edoc, $etst, 'Encoded document is correct';
 
+
   # Fresh doc, load handcrafted data and decode into document
-  #
   $d .= new($etst);
 
   is $d<a>, 1234, "a => $d<a>, int32";
@@ -275,8 +273,8 @@ subtest {
 
   is $d<str>, 'String text', 'Text ok';
 
-  is $d<array>[[1]], 'abc', 'A[[1]] = abc';
-  is $d<array>[[2]], 345, 'A[[2]] = 345';
+  is $d<array>[1], 'abc', 'Array [1] = abc';
+  is $d<array>[2], 345, 'Array [2] = 345';
 
   is $d<oid>.oid.elems, 12, 'Length of object id ok';
 

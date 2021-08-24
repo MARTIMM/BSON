@@ -71,9 +71,9 @@ Tests of encoding two series of 16 types, inserted into a newly created document
 ### Test notes and measurements
 Timing 50 iterations ...
 
-| Date     | What                                                | n per sec |
-|----------|-----------------------------------------------------|-----------|
-|| With use of Promises on encoding as well as decoding          |   6.19
+| Date     | What                                                | n per sec |N
+|----------|-----------------------------------------------------|-----------|-|
+|| With use of Promises on encoding as well as decoding          |   6.19    |1
 || Removed Promises on decoding (dropped)                        |   5.21
 || After some cleanup of D1                                      |   7.13
 || Replaced Hash $!data with @!values in D1                      |   7.17
@@ -83,18 +83,25 @@ Timing 50 iterations ...
 || Removing Positional role (dropped)                            |   4.96
 || Bugfixes and improvements. Perl 2015 12 24                    |   6.39
 || Native encoding/decoding for doubles                          |   7.71
-| 20160610 | 2016.06-178-gf7c6e60, MoarVM 2016.06-9-g8fc21d5     |  18.0
-| 20161108 | 2016.10-204-g824b29f, MoarVM 2016.10-37-gf769569    |  19.8
-| 20170225 | 017.02-56-g9f10434, MoarVM 2017.02-7-g3d85900       |  21.0
+| 20160610 |                                                     |  18.0     |2
+| 20161108 |                                                     |  19.8     |3
+| 20170225 |                                                     |  21.0     |4
 | 20170225 | Dropped positional role from BSON::Document         |  21.7
-| 20170718 | 2017.07-19-g1818ad2, bugfix hangup decoding         |  14.7
+| 20170718 | bugfix hangup decoding                              |  14.7     |5
 | 20171101 | 2017.10-25-gbaed02bf7 MoarVM 2017.10, lot of fixes  |  15.9
+| 20210809 | v2021.07-7-gb7f088b5a, MoarVM 2021.07-8-g860cc6550  |  42.0     |6
+| 20210811 | improve encoding and decoding                       |  46.5
+| 20210824 | rewrite and refactor Document. No concurrency.      |  46.2     |7
+|          |                                                     |  46.6     |8
 
-500 iterations
-| Date     | What                                                | n per sec |
-|----------|-----------------------------------------------------|-----------|
-| 20210809 | v2021.07-7-gb7f088b5a, MoarVM 2021.07-8-g860cc6550  |  42.0
-| 20210811 | idem. improve encoding and decoding                 |  46.5
+1) perl6 versions unknown
+2) perl6 2016.06-178-gf7c6e60, MoarVM 2016.06-9-g8fc21d5
+3) perl6 2016.10-204-g824b29f, MoarVM 2016.10-37-gf769569
+4) rakudo 017.02-56-g9f10434, MoarVM 2017.02-7-g3d85900
+5) rakudo 2017.07-19-g1818ad2
+6) 500 iterations, rakudo v2021.07-7-gb7f088b5a, MoarVM 2021.07-8-g860cc6550
+7) V0.13.0, Concurrency is gone. Although there is no speed improvement, the code is much cleaner.
+8) 𝐑𝐚𝐤𝐮𝐝𝐨™ v2021.08-1-g5c74b4053, MoarVM version 2021.08
 
 ###  Original BSON methods with hashes.
 * I think this was about 2015 06 or so. In the mean time Hashing should be faster too!
