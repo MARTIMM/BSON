@@ -88,8 +88,8 @@ Timing 50 iterations ...
 | 20170225 |                                                     |  21.0     |4
 | 20170225 | Dropped positional role from BSON::Document         |  21.7
 | 20170718 | bugfix hangup decoding                              |  14.7     |5
-| 20171101 | 2017.10-25-gbaed02bf7 MoarVM 2017.10, lot of fixes  |  15.9
-| 20210809 | v2021.07-7-gb7f088b5a, MoarVM 2021.07-8-g860cc6550  |  42.0     |6
+| 20171101 | lot of fixes                                        |  15.9
+| 20210809 |                                                     |  42.0     |6
 | 20210811 | improve encoding and decoding                       |  46.5
 | 20210824 | rewrite and refactor Document. No concurrency.      |  46.2     |7
 |          |                                                     |  46.6     |8
@@ -102,7 +102,3 @@ Timing 50 iterations ...
 6) 500 iterations, rakudo v2021.07-7-gb7f088b5a, MoarVM 2021.07-8-g860cc6550
 7) V0.13.0, Concurrency is gone. Although there is no speed improvement, the code is much cleaner.
 8) 𝐑𝐚𝐤𝐮𝐝𝐨™ v2021.08-1-g5c74b4053, MoarVM version 2021.08
-
-###  Original BSON methods with hashes.
-* I think this was about 2015 06 or so. In the mean time Hashing should be faster too!
-  3.1644 wallclock secs @ 15.8006/s (n=50)
