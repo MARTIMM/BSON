@@ -84,6 +84,11 @@ method DELETE-KEY ( Str $key --> Any ) {
 }
 
 #-------------------------------------------------------------------------------
+method of ( ) {
+  BSON::Ordered;
+}
+
+#-------------------------------------------------------------------------------
 method elems ( --> Int ) {
 #note ".elems\()";
   $!document.elems
@@ -150,13 +155,15 @@ method walk-tree ( %doc, $item --> Any ) {
       for @$item -> $i {
         $a.push: self.walk-tree( self.new, $i);
       }
+#note "Array: -> ", $a;
 
       return $a;
     }
 
     when Pair {
-#note "Pair: $item.key(), $item.value()";
+#note "Pair";
       %doc{$item.key} = self.walk-tree( self.new, $item.value);
+#say "$?LINE, Pair: $item.key(), $item.value() -> ", %doc;
       return %doc;
     }
 
@@ -240,7 +247,7 @@ sub show-tree ( $item, $indent is copy --> Str ) {
     }
 
     when BSON::Ordered {
-      $s = [~] "BSON::Document.new((\n";
+      $s = [~] " (\n";
       $indent++;
 #note 'BO: ', $item.keys;
       for $item.keys -> $key {
@@ -249,11 +256,15 @@ sub show-tree ( $item, $indent is copy --> Str ) {
               show-tree( $item{$key}, $indent), "\n";
       }
       $indent--;
-      $s ~= [~] '  ' x $indent, ")),";
+      $s ~= [~] '  ' x $indent, "),";
     }
 
     when Str {
       $s = [~] "'", $item, "',";
+    }
+
+    when Pair {
+      $s = [~] $item.key, ' => ', $item.value, ",";
     }
 
     default {

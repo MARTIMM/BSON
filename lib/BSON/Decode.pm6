@@ -116,16 +116,16 @@ method !decode-element ( BSON::Document $document --> Nil ) {
       $!index += BSON::C-DOUBLE-SIZE;
 #note "DBL Subbuf: ", $!encoded-document.subbuf( $i, BSON::C-DOUBLE-SIZE);
 #      %!promises{$key} = Promise.start( {
-          my $v = decode-double( $!encoded-document, $i);
+#          my $v = decode-double( $!encoded-document, $i);
 #note "DBL: $key, $idx = @!values[$idx]";
 
           # Return total section of binary data
-          ( $document{$key}, @!encoded-entries[$idx]) = (
-            $v, $idx, $!encoded-document.subbuf(
+          $document{$key} = decode-double( $!encoded-document, $i);
+          @!encoded-entries[$idx] = $!encoded-document.subbuf(
                   $decode-start ..^            # At bson code
                   ($i + BSON::C-DOUBLE-SIZE)   # $i is at code + key further
-                )
-          )
+                );
+
 #        }
 #      );
     }
@@ -324,6 +324,7 @@ method !decode-element ( BSON::Document $document --> Nil ) {
 
     # Javascript code
     when BSON::C-JAVASCRIPT {
+#note 'C-JAVASCRIPT';
 
       # Get the size of the javascript code text, then adjust index
       # for this size and set i for the decoding. Then adjust index again
@@ -347,6 +348,7 @@ method !decode-element ( BSON::Document $document --> Nil ) {
 
     # Javascript code with scope
     when BSON::C-JAVASCRIPT-SCOPE {
+#note 'C-JAVASCRIPT-SCOPE';
 
       my Int $i1 = $!index;
       my Int $js-size = decode-int32( $!encoded-document, $i1);
@@ -359,8 +361,8 @@ method !decode-element ( BSON::Document $document --> Nil ) {
 #      %!promises{$key} = Promise.start( {
           my $v = BSON::Javascript.decode(
             $!encoded-document, $i1,
-            :bson-doc(BSON::Document.new),
-            :scope(Buf.new($!encoded-document[$i2 ..^ ($i2 + $js-size)]))
+            :scope(Buf.new($!encoded-document[$i2 ..^ ($i2 + $js-size)])),
+            :decoder(BSON::Decode.new)
           );
 
           ( $document{$key}, @!encoded-entries[$idx]) = ( $v, $!encoded-document.subbuf($decode-start ..^ $i3))

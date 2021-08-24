@@ -156,6 +156,12 @@ method new( **@arguments, *%options ) {
       }
 
       when CArray[byte] {
+        my Buf $length-field .= new($item[0..3]);
+      #    my Int $doc-size = decode-int32( $length-field, 0);
+        my Int $doc-size = $length-field.read-uint32( 0, LittleEndian);
+
+        # And get all bytes into the Buf and convert it back to a BSON document
+        $d = $d.decode(Buf.new( $item[0..($doc-size-1)] ));
         last;
       }
     }
@@ -367,17 +373,24 @@ sub show-tree ( $item, $indent is copy --> Str ) {
 }
 }}
 
-#`{{
+#-------------------------------------------------------------------------------
+method of ( ) {
+  BSON::Document;
+}
+
 #-------------------------------------------------------------------------------
 method decode ( Buf $b --> BSON::Document ) {
-  $!decode-object.decode( BSON::Document.new, $b)
+  require ::('BSON::Decode');
+  my $decoder = ::('BSON::Decode').new;
+  $decoder.decode($b)
 }
 
 #-------------------------------------------------------------------------------
 method encode ( --> Buf ) {
-  $!encode-object.encode(self)
+  require ::('BSON::Encode');
+  my $encoder = ::('BSON::Encode').new;
+  $encoder.encode(self)
 }
-}}
 
 #-------------------------------------------------------------------------------
 #method bytes ( Buf $b --> Str ) {
