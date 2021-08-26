@@ -8,7 +8,8 @@ The following grammar specifies version 1.1 of the BSON standard. We've written 
 ### Basic Types
 
 The following basic types are used as terminals in the rest of the grammar. Each type must be serialized in little-endian format.
-byte 	1 byte (8-bits)
+
+byte 	  1 byte (8-bits)
 int32 	4 bytes (32-bit signed integer, two's complement)
 int64 	8 bytes (64-bit signed integer, two's complement)
 uint64 	8 bytes (64-bit unsigned integer)
@@ -110,8 +111,6 @@ Not possible?
 ( a => [ 'p', [ 12, 13, 14]] )
 ```
 
-
-
 ### Notes
 * Array - The document for an array is a normal BSON document with integer values for the keys, starting with 0 and continuing sequentially. For example, the array ['red', 'blue'] would be encoded as the document {'0': 'red', '1': 'blue'}. The keys must be in ascending numerical order.
 * UTC datetime - The int64 is UTC milliseconds since the Unix epoch.
@@ -124,3 +123,7 @@ Not possible?
   * \x03 UUID (Old) - This used to be the UUID subtype, but was deprecated in favor of \x04. Drivers and tools for languages with a native UUID type should handle \x03 appropriately.
   * \x80-\xFF "User defined" subtypes. The binary data can be anything.
 * Code w/ scope - Deprecated. The int32 is the length in bytes of the entire code_w_s value. The string is JavaScript code. The document is a mapping from identifiers to values, representing the scope in which the string should be evaluated.
+
+# Mapping of Raku types to BSON
+
+Keys with values as is used for a document could be represented by a **Hash**. That would be the easiest way to implement them. The problem is however, that the sequence of keys may not be altered the way a Hash does. So the next possible representation would be a **List** of **Pair**
