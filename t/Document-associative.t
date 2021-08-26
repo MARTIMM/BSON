@@ -22,8 +22,22 @@ subtest "Document associative tests", {
   $d{'f'} = ⅓;
   is-approx $d<f>, ⅓, 'assign Rat to key -> convert to Num';
 
-  $d<seq><b> = BSON::Document.new(('a' ... 'z') Z=> 120..145);
+  my BSON::Document $d1 .= new: (:b<Foo>,);
+  $d<xxxxx> = $d1;
+  is $d<xxxxx><b>, 'Foo', 'assign BSON::Document';
+
+  class A does BSON::Ordered { }
+  my A $a .= new;
+  $a<k1> = 10;
+  $d<yyyyy> = $a;
+  is $d<yyyyy><k1>, 10, 'assign BSON::Ordered';
+  # cleanup
+  $d<xxxxx>:delete;
+  $d<yyyyy>:delete;
+
+  $d<seq><b> = ('a' ... 'z') Z=> 120..145;
   is $d<seq><b><c>, 122, 'assign Seq to key';
+  # cleanup
   $d<seq>:delete;
 #note "\nDoc; ", '-' x 75, $d.raku, '-' x 80;
 
@@ -106,13 +120,11 @@ subtest "subdoc and array", {
 
   $d<b><a> = [^5];
 
-#  diag $d.perl;
-
-  is-deeply $d<b><a>, [^5], 'is ^5';
+  is-deeply $d<b><a>, [^5], 'assign array with range ^5';
 
   my Buf $b = $d.encode;
   $d .= new($b);
-  is-deeply $d<b><a>, [^5], 'is ^5 after encode, decode';
+  is-deeply $d<b><a>, [^5], 'range ^5 found after encode, decode';
 
   # try nesting with BSON::Document
   $d .= new;

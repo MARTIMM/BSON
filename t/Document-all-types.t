@@ -47,6 +47,8 @@ subtest {
   # 0x12 int64
   #
   my BSON::Document $d .= new;
+#  $d<bin2> = Buf.new( 10, 11, 12);
+#note "\nDoc; ", '-' x 75, $d.encode, '-' x 80;
 
   # Filling with data
   #
@@ -58,6 +60,7 @@ subtest {
   $d<abcdef><b1> = q => 255;
   $d<jss> = $js-scope;
   $d<bin> = $bin;
+  $d<bin2> = Buf.new( 10, 11, 12);
   $d<bf> = False;
   $d<bt> = True;
   $d<str> = "String text";
@@ -66,13 +69,14 @@ subtest {
   $d<dtime> = $datetime;
   $d<null> = Any;
   $d<rex> = $rex;
+#note "\nDoc; ", '-' x 75, $d.raku, '-' x 80;
 
   # Handcrafted encoded BSON data
   #
   my Buf $etst = Buf.new(
-    # 310 (4 + 11 + 7 + 11 + 30 + 45 + 53 + 26 + 5 + 5 + 21 + 37
+    # 324 (4 + 11 + 7 + 11 + 30 + 45 + 53 + 26 + 14 + 5 + 5 + 21 + 37
     #      + 17 + 15 + 6 + 16 + 1)
-    0x36, 0x01, 0x00, 0x00,                     # Size document
+    0x44, 0x01, 0x00, 0x00,                     # Size document
 
     # 11
     BSON::C-DOUBLE,                             # 0x01
@@ -169,6 +173,13 @@ subtest {
       BSON::C-UUID-SIZE, 0x00, 0x00, 0x00,      # UUID size
       BSON::C-UUID,                             # Binary type = UUID
       $uuid.Blob.List,                          # Binary Data
+
+    # 14
+    BSON::C-BINARY,                             # 0x05
+      0x62, 0x69, 0x6e, 0x32, 0x00,             # 'bin2'
+      0x03, 0x00, 0x00, 0x00,                   # generic bin size
+      BSON::C-GENERIC,                          # Binary type = C-GENERIC
+      0x0A, 0x0B, 0x0C,                         # Binary Data
 
     # 5
     BSON::C-BOOLEAN,                            # 0x08

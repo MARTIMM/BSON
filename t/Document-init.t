@@ -18,7 +18,6 @@ subtest "Document init", {
     is $d.elems, 0, "Zero elements/keys in decoded document";
   }
 
-
   subtest 'List of Pair test', {
     $d .= new: ( :a(10), :11b);
     is $d<b>, 11, '.new(List of Pair)';
@@ -26,6 +25,28 @@ subtest "Document init", {
     $d .= new: ( :x( :a(10), :11b), :z<abc>);
     is $d<x><b>, 11, '.new(nested List of Pair)';
 #  note "\nDoc; ", $d.raku;
+  }
+
+  subtest 'BSON::Document and BSON::Ordered', {
+    my BSON::Document $d0 .= new: (:b<Foo>);
+    my BSON::Document $d1 .= new($d0);
+    is $d1<b>, 'Foo', '.new(BSON::Document)';
+
+    class A does BSON::Ordered { }
+    my A $a .= new;
+    $a<k1> = 10;
+    $d1 .= new($a);
+#    note "\nDoc; ", '-' x 75, $d1.raku, '-' x 80;
+  }
+
+  subtest 'Smart input', {
+    given my BSON::Document $request .= new {
+      .<find> = 'collection-name';
+      .<filter> = :departement<administration>,;
+      .<limit> = 10;
+      .<readConcern> = :level<local>,;
+    }
+    is $request<limit>, 10, 'using "given { }" to add keys';
   }
 
   subtest 'Larger documents', {
