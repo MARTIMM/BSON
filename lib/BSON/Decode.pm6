@@ -28,7 +28,6 @@ method decode ( Buf:D $data --> BSON::Document ) {
 
   # decode the document, then wait for any started parallel tracks
   # first get the size of the (nested-)document
-  #my Int $doc-size = decode-int32( $!encoded-document, $!index);
   my Int $doc-size = $!encoded-document.read-int32( $!index, LittleEndian);
 
   # step to the document content
@@ -83,7 +82,6 @@ method !decode-element ( BSON::Document $document --> Nil ) {
       $!index += BSON::C-DOUBLE-SIZE;
 
       # Return total section of binary data
-      #$document{$key} = decode-double( $!encoded-document, $i);
       $document{$key} = $!encoded-document.read-num64( $i, LittleEndian);
       @!encoded-entries[$idx] = $!encoded-document.subbuf(
         $decode-start ..^            # At bson code
@@ -95,7 +93,6 @@ method !decode-element ( BSON::Document $document --> Nil ) {
     when BSON::C-STRING {
 
       my Int $i = $!index;
-#      my Int $nbr-bytes = decode-int32( $!encoded-document, $!index);
       my Int $nbr-bytes = $!encoded-document.read-int32( $!index, LittleEndian);
 
       # Step over the size field and the null terminated string
@@ -110,7 +107,6 @@ method !decode-element ( BSON::Document $document --> Nil ) {
     # Nested document
     when BSON::C-DOCUMENT {
       my Int $i = $!index;
-#      my Int $doc-size = decode-int32( $!encoded-document, $i);
       my Int $doc-size = $!encoded-document.read-int32( $i, LittleEndian);
 
       my BSON::Decode $decoder .= new;
@@ -128,7 +124,6 @@ method !decode-element ( BSON::Document $document --> Nil ) {
     when BSON::C-ARRAY {
 
       my Int $i = $!index;
-      #my Int $doc-size = decode-int32( $!encoded-document, $!index);
       my Int $doc-size = $!encoded-document.read-int32( $!index, LittleEndian);
       $!index += $doc-size;
 
@@ -151,7 +146,6 @@ method !decode-element ( BSON::Document $document --> Nil ) {
     # subtypes \x80 to \xFF are user defined
     when BSON::C-BINARY {
 
-      #my Int $buf-size = decode-int32( $!encoded-document, $!index);
       my Int $buf-size = $!encoded-document.read-int32( $!index, LittleEndian);
       my Int $i = $!index + BSON::C-INT32-SIZE;
 
@@ -196,7 +190,6 @@ method !decode-element ( BSON::Document $document --> Nil ) {
       $!index += BSON::C-INT64-SIZE;
 
       $document{$key} = DateTime.new(
-        #decode-int64( $!encoded-document, $i) / 1000,
         $!encoded-document.read-int64( $i, LittleEndian) / 1000,
         :timezone(0)
       );
@@ -248,7 +241,6 @@ method !decode-element ( BSON::Document $document --> Nil ) {
       # for this size and set i for the decoding. Then adjust index again
       # for the next action.
       my Int $i = $!index;
-      #my Int $buf-size = decode-int32( $!encoded-document, $i);
       my Int $buf-size = $!encoded-document.read-int32( $i, LittleEndian);
 
       # Step over size field and the javascript text
@@ -264,10 +256,8 @@ method !decode-element ( BSON::Document $document --> Nil ) {
     when BSON::C-JAVASCRIPT-SCOPE {
 
       my Int $i1 = $!index;
-      #my Int $js-size = decode-int32( $!encoded-document, $i1);
       my Int $js-size = $!encoded-document.read-int32( $i1, LittleEndian);
       my Int $i2 = $!index + BSON::C-INT32-SIZE + $js-size;
-      #my Int $js-scope-size = decode-int32( $!encoded-document, $i2);
       my Int $js-scope-size = $!encoded-document.read-int32( $i2, LittleEndian);
 
       $!index += (BSON::C-INT32-SIZE + $js-size + $js-scope-size);
@@ -288,7 +278,6 @@ method !decode-element ( BSON::Document $document --> Nil ) {
       my Int $i = $!index;
       $!index += BSON::C-INT32-SIZE;
 
-      #$document{$key} = decode-int32( $!encoded-document, $i);
       $document{$key} = $!encoded-document.read-int32( $i, LittleEndian);
       @!encoded-entries[$idx] = $!encoded-document.subbuf(
         $decode-start ..^ ($i + BSON::C-INT32-SIZE)
@@ -301,7 +290,6 @@ method !decode-element ( BSON::Document $document --> Nil ) {
       my Int $i = $!index;
       $!index += BSON::C-UINT64-SIZE;
 
-      #$document{$key} = decode-uint64( $!encoded-document, $i);
       $document{$key} = $!encoded-document.read-uint64( $i, LittleEndian);
       @!encoded-entries[$idx] = $!encoded-document.subbuf(
         $decode-start ..^ ($i + BSON::C-UINT64-SIZE)
@@ -314,7 +302,6 @@ method !decode-element ( BSON::Document $document --> Nil ) {
       my Int $i = $!index;
       $!index += BSON::C-INT64-SIZE;
 
-      #$document{$key} = decode-int64( $!encoded-document, $i);
       $document{$key} = $!encoded-document.read-int64( $i, LittleEndian);
       @!encoded-entries[$idx] = $!encoded-document.subbuf(
         $decode-start ..^ ($i + BSON::C-INT64-SIZE)

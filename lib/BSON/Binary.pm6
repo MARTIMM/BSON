@@ -65,14 +65,12 @@ method raku ( Int $indent = 0 --> Str ) is also<perl> {
 method encode ( --> Buf ) {
   my Buf $b .= new;
   if self.has-binary-data {
-#    $b ~= encode-int32(self.binary-data.elems);
     $b ~= Buf.new.write-int32( 0, self.binary-data.elems, LittleEndian);
     $b ~= Buf.new(self.binary-type);
     $b ~= self.binary-data;
   }
 
   else {
-#    $b ~= encode-int32(0);
     $b ~= Buf.new.write-int32( 0, 0, LittleEndian);
     $b ~= Buf.new(self.binary-type);
   }

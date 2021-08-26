@@ -21,7 +21,7 @@ class X::BSON::Encodable is Exception {
 # a document such as { key => SomeType.new(...) }. Therefore it needs to store
 # the key name and the data representing the class.
 # Furthermore it needs a code for the specific BSON type.
-# 
+#
 #
 # Role to encode to and/or decode from a BSON representation.
 #
@@ -32,10 +32,7 @@ package BSON {
     constant $BSON-DOCUMENT     = 0x03;
 
     # Visible in all objects of this class
-    #
     my Int $index = 0;
-#    has Int $thread-count = 0;
-#    has Array $!threads;
 
     #---------------------------------------------------------------------------
     #
@@ -108,14 +105,14 @@ package BSON {
     method !decode_document ( Array $encoded-document --> Hash ) {
       # Result document
       #
-      my Hash $document;      
+      my Hash $document;
 
       # document    ::= int32 e_list "\x00"
-      # 
+      #
       my Int $doc-length = self.dec_int32( $encoded-document, $index);
 
       # element     ::= bson_code e_name data
-      # 
+      #
       my Int $bson_code = $encoded-document[$index++];
       while $bson_code {
         # Get e_name
@@ -130,7 +127,7 @@ package BSON {
             my $nbr-bytes-channel = Channel.new;
             my $promoted-self = self.clone;
             $promoted-self does BSON::Double;
-            
+
 #            $!threads[$thread-count] = Thread.new(
 #              code => {
               $*SCHEDULER.cue( {
@@ -192,7 +189,7 @@ package BSON {
 
       return $document;
     }
-    
+
 #    method !clear-threads ( ) {
 #      for $!threads.list -> $thread is rw {
 #say "Finished $thread" if $thread.defined;

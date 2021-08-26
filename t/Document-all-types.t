@@ -236,15 +236,6 @@ subtest {
     # 15
     BSON::C-DATETIME,                           # 0x09
       0x64, 0x74, 0x69, 0x6d, 0x65, 0x00,       # 'dtime'
-#      local-encode-int64((($datetime.posix+$datetime.second-$datetime.whole-second)*1000).Int).List,       # time
-#`{{
-      encode-int64(
-        ( ( $datetime.posix + $datetime.second -
-            $datetime.whole-second
-          ) * 1000
-        ).Int
-      ).List,       # time
-}}
       Buf.new.write-int64(
         0, ( ( $datetime.posix + $datetime.second -
                $datetime.whole-second
