@@ -34,8 +34,10 @@ method encode ( BSON::Document $document --> Buf ) {
   }
 
   # encode size: number of elems + null byte at the end
-  my Buf $b = [~] encode-int32($encoded-document.elems + 5),
-      $encoded-document, Buf.new(0x00);
+#  my Buf $b = [~] encode-int32($encoded-document.elems + 5),
+  my Buf $b = [~] Buf.new.write-int32(
+    0, $encoded-document.elems + 5, LittleEndian
+  ), $encoded-document, Buf.new(0x00);
 
   $b
 }
@@ -58,7 +60,8 @@ method !encode-element ( Str $key, $value --> Buf ) {
       #
       $b = [~] Buf.new(BSON::C-DOUBLE),
                encode-e-name($key),
-               encode-double($value);
+#               encode-double($value);
+               Buf.new.write-num64( 0, $value, LittleEndian);
     }
 
     when Str {
@@ -146,9 +149,15 @@ method !encode-element ( Str $key, $value --> Buf ) {
       #
       $b = [~] Buf.new(BSON::C-DATETIME),
                encode-e-name($key),
-               encode-int64(((
-                 $value.posix + $value.second - $value.whole-second
-               ) * 1000).Int);
+                Buf.new.write-int64(
+                  0, ( ( $value.posix + $value.second - $value.whole-second
+                       ) * 1000
+                     ).Int,
+                  LittleEndian
+                );
+#               encode-int64(((
+#                 $value.posix + $value.second - $value.whole-second
+#               ) * 1000).Int);
     }
 
     when BSON::Regex {
@@ -190,13 +199,15 @@ method !encode-element ( Str $key, $value --> Buf ) {
       if -0x7fffffff <= $value <= 0x7fffffff {
         $b = [~] Buf.new(BSON::C-INT32),
                  encode-e-name($key),
-                 encode-int32($value);
+                 Buf.new.write-int32( 0, $value, LittleEndian);
+#                 encode-int32($value);
       }
 
       elsif -0x7fffffff_ffffffff <= $value <= 0x7fffffff_ffffffff {
         $b = [~] Buf.new(BSON::C-INT64),
                  encode-e-name($key),
-                 encode-int64($value);
+                 Buf.new.write-int64( 0, $value, LittleEndian);
+#                 encode-int64($value);
       }
 
       else {
@@ -214,7 +225,8 @@ method !encode-element ( Str $key, $value --> Buf ) {
       # '\x11' e_name int64
       $b = [~] Buf.new(BSON::C-TIMESTAMP),
                encode-e-name($key),
-               encode-uint64($value);
+#               encode-uint64($value);
+               Buf.new.write-uint64( 0, $value, LittleEndian);
     }
 
     when BSON::Decimal128 {

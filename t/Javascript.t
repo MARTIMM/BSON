@@ -17,10 +17,11 @@ subtest "Javacsript", {
   my Buf $b2 =
     [~] Buf.new(0x0D),                              # BSON javascript
        'js'.encode, Buf.new(0x00),                  # 'js'
-        encode-int32($javascript.chars + 1),
+        Buf.new.write-int32(0, $javascript.chars + 1, LittleEndian),
           $javascript.encode, Buf.new(0x00),        # javascript code
         Buf.new(0x00);                              # end of document
-  is-deeply encode-int32($b2.elems + 4) ~ $b2, $b1, # prepend size to b2
+                                                    # prepend size to b2
+  is-deeply Buf.new.write-int32( 0, $b2.elems + 4, LittleEndian) ~ $b2, $b1,
             'check encoded javascript';
 
   my BSON::Document $d2 .= new($b1);
@@ -41,11 +42,12 @@ subtest "Javacsript with scope", {
   my Buf $b2 =
     [~] Buf.new(0x0F),                              # BSON javascript with scope
        'js-scope'.encode, Buf.new(0x00),            # 'js-scope'
-        encode-int32($javascript.chars + 1),
+        Buf.new.write-int32(0, $javascript.chars + 1, LittleEndian),
           $javascript.encode, Buf.new(0x00),        # javascript code
           $scope.encode,                            # encoded scope
         Buf.new(0x00);                              # end of document
-  is-deeply encode-int32($b2.elems + 4) ~ $b2, $b1, # prepend size to b2
+                                                    # prepend size to b2
+  is-deeply Buf.new.write-int32(0, $b2.elems + 4, LittleEndian) ~ $b2, $b1,
             'check encoded javascript';
 
 
@@ -65,17 +67,6 @@ subtest "Javacsript with scope, twice", {
   my BSON::Document $d1 .= new: ( :jsc1($js-scope1), :jsc2($js-scope2));
   my Buf $b1 = $d1.encode;
 
-#`{{
-  my Buf $b2 =
-    [~] Buf.new(0x0F),                              # BSON javascript with scope
-       'js-scope'.encode, Buf.new(0x00),            # 'js-scope'
-        encode-int32($javascript.chars + 1),
-          $javascript.encode, Buf.new(0x00),        # javascript code
-          $scope.encode,                            # encoded scope
-        Buf.new(0x00);                              # end of document
-  is-deeply encode-int32($b2.elems + 4) ~ $b2, $b1, # prepend size to b2
-            'check encoded javascript';
-}}
   my BSON::Document $d2 .= new($b1);
   is-deeply $d1<jsc1>, $d2<jsc1>, 'jsc1 decoded doc is same as original';
   is-deeply $d1<jsc2>, $d2<jsc2>, 'jsc2 decoded doc is same as original';

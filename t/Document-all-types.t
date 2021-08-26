@@ -237,7 +237,21 @@ subtest {
     BSON::C-DATETIME,                           # 0x09
       0x64, 0x74, 0x69, 0x6d, 0x65, 0x00,       # 'dtime'
 #      local-encode-int64((($datetime.posix+$datetime.second-$datetime.whole-second)*1000).Int).List,       # time
-      encode-int64((($datetime.posix+$datetime.second-$datetime.whole-second)*1000).Int).List,       # time
+#`{{
+      encode-int64(
+        ( ( $datetime.posix + $datetime.second -
+            $datetime.whole-second
+          ) * 1000
+        ).Int
+      ).List,       # time
+}}
+      Buf.new.write-int64(
+        0, ( ( $datetime.posix + $datetime.second -
+               $datetime.whole-second
+             ) * 1000
+           ).Int,
+        LittleEndian
+      ).List,
 
     # 6
     BSON::C-NULL,                               # 0x0A
@@ -300,18 +314,4 @@ subtest {
 #-------------------------------------------------------------------------------
 # Cleanup
 done-testing;
-
 =finish
-#---------------------------------------------------------------------------
-sub local-encode-int64 ( Int:D $i ) {
-  # No tests for too large/small numbers because it is called from
-  # _enc_element normally where it is checked
-  #
-  my int $ni = $i;
-  return Buf.new(
-    $ni +& 0xFF, ($ni +> 0x08) +& 0xFF,
-    ($ni +> 0x10) +& 0xFF, ($ni +> 0x18) +& 0xFF,
-    ($ni +> 0x20) +& 0xFF, ($ni +> 0x28) +& 0xFF,
-    ($ni +> 0x30) +& 0xFF, ($ni +> 0x38) +& 0xFF
-  );
-}
