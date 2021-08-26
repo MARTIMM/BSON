@@ -93,6 +93,7 @@ Timing 50 iterations ...
 | 20210811 | improve encoding and decoding                       |  46.5
 | 20210824 | rewrite and refactor Document. No concurrency.      |  46.2     |7
 |          |                                                     |  46.6     |8
+|          | Bugfix, assignments were doubled                    |  49.5
 
 1) perl6 versions unknown
 2) perl6 2016.06-178-gf7c6e60, MoarVM 2016.06-9-g8fc21d5
