@@ -86,27 +86,28 @@ sub encode-cstring ( Str:D $s --> Buf ) is export {
 #-------------------------------------------------------------------------------
 sub encode-string ( Str:D $s --> Buf ) is export {
   my Buf $b .= new($s.encode('UTF-8'));
-  return [~] encode-int32($b.bytes + 1), $b, Buf.new(0x00);
+  [~] Buf.new.write-int32( 0, $b.bytes + 1, LittleEndian), $b, Buf.new(0x00)
 }
 
 #-------------------------------------------------------------------------------
-sub encode-int32 ( Int:D $i --> Buf ) is export {
+sub encode-int32 ( Int:D $i --> Buf ) is export is DEPRECATED('write-int32') {
   Buf.new.write-int32( 0, $i, LittleEndian);
 }
 
 #-------------------------------------------------------------------------------
-sub encode-int64 ( Int:D $i --> Buf ) is export {
+sub encode-int64 ( Int:D $i --> Buf ) is export is DEPRECATED('write-int64') {
   Buf.new.write-int64( 0, $i, LittleEndian);
 }
 
 #-------------------------------------------------------------------------------
-sub encode-uint64 ( UInt:D $i --> Buf ) is export {
+sub encode-uint64 ( UInt:D $i --> Buf )
+  is export is DEPRECATED('write-uint64') {
   Buf.new.write-uint64( 0, $i, LittleEndian);
 }
 
 #-------------------------------------------------------------------------------
 # encode Num in buf little endian
-sub encode-double ( Num:D $r --> Buf ) is export {
+sub encode-double ( Num:D $r --> Buf ) is export is DEPRECATED('write-num64') {
   Buf.new.write-num64( 0, $r, LittleEndian);
 }
 
@@ -157,23 +158,27 @@ sub decode-string ( Buf:D $b, Int:D $index --> Str ) is export {
 }
 
 #-------------------------------------------------------------------------------
-sub decode-int32 ( Buf:D $b, Int:D $index --> Int ) is export {
+sub decode-int32 ( Buf:D $b, Int:D $index --> Int )
+  is export is DEPRECATED('read-int32') {
   $b.read-int32( $index, LittleEndian);
 }
 
 #-------------------------------------------------------------------------------
-sub decode-int64 ( Buf:D $b, Int:D $index --> Int ) is export {
+sub decode-int64 ( Buf:D $b, Int:D $index --> Int )
+  is export is DEPRECATED('read-int64')  {
   $b.read-int64( $index, LittleEndian);
 }
 
 #-------------------------------------------------------------------------------
 # decode unsigned 64 bit integer
-sub decode-uint64 ( Buf:D $b, Int:D $index --> UInt ) is export {
+sub decode-uint64 ( Buf:D $b, Int:D $index --> UInt )
+  is export is DEPRECATED('read-uint64') {
   $b.read-uint64( $index, LittleEndian);
 }
 
 #-------------------------------------------------------------------------------
 # decode to Num from buf little endian
-sub decode-double ( Buf:D $b, Int:D $index --> Num ) is export {
+sub decode-double ( Buf:D $b, Int:D $index --> Num )
+  is export is DEPRECATED('read-num64') {
   $b.read-num64( $index, LittleEndian);
 }
