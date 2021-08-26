@@ -2,6 +2,9 @@ See [semantic versioning](http://semver.org/). Please note point 4. on
 that page: *Major version zero (0.y.z) is for initial development. Anything may
 change at any time. The public API should not be considered stable*.
 
+* 2021-08-26 0.13.1
+  * All Buf encoding and decoding methods for ints and num are replaced by the methods provided by Raku. Done a small bit in version 0.12.1 but could also skip a call level.
+
 * 2021-08-11 0.13.0
   * Major rewrite of module **BSON::Document**. Refactoring code into **BSON::Ordered**, **BSON::Encode** and **BSON::Decode**. Also, according to a description of **BSON::Simple**, made by Geoffrey Broadwell (japhb on github) that `… Finally, its internal design makes it somewhat more difficult to optimize, as it was written before modern buffer handling was added to Raku and before parallelism overhead was fully understood.` So, I needed to test that and made a simple test doing calculations in parallel and without. The last part was about 10 times faster!
 
