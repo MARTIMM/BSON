@@ -2,6 +2,10 @@ See [semantic versioning](http://semver.org/). Please note point 4. on
 that page: *Major version zero (0.y.z) is for initial development. Anything may
 change at any time. The public API should not be considered stable*.
 
+* 2021-08-31 0.13.2
+  * Improve encoding/decoding a bit for CArray type.
+  * Add documentation for BSON::Document.
+
 * 2021-08-26 0.13.1
   * All Buf encoding and decoding methods for ints and num are replaced by the methods provided by Raku. Done a small bit in version 0.12.1 but could also skip a call level.
 
