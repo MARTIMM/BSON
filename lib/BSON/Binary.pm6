@@ -80,9 +80,7 @@ method encode ( --> Buf ) {
 
 #-------------------------------------------------------------------------------
 method decode (
-  Buf:D $b,
-  Int:D $index is copy,
-  Int:D :$buf-size
+  Buf:D $b, Int:D $index is copy, Int:D :$buf-size
   --> BSON::Binary
 ) {
 
