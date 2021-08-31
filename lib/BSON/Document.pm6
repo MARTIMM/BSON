@@ -14,15 +14,16 @@ BSON Encodable and Decodable document
 
 Document storage with Hash like behavior used mainly to communicate with a mongodb server. It can also be used as a serialized storage format. The main difference with the Hash is that this class keeps the input order of inserted key-value pairs which is important for the use with mongodb.
 
+
 =head2 Raku type mapping
 
 To get a proper mapping from Raku types to what BSON can handle, there are some rules and restrictions implemented.
 
 At the top of BSON there is a type called document. (See also L<the bson spec|https://bsonspec.org/spec.html>). This is a representation of a series of keys with values. This could be represented by a B<Hash> but the problem is that the keys of a Hash are not ordered, that is, the order of keys is often not the same as on input while this is a requirement of BSON. So, the best option to represent a document, is a B<List> of B<Pair>s.
 
-The values of a Pair can be the simple types like B<Bool>, B<Str>, B<Num> and B<Int>. B<Rat> and B<FatRat> are converted to Num. It can not be another Pair!
+The values of a Pair can be simple types like B<Bool>, B<Str>, B<Num> and B<Int>. B<Rat> and B<FatRat> are converted to Num. It can not be another Pair!
 
-An B<Array> may also be used as a value. Its elements are like the values of a Pair, so the elements can be types like mentioned above for the Pair values or List of Pair. This also leads to the fact that Arrays may be nested.
+An B<Array> may also be used as a value. Its elements have types like those of the values of a Pair. This also leads to the fact that Arrays may be nested.
 
 Binary data can be provided as B<BSON::Binary>. There is support for several types of binary data. When a general type of binary data is offered, you can also give a B<Buf>. The Buf will then be converted into a BSON::Binary.
 
@@ -36,6 +37,58 @@ The BSON::Document class has a role B<BSON::Ordered> to handle the types. This m
   my A $a .= new;
   $a<k1> = 10;
   my BSON::Document $d1 .= new($a);
+
+=head2 Assignments of values to keys
+
+Next to initialization, one can add or change the data using assignments to a BSON::Document. This is all defined by the BSON::Ordered role which the BSON::Document uses.
+
+Some examples are;
+
+  my BSON::Document $doc .= new;
+  $doc<key1> = 10;
+  $doc<key2> = [ 0, 'Foo', π, True, [ 'a', ( :x<a>, :y([-1, -2]) ) ], 20e3 ];
+  $doc<key3> =  (:p<z>, :x(2e-2));
+  $doc<key4><a><b> = 10;
+  $doc<key5> = :a<c>;
+
+The Pair used in the last example, is automatically converted to a List of Pair having one Pair.
+
+To see what the document became so far, call C<.raku()> or C<.perl()>.
+
+For the above examples it will show;
+
+  BSON::Document.new: (
+    key1 => 10,
+    key2 => [
+      0,
+      'Foo',
+      3.141592653589793,
+      True,
+      [
+        'a',
+         (
+          x => 'a',
+          y => [
+            -1,
+            -2,
+          ],
+        ),
+      ],
+      20000,
+    ],
+    key3 =>  (
+      p => 'z',
+      x => 0.02,
+    ),
+    key4 =>  (
+      a =>  (
+        b => 10,
+      ),
+    ),
+    key5 =>  (
+      a => 'c',
+    ),
+  );
 
 
 =head2 Encoding and decoding
