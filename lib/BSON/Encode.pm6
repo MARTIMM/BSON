@@ -1,5 +1,27 @@
+#TL:1:BSON::Encode:
+
 use v6.d;
 
+#-------------------------------------------------------------------------------
+=begin pod
+
+=head1 BSON::Encode
+
+Encode a BSON::Document
+
+
+=head1 Description
+
+
+=head1 Synopsis
+=head2 Declaration
+
+
+=head1 Example
+
+=end pod
+
+#-------------------------------------------------------------------------------
 use BSON;
 use BSON::ObjectId;
 use BSON::Binary;
