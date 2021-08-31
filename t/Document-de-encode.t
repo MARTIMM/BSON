@@ -153,12 +153,17 @@ subtest 'encoding CArray[byte]', {
   );
 
   # And store it in a native array of bytes
-  my $bytes = CArray[byte].new($bson.encode);
+  my $bytes = $bson.encode(:carray);
 
   my BSON::Document $bson2 .= new($bytes);
   is-deeply
     ( $bson2<int-number>, $bson2<num-number>, $bson2<strings><s2>),
     ( -10, -234e-5, 'def'), '.new(CArray[byte])';
+
+  my BSON::Document $bson3 = BSON::Document.decode($bytes);
+    is-deeply
+    ( $bson2<int-number>, $bson2<num-number>, $bson2<strings><s2>),
+    ( -10, -234e-5, 'def'), 'BSON::Document.decode(CArray[byte])';
 }
 
 #-------------------------------------------------------------------------------

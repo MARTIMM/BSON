@@ -5,6 +5,15 @@ use NativeCall;
 use BSON::Document;
 use BSON::Ordered;
 
+#`{{
+my BSON::Document $d;
+$d .= new: ('counter00', *.succ ... 'counter10') Z=> 0 xx 10;
+$d .= new: (:a<b>);
+$d.note;
+done-testing;
+=finish
+}}
+
 #-------------------------------------------------------------------------------
 subtest "Document init", {
   my BSON::Document $d;
