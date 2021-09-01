@@ -117,7 +117,7 @@ You can also give the Buf directly to the C<.new()> method of B<BSON::Document> 
 =head1 Synopsis
 =head2 Declaration
 
-  unit class BSON::Document:auth<github:MARTIMM>:ver<0.2.0>;
+  unit class BSON::Document:auth<github:MARTIMM>;
   also does BSON::Ordered;
 
 

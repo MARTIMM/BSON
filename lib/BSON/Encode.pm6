@@ -12,12 +12,25 @@ Encode a BSON::Document
 
 =head1 Description
 
+Encoding a document is a necessary step in the communication to a mongodb server. It makes the data fit in a smaller footprint and is independent to any hardware interpretations.
+
+Note that when using the MongoDB driver package, the driver will handle the encoding and decoding.
+
 
 =head1 Synopsis
 =head2 Declaration
 
+  unit class BSON::Encode:auth<github:MARTIMM>;
+
 
 =head1 Example
+
+  my BSON::Document $d0 .= new: ( :1bread, :66eggs);
+  my Buf $b = BSON::Encode.new.encode($d0);
+
+  …
+
+  my BSON::Document $d1 = BSON::Decode.decode($b);
 
 =end pod
 
@@ -32,15 +45,26 @@ use BSON::Regex;
 use BSON::Document;
 use BSON::Ordered;
 
-#------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 unit class BSON::Encode:auth<github:MARTIMM>:ver<0.2.0>;
 
 has UInt $!index = 0;
 has Buf @!encoded-entries;
 
-#----------------------------------------------------------------------------
-# Called from user to get a complete encoded document or by a request
-# from an encoding Document to encode a subdocument or array.
+#-------------------------------------------------------------------------------
+#TM:1:encode
+=begin pod
+=head1 Methods
+=head2 encode
+
+Encode BSON::Document
+
+  method encode ( BSON::Document $document --> Buf )
+
+=item BSON::Document $document; The document to encode
+
+=end pod
+
 method encode ( BSON::Document $document --> Buf ) {
 
   my $idx = 0;
@@ -63,7 +87,7 @@ method encode ( BSON::Document $document --> Buf ) {
   $b
 }
 
-#----------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 # Encode a key value pair. Called from the insertion methods above when a
 # key value pair is inserted.
 #

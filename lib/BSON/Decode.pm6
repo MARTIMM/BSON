@@ -1,5 +1,40 @@
+#TL:1:BSON::Decode:
+
 use v6.d;
 
+#-------------------------------------------------------------------------------
+=begin pod
+
+=head1 BSON::Decode
+
+Decode binary data from a Buf
+
+
+=head1 Description
+
+The mongodb server returns data in binary form. This must be decoded to access the document properly.
+
+Note that when using the MongoDB driver package, the driver will handle the encoding and decoding.
+
+
+=head1 Synopsis
+=head2 Declaration
+
+  unit class BSON::Decode:auth<github:MARTIMM>;
+
+
+=head1 Example
+
+  my BSON::Document $d0 .= new: ( :1bread, :66eggs);
+  my Buf $b = BSON::Encode.new.encode($d0);
+
+  …
+
+  my BSON::Document $d1 = BSON::Decode.decode($b);
+
+=end pod
+
+#-------------------------------------------------------------------------------
 use BSON;
 use BSON::ObjectId;
 use BSON::Binary;
@@ -16,6 +51,19 @@ has Buf $!encoded-document;
 has Buf @!encoded-entries;
 
 #-------------------------------------------------------------------------------
+#TM:1:decode
+=begin pod
+=head1 Methods
+=head2 decode
+
+Decode binary data
+
+  method decode ( Buf:D $data --> BSON::Document )
+
+=item Buf $data; the binary data
+
+=end pod
+
 method decode ( Buf:D $data --> BSON::Document ) {
 
   my BSON::Document $document .= new;
