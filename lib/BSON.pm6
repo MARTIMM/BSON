@@ -36,6 +36,7 @@ package BSON:auth<github:MARTIM>:ver<0.2.0> {
   constant C-UUID-OLD           = 0x03;         # Deprecated
   constant C-UUID               = 0x04;
   constant C-MD5                = 0x05;
+  constant C-ENCRIPT            = 0x06;
 
   constant C-UUID-SIZE          = 16;
   constant C-MD5-SIZE           = 16;
