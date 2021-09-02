@@ -95,6 +95,9 @@ submethod BUILD ( Buf :$data, Int :$type = BSON::C-GENERIC ) {
   $!binary-data = $data;
   $!has-binary-data = ?$!binary-data;
   $!binary-type = $type;
+
+  $!binary-type = BSON::C-GENERIC if $type == BSON::C-BINARY-OLD;
+  $!binary-type = BSON::C-UUID if $type == BSON::C-UUID-OLD;
 }
 
 #-------------------------------------------------------------------------------
@@ -105,14 +108,13 @@ submethod BUILD ( Buf :$data, Int :$type = BSON::C-GENERIC ) {
 
 Show the structure of a document
 
-  method raku ( Int $indent = 0 --> Str ) is also<perl>
+  method raku ( Int :$indent --> Str ) is also<perl>
 
 =item Int $indent; setting the starting indentation.
 
 =end pod
 
-method raku ( UInt $indent = 0 --> Str ) is also<perl> {
-#  $indent = 0 if $indent < 0;
+method raku ( UInt :$indent = 0 --> Str ) is also<perl> {
 
   my $perl = "BSON::Binary.new(";
   my $bin-i1 = '  ' x ($indent + 1);
@@ -127,7 +129,7 @@ method raku ( UInt $indent = 0 --> Str ) is also<perl> {
   }
 
   else {
-#TODO extend with new user types
+    $str-type = $!binary-type.fmt('0x%02X');
   }
 
   $perl ~= "\n$bin-i1\:type\($str-type)";
@@ -189,6 +191,10 @@ Decode a Buf object. This is called from the BSON::Document decode method.
     --> BSON::Binary
   )
 
+=item Buf $b; the binary data
+=item Int $index; index into a larger document where binary starts
+=item Int :$buf-size; size of binary, only checked for UUID and MD5
+
 =end pod
 
 method decode (
@@ -244,6 +250,8 @@ method decode (
         :error('MD5(0x05) Length mismatch')
       ) unless $buf-size ~~ BSON::C-MD5-SIZE;
     }
+
+#TODO BSON::C-ENCRIPT
 
     # when 0x80..0xFF
     default {
