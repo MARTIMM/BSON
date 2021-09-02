@@ -1,7 +1,13 @@
 use v6;
 use Test;
+
 use BSON;
 use BSON::Document;
+use BSON::Javascript;
+use BSON::Binary;
+use BSON::ObjectId;
+use BSON::Regex;
+
 use UUID;
 
 #-------------------------------------------------------------------------------
@@ -18,6 +24,11 @@ subtest {
 
   my UUID $uuid .= new(:version(4));
   my BSON::Binary $bin .= new( :data($uuid.Blob), :type(BSON::C-UUID) );
+
+  dies-ok( {
+      my BSON::Binary $bin .= new( :data($uuid.Blob), :type(0x7f));
+    }, 'Wrong binary type'
+  );
 
   my BSON::ObjectId $oid .= new;
 

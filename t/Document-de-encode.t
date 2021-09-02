@@ -2,6 +2,7 @@ use v6;
 use Test;
 use NativeCall;
 
+use BSON::Binary;
 use BSON::Document;
 use BSON::Encode;
 use BSON::Decode;
@@ -164,6 +165,36 @@ subtest 'encoding CArray[byte]', {
     is-deeply
     ( $bson2<int-number>, $bson2<num-number>, $bson2<strings><s2>),
     ( -10, -234e-5, 'def'), 'BSON::Document.decode(CArray[byte])';
+}
+
+#-------------------------------------------------------------------------------
+subtest 'private binary of a complex number', {
+  # My own complex number type
+  enum MyBinDataTypes ( :COMPLEX(0x80));
+  my Complex $c = 2.4 + 3.3i;
+  my Buf $data .= new;
+  $data.write-num64( 0, $c.re, LittleEndian);
+  $data.write-num64( BSON::C-DOUBLE-SIZE, $c.im, LittleEndian);
+  is $data.elems, 2 * BSON::C-DOUBLE-SIZE, 'size of Buf ok';
+
+  my BSON::Document $d1 .= new: (
+    :bin-complex(BSON::Binary.new( :$data, :type(COMPLEX)))
+  );
+
+  my Buf $cb = $d1.encode;
+  my BSON::Document $d2 .= new($cb);
+  is $d2<bin-complex>.binary-type, COMPLEX.value, 'binary type ok';
+  is $d2<bin-complex>.binary-data.elems, 2 * BSON::C-DOUBLE-SIZE, 'size ok';
+  my Complex $c2 .= new(
+    $d2<bin-complex>.binary-data.read-num64( 0, LittleEndian),
+    $d2<bin-complex>.binary-data.read-num64( BSON::C-DOUBLE-SIZE, LittleEndian)
+  );
+  is $c2.re, 24e-1, 'real part ok';
+  is $c2.im, 33e-1, 'imaginary part ok';
+
+
+#note "\nDoc d2 ", '-' x 73, $d2.raku, '-' x 80;
+
 }
 
 #-------------------------------------------------------------------------------
