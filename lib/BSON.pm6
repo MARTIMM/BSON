@@ -2,7 +2,7 @@ use v6;
 use NativeCall;
 
 #-------------------------------------------------------------------------------
-package BSON:auth<github:MARTIM>:ver<0.2.0> {
+package BSON:auth<github:MARTIM>:ver<0.2.1> {
 
   # BSON type codes
   constant C-DOUBLE             = 0x01;
@@ -37,6 +37,11 @@ package BSON:auth<github:MARTIM>:ver<0.2.0> {
   constant C-UUID               = 0x04;
   constant C-MD5                = 0x05;
   constant C-ENCRIPT            = 0x06;
+
+  constant C-SPECIFIED          = 0x07;
+
+  constant C-USERDEFINED-MIN    = 0x80;
+  constant C-USERDEFINED-MAX    = 0xFF;
 
   constant C-UUID-SIZE          = 16;
   constant C-MD5-SIZE           = 16;
