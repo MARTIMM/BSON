@@ -4,6 +4,9 @@ use Method::Also;
 
 use BSON;
 use BSON::Binary;
+use BSON::Javascript;
+use BSON::ObjectId;
+use BSON::Regex;
 
 #-------------------------------------------------------------------------------
 unit role BSON::Ordered:auth<github:MARTIMM>:ver<0.2.0>;
@@ -153,13 +156,15 @@ method walk-tree ( %doc, $item --> Any ) {
 }
 
 #-------------------------------------------------------------------------------
-method raku ( Int :$indent is copy = 0 --> Str ) is also<perl> {
+method raku ( Int :$indent is copy = 0, Bool :$no-end = False --> Str )
+  is also<perl>
+{
   my $s = [~] "\n", '  ' x $indent, "BSON::Document.new: (\n";
   for self.keys -> $key {
     $s ~= [~] '  ' x $indent + 1, $key, ' => ',
           show-tree( $!document{$key}, $indent + 1), "\n";
   }
-  $s ~= [~] '  ' x $indent, ");\n";
+  $s ~= [~] '  ' x $indent, ')', $no-end ?? '' !! ';', "\n";
 
   $s
 }
@@ -172,6 +177,10 @@ sub show-tree ( $item, $indent is copy --> Str ) {
   given $item {
     when !.defined {
       $s = 'Undefined,';
+    }
+
+    when any( BSON::Binary, BSON::Javascript, BSON::ObjectId, BSON::Regex) {
+      $s = $item.raku(:$indent);
     }
 
     when Array {
