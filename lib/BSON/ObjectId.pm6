@@ -5,6 +5,8 @@ unit package BSON:auth<github:MARTIMM>;
 
 use BSON;
 use OpenSSL::Digest;
+use Method::Also;
+
 
 #-------------------------------------------------------------------------------
 # Information about object id construction can be found at
@@ -99,13 +101,13 @@ class ObjectId {
   }
 
   #-----------------------------------------------------------------------------
-  method perl ( --> Str ) {
+  method raku ( UInt :$indent --> Str ) is also<perl> {
     [~] 'BSON::ObjectId.new(', ":string('0x{ self.Str }')", ')'
   }
 
   #-----------------------------------------------------------------------------
   # == ObjectId.toString()
-  method Str ( --> Str ) {
+  method Str ( --> Str ) is also<to-string> {
     #my Str $string = $!oid.list.fmt('%02x');
     #$string ~~ s:g/\s+//;
     $!oid>>.fmt('%02x').join;
