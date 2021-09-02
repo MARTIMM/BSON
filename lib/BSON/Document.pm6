@@ -123,8 +123,6 @@ You can also give the Buf directly to the C<.new()> method of B<BSON::Document> 
 
 =head2 Example
 
-  use BSON::Document;
-
   my BSON::Document $d .= new: (:data-pi(π));
 
   $d<my-array> = [ 1, 2, 'Foo', (:paragraph<a>, :page(10))];
