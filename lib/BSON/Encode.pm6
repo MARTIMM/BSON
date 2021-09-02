@@ -23,7 +23,7 @@ Note that when using the MongoDB driver package, the driver will handle the enco
   unit class BSON::Encode:auth<github:MARTIMM>;
 
 
-=head1 Example
+=head2 Example
 
   my BSON::Document $d0 .= new: ( :1bread, :66eggs);
   my Buf $b = BSON::Encode.new.encode($d0);

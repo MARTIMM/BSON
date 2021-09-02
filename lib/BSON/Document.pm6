@@ -121,7 +121,7 @@ You can also give the Buf directly to the C<.new()> method of B<BSON::Document> 
   also does BSON::Ordered;
 
 
-=head1 Example
+=head2 Example
 
   use BSON::Document;
 
