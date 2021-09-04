@@ -49,10 +49,7 @@ subtest {
   my BSON::ObjectId $o .= new;
 
   is $o.oid.elems, 12, 'Length oid ok';
-  ok $time <= $o.time <= $time + 1, 'Time between this and the next second';
-
-  # test and module change for issue 32/33
-  is $o.pid, $*PID +& 0xFFFFFF, "Process is $*PID truncated to 3 bytes";
+  ok $time ≤ $o.time <= $time + 1, 'Time between this and the next second';
 
 }, 'Object id encoding/decoding';
 
