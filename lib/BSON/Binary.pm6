@@ -157,6 +157,7 @@ method raku ( UInt :$indent = 0 --> Str ) is also<perl> {
 #-------------------------------------------------------------------------------
 #TM:1:encode
 =begin pod
+=head2 encode
 
 Encode a BSON::Binary object. This is called from the BSON::Document encode method.
 
@@ -183,6 +184,7 @@ method encode ( --> Buf ) {
 #-------------------------------------------------------------------------------
 #TM:1:decode
 =begin pod
+=head2 decode
 
 Decode a Buf object. This is called from the BSON::Document decode method.
 

@@ -2,10 +2,6 @@
 
 use v6.d;
 
-use Method::Also;
-
-use BSON;
-
 #-------------------------------------------------------------------------------
 =begin pod
 
@@ -40,6 +36,11 @@ Be aware that, according to L<this story|https://docs.mongodb.com/manual/tutoria
 =end pod
 
 #-------------------------------------------------------------------------------
+use Method::Also;
+
+use BSON;
+
+#-------------------------------------------------------------------------------
 unit class BSON::Javascript:auth<github:MARTIMM>:ver<0.2.1>;
 
 has Str $.javascript;
@@ -48,6 +49,7 @@ has Buf $!encoded-scope;
 
 has Bool $.has-javascript = False;
 has Bool $.has-scope = False;
+
 
 #-------------------------------------------------------------------------------
 #TM:1:new
@@ -121,6 +123,7 @@ method raku ( UInt :$indent = 0 --> Str ) is also<perl> {
 #-------------------------------------------------------------------------------
 #TM:1:encode
 =begin pod
+=head2 encode
 
 Encode a BSON::Javascript object. This is called from the BSON::Document encode method.
 
@@ -148,6 +151,7 @@ method encode ( --> Buf ) {
 #-------------------------------------------------------------------------------
 #TM:1:decode
 =begin pod
+=head2 decode
 
 Decode a Buf object. This is called from the BSON::Document decode method.
 
