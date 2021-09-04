@@ -1,5 +1,29 @@
+#TL:1:BSON::Ordered:
+
 use v6.d;
 
+#-------------------------------------------------------------------------------
+=begin pod
+
+=head1 BSON::Ordered
+
+A role implementing Associativity.
+
+=head1 Description
+
+This role mimics the Hash behavior with a few differences because of the BSON specs. This role is used by L<the B<BSON::Document>|Document.html> where you can find other information.
+
+
+=head1 Synopsis
+=head2 Declaration
+
+  unit class BSON::Ordered:auth<github:MARTIMM>;
+  also does Associative;
+
+
+=end pod
+
+#-------------------------------------------------------------------------------
 use Method::Also;
 
 use BSON;
@@ -18,9 +42,28 @@ has Array $!key-array = [];     # array to keep keys ordered
 #-------------------------------------------------------------------------------
 # Associative role methods
 #-------------------------------------------------------------------------------
+#TM:1:
+=begin pod
+=head1 Methods
+=head2 AT-KEY
+
+Look up a key and return its value. Please note that the key is automatically created when the key does not exists. In that case, an empty BSON::Document value is returned. This is necessary when an assignment to deep level keys are done.
+
+=head3 Example
+
+  # look up a value
+  say $document<some-key>;
+
+  # assign a value. $d<a><b> is looked up and the last one is
+  # taken care of by C<ASSIGN-KEY()>.
+  $d<a><b><c> = 'abc';
+
+=end pod
+
 # Example: note $d<x>;
 method AT-KEY ( Str $key --> Any ) {
-#note "AT-KEY $key";
+#note "AT-KEY: $key";
+
   unless $!document{$key}:exists {
     $!key-array.push: $key;
     $!document{$key} = self.new
@@ -29,25 +72,61 @@ method AT-KEY ( Str $key --> Any ) {
 }
 
 #-------------------------------------------------------------------------------
+#TM:1:
+=begin pod
+=head2 ASSIGN-KEY
+
+Define a key and assign a value to it.
+
+=head3 Example
+
+=end pod
+
 # Example: $d<x> = 'y';
 method ASSIGN-KEY ( Str:D $key, Any $new ) {
+#note "ASSIGN-KEY: $key";
+
   $!key-array.push: $key unless $!document{$key}:exists;
-  $!document{$key} = self.walk-tree( self.new, $new);
+  $!document{$key} = self!walk-tree( self.new, $new);
 }
 
 #-------------------------------------------------------------------------------
+#TM:1:
+=begin pod
+=head2 BIND-KEY
+
+=head3 Example
+
+=end pod
+
 # Example: $d<y> := $y;
 method BIND-KEY ( Str $key, \new ) {
   $!document{$key} := new;
 }
 
 #-------------------------------------------------------------------------------
+#TM:1:
+=begin pod
+=head2
+
+=head3 Example
+
+=end pod
+
 # Example: $d<x>:exists;
 method EXISTS-KEY ( Str $key --> Bool ) {
   $!document{$key}:exists
 }
 
 #-------------------------------------------------------------------------------
+#TM:1:
+=begin pod
+=head2
+
+=head3 Example
+
+=end pod
+
 # Example: $d<x>:delete;
 method DELETE-KEY ( Str $key --> Any ) {
   loop ( my Int $i = 0; $i < $!key-array.elems; $i++ ) {
@@ -61,16 +140,40 @@ method DELETE-KEY ( Str $key --> Any ) {
 }
 
 #-------------------------------------------------------------------------------
+#TM:1:
+=begin pod
+=head2
+
+=head3 Example
+
+=end pod
+
 method of ( ) {
   BSON::Ordered;
 }
 
 #-------------------------------------------------------------------------------
+#TM:1:
+=begin pod
+=head2
+
+=head3 Example
+
+=end pod
+
 method elems ( --> Int ) {
   $!document.elems
 }
 
 #-------------------------------------------------------------------------------
+#TM:1:
+=begin pod
+=head2
+
+=head3 Example
+
+=end pod
+
 method kv ( --> Seq ) {
   gather for @$!key-array -> $k {
     take $k;
@@ -79,6 +182,14 @@ method kv ( --> Seq ) {
 }
 
 #-------------------------------------------------------------------------------
+#TM:1:
+=begin pod
+=head2
+
+=head3 Example
+
+=end pod
+
 method pairs ( --> Seq ) {
   gather for @$!key-array -> $k {
     take $k => $!document{$k};
@@ -86,6 +197,14 @@ method pairs ( --> Seq ) {
 }
 
 #-------------------------------------------------------------------------------
+#TM:1:
+=begin pod
+=head2
+
+=head3 Example
+
+=end pod
+
 method keys ( --> Seq ) {
   gather for @$!key-array -> $k {
     take $k;
@@ -93,6 +212,14 @@ method keys ( --> Seq ) {
 }
 
 #-------------------------------------------------------------------------------
+#TM:1:
+=begin pod
+=head2
+
+=head3 Example
+
+=end pod
+
 method values ( --> Seq ) {
   gather for $!document{@$!key-array} -> $v {
     take $v;
@@ -100,7 +227,8 @@ method values ( --> Seq ) {
 }
 
 #-------------------------------------------------------------------------------
-method walk-tree ( %doc, $item --> Any ) {
+#TM:1:walk-tree
+method !walk-tree ( %doc, $item --> Any ) {
 
   given $item {
     when Buf {
@@ -109,7 +237,7 @@ method walk-tree ( %doc, $item --> Any ) {
 
     when Seq {
       for @$item -> Pair $i {
-        %doc{$i.key} = self.walk-tree( self.new, $i.value);
+        %doc{$i.key} = self!walk-tree( self.new, $i.value);
       }
 
       return %doc;
@@ -118,21 +246,21 @@ method walk-tree ( %doc, $item --> Any ) {
     when Array {
       my Array $a = [];
       for @$item -> $i {
-        $a.push: self.walk-tree( self.new, $i);
+        $a.push: self!walk-tree( self.new, $i);
       }
 
       return $a;
     }
 
     when Pair {
-      %doc{$item.key} = self.walk-tree( self.new, $item.value);
+      %doc{$item.key} = self!walk-tree( self.new, $item.value);
       return %doc;
     }
 
     # A List should only contain Pair and is inserted in doc as kv pairs
     when List {
       for @$item -> Pair $i {
-        %doc{$i.key} = self.walk-tree( self.new, $i.value);
+        %doc{$i.key} = self!walk-tree( self.new, $i.value);
       }
 
       return %doc;
@@ -156,6 +284,16 @@ method walk-tree ( %doc, $item --> Any ) {
 }
 
 #-------------------------------------------------------------------------------
+#TM:1:raku
+#TM:1:perl
+=begin pod
+
+Show the structure of a document
+
+  method raku ( Int :$indent --> Str ) is also<perl>
+
+=end pod
+
 method raku ( Int :$indent is copy = 0, Bool :$no-end = False --> Str )
   is also<perl>
 {
