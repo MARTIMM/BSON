@@ -217,7 +217,7 @@ submethod BUILD ( :$item ) {
 
   given $item {
     when Pair {
-      self{$item.key} = $item.value; #self.walk-tree( $!document, $item.value);
+      self{$item.key} = $item.value;
     }
 
     when Array {
@@ -229,13 +229,13 @@ submethod BUILD ( :$item ) {
 
     when Seq {
       for @$item -> Pair $p {
-        self{$p.key} = $p.value; #self.walk-tree( BSON::Document.new, $p.value);
+        self{$p.key} = $p.value;
       }
     }
 
     when List {
       for @$item -> Pair $p {
-        self{$p.key} = $p.value; #self.walk-tree( BSON::Document.new, $p.value);
+        self{$p.key} = $p.value;
       }
     }
 
