@@ -79,8 +79,11 @@ subtest "Document associative tests", {
     }, 'assign larger document with nested sub document and Array'
   );
 #note "\nDoc; ", '-' x 75, $d.raku, '-' x 80;
-}
 
+  ok $d<empty-document-key> ~~ BSON::Document, 'associative auto create';
+#note $d<c>.WHAT;
+#note "\nDoc; ", '-' x 75, $d.raku, '-' x 80;
+}
 
 #-------------------------------------------------------------------------------
 subtest 'Associative assign errors', {
