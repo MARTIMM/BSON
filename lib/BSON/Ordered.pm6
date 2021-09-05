@@ -42,25 +42,24 @@ has Array $!key-array = [];     # array to keep keys ordered
 #-------------------------------------------------------------------------------
 # Associative role methods
 #-------------------------------------------------------------------------------
-#TM:1:
+#TM:1:AT-KEY
 =begin pod
 =head1 Methods
 =head2 AT-KEY
 
-Look up a key and return its value. Please note that the key is automatically created when the key does not exists. In that case, an empty BSON::Document value is returned. This is necessary when an assignment to deep level keys are done.
+Look up a key and return its value. Please note that the key is automatically created when the key does not exist. In that case, an empty BSON::Document value is returned. This is necessary when an assignment to deep level keys are done. If you don't want this to happen, you may check the existence of a key first and decide on that outcome. See `:exists` below.
 
 =head3 Example
 
   # look up a value
   say $document<some-key>;
 
-  # assign a value. $d<a><b> is looked up and the last one is
-  # taken care of by C<ASSIGN-KEY()>.
-  $d<a><b><c> = 'abc';
+  # assign a value. $document<a><b> is looked up and the last one is
+  # taken care of by ASSIGN-KEY().
+  $document<a><b><c> = 'abc';
 
 =end pod
 
-# Example: note $d<x>;
 method AT-KEY ( Str $key --> Any ) {
 #note "AT-KEY: $key";
 
@@ -72,7 +71,7 @@ method AT-KEY ( Str $key --> Any ) {
 }
 
 #-------------------------------------------------------------------------------
-#TM:1:
+#TM:1:ASSIGN-KEY
 =begin pod
 =head2 ASSIGN-KEY
 
@@ -80,9 +79,10 @@ Define a key and assign a value to it.
 
 =head3 Example
 
+  $document<x> = 'y';
+
 =end pod
 
-# Example: $d<x> = 'y';
 method ASSIGN-KEY ( Str:D $key, Any $new ) {
 #note "ASSIGN-KEY: $key";
 
@@ -91,43 +91,61 @@ method ASSIGN-KEY ( Str:D $key, Any $new ) {
 }
 
 #-------------------------------------------------------------------------------
-#TM:1:
+#TM:1:BIND-KEY
 =begin pod
 =head2 BIND-KEY
 
+Binding a value to a key.
+
 =head3 Example
+
+  my $y = 12345;
+  $document<y> := $y;
+  note $document<y>;   # 12345
+  $y = 54321;
+  note $document<y>;   # 54321
 
 =end pod
 
-# Example: $d<y> := $y;
 method BIND-KEY ( Str $key, \new ) {
   $!document{$key} := new;
 }
 
 #-------------------------------------------------------------------------------
-#TM:1:
+#TM:1:EXISTS-KEY
 =begin pod
-=head2
+=head2 EXISTS-KEY
+
+Check existence of a key
 
 =head3 Example
 
+  $document<Foo> = 'Bar' if $document<Foo>:!exists;
+
+Do not check for undefinedness like below. In that case, when key did not exist, the key is created and set with an empty BSON::Document. C<//=> will then see that the value is defined and the assignment is not done;
+
+  # this results in assignment of an empty BSON::Document
+  $document<Foo> //= 'Bar';
+
 =end pod
 
-# Example: $d<x>:exists;
 method EXISTS-KEY ( Str $key --> Bool ) {
   $!document{$key}:exists
 }
 
 #-------------------------------------------------------------------------------
-#TM:1:
+#TM:1:DELETE-KEY
 =begin pod
-=head2
+=head2 DELETE-KEY
+
+Delete a key with its value. The value is returned.
 
 =head3 Example
 
+  my $old-foo-key-value = $document<Foo>:delete
+
 =end pod
 
-# Example: $d<x>:delete;
 method DELETE-KEY ( Str $key --> Any ) {
   loop ( my Int $i = 0; $i < $!key-array.elems; $i++ ) {
     if $!key-array[$i] eq $key {
@@ -140,24 +158,15 @@ method DELETE-KEY ( Str $key --> Any ) {
 }
 
 #-------------------------------------------------------------------------------
-#TM:1:
+#TM:1:elems
 =begin pod
-=head2
+=head2 elems
+
+Return the number of keys and values in the document
 
 =head3 Example
 
-=end pod
-
-method of ( ) {
-  BSON::Ordered;
-}
-
-#-------------------------------------------------------------------------------
-#TM:1:
-=begin pod
-=head2
-
-=head3 Example
+  say 'there are elements in the document' if $document.elems;
 
 =end pod
 
@@ -166,11 +175,17 @@ method elems ( --> Int ) {
 }
 
 #-------------------------------------------------------------------------------
-#TM:1:
+#TM:1:kv
 =begin pod
-=head2
+=head2 kv
+
+Return a sequence of key and value
 
 =head3 Example
+
+  for $document.kv -> $k, $v {
+    …
+  }
 
 =end pod
 
@@ -182,11 +197,17 @@ method kv ( --> Seq ) {
 }
 
 #-------------------------------------------------------------------------------
-#TM:1:
+#TM:1:pairs
 =begin pod
-=head2
+=head2 pairs
+
+Get a sequence of pairs
 
 =head3 Example
+
+  for $document.pairs -> Pair $p {
+    …
+  }
 
 =end pod
 
@@ -197,11 +218,17 @@ method pairs ( --> Seq ) {
 }
 
 #-------------------------------------------------------------------------------
-#TM:1:
+#TM:1:keys
 =begin pod
-=head2
+=head2 keys
+
+Get a sequence of keys from the document.
 
 =head3 Example
+
+  for $document.keys -> Str $k {
+    …
+  }
 
 =end pod
 
@@ -212,11 +239,15 @@ method keys ( --> Seq ) {
 }
 
 #-------------------------------------------------------------------------------
-#TM:1:
+#TM:1:values
 =begin pod
-=head2
+=head2 values
 
 =head3 Example
+
+  for $document.values -> $v {
+    …
+  }
 
 =end pod
 
@@ -287,6 +318,7 @@ method !walk-tree ( %doc, $item --> Any ) {
 #TM:1:raku
 #TM:1:perl
 =begin pod
+=head2 raku, perl
 
 Show the structure of a document
 
