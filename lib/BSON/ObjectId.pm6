@@ -45,11 +45,7 @@ use Method::Also;
 my Int $random-base-per-application-run;
 
 has Buf $.oid;
-
-# == ObjectId.getTimestamp()
 has Int $.time;
-#  has Str $.machine-id;
-#has Int $.pid;
 has Int $.random;
 has Int $.count;
 
@@ -86,12 +82,21 @@ multi submethod BUILD ( Str:D :$string! ) {
   die X::BSON.new(
     :type<ObjectId>, :operation('new()'),
     :error('String too short or nonhexadecimal')
-  ) unless $string ~~ m/ ^ <xdigit>**24 $ /;
-
+  ) unless $string ~~ m/^ <xdigit>**24 $/;
 
   # Split into bytes
-  my Buf $bytes .= new( $string.comb(2).map({ .parse-base(16) }) );
-  self.BUILD(:bytes($!oid));
+  $!oid .= new( $string.comb(2).map({ .parse-base(16) }) );
+#  self.BUILD(:bytes($!oid));
+
+  # Get information from the oid. First a time stamp, must be big endian
+  # encoded in 4 bytes
+  $!time = $!oid.read-int32( 0, BigEndian);
+
+  # Followed by a 5 byte random number
+  $!random = :16( ( $!oid[4..8].map( { $_.fmt('%02x') } )).join );
+
+  # Followed by a 3 byte random number
+  $!count = :16( ( $!oid[9..11].map( { $_.fmt('%02x') } )).join );
 }
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -175,6 +180,11 @@ method Str ( --> Str ) is also<to-string> {
   #my Str $string = $!oid.list.fmt('%02x');
   #$string ~~ s:g/\s+//;
   $!oid>>.fmt('%02x').join;
+}
+
+#-------------------------------------------------------------------------------
+method get-timestamp ( --> Int ) {
+  $!time
 }
 
 #-------------------------------------------------------------------------------

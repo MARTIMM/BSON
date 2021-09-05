@@ -17,7 +17,7 @@ subtest {
     :message(/:s String too short or nonhexadecimal/);
 
   my BSON::ObjectId $o .= new(:string<507f191e810c19729de860ea>);
-  is $o.oid.elems, 12, 'Properly defined string';
+  is $o.oid.elems, 12, '.new(:string)';
   is $o.Str, '507f191e810c19729de860ea', '.Str()';
 
   throws-like
@@ -32,13 +32,10 @@ subtest {
       )
     )
   );
-  is $o.oid.elems, 12, 'Properly defined byte buffer';
-
-#  $o .= new( :machine-name('my-pc'), :count(234));
-#  is $o.oid.elems, 12, 'Properly defined machine name and count';
+  is $o.oid.elems, 12, '.new(:bytes)';
 
   $o .= new;
-  is $o.oid.elems, 12, 'Properly defined with defaults';
+  is $o.oid.elems, 12, '.new()';
 
 }, 'Object id testing';
 
