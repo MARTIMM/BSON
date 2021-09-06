@@ -63,9 +63,9 @@ Look up a key and return its value. Please note that the key is automatically cr
 method AT-KEY ( Str $key --> Any ) {
 #note "AT-KEY: $key";
 
-  unless $!document{$key}:exists {
+  if $!document{$key}:!exists {
     $!key-array.push: $key;
-    $!document{$key} = self.new
+    $!document{$key} = self.new;
   }
   return-rw $!document{$key};
 }
@@ -84,7 +84,7 @@ Define a key and assign a value to it.
 =end pod
 
 method ASSIGN-KEY ( Str:D $key, Any $new ) {
-#note "ASSIGN-KEY: $key";
+#note "ASSIGN-KEY: $key, $new";
 
   $!key-array.push: $key unless $!document{$key}:exists;
   $!document{$key} = self!walk-tree( self.new, $new);
@@ -323,6 +323,8 @@ method !walk-tree ( %doc, $item --> Any ) {
 Show the structure of a document
 
   method raku ( Int :$indent --> Str ) is also<perl>
+
+=item Int $indent; setting the starting indentation.
 
 =end pod
 

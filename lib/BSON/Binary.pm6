@@ -106,7 +106,7 @@ submethod BUILD ( Buf :$data, Int :$type = BSON::C-GENERIC ) {
 =begin pod
 =head2 raku, perl
 
-Show the structure of a document
+Show the structure of a Binary
 
   method raku ( Int :$indent --> Str ) is also<perl>
 

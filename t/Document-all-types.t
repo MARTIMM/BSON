@@ -23,8 +23,8 @@ subtest {
   );
 
   my UUID $uuid .= new(:version(4));
-  my BSON::Binary $bin .= new( :data($uuid.Blob), :type(BSON::C-UUID) );
 
+  my BSON::Binary $bin .= new( :data($uuid.Blob), :type(BSON::C-UUID) );
   dies-ok( {
       my BSON::Binary $bin .= new( :data($uuid.Blob), :type(0x7f));
     }, 'Wrong binary type'
@@ -35,6 +35,10 @@ subtest {
   my DateTime $datetime .= new( DateTime.now.posix, :timezone($*TZ));
 
   my BSON::Regex $rex .= new( :regex('abc|def'), :options<is>);
+  dies-ok( {
+      my BSON::Regex $rex .= new( :regex('abc|def'), :options<pqr>);
+    }, 'Wrong regex options'
+  );
 
   # Checklist/Tests of
   #

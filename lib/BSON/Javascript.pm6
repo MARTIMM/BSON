@@ -16,7 +16,7 @@ Javascript can be run on a mongodb server so there is a type for it. This class 
 
 Examples of the use of Javascript is L<found here|https://docs.mongodb.com/manual/reference/command/mapReduce/#mongodb-dbcommand-dbcmd.mapReduce>. The operation explained here is about the C<mapReduce> run command.
 
-Be aware that, according to L<this story|https://docs.mongodb.com/manual/tutorial/map-reduce-examples/>, that using an aggregation pipeline provides better performance in some cases. This link provides also a few examples of the mapReduce operation.
+Be aware that, according to L<this story|https://docs.mongodb.com/manual/tutorial/map-reduce-examples/>, that using an aggregation pipeline provides better performance in some cases. This link provides also a few examples of the mapReduce operation. That said, and the notion that mapReduce can also accept javascript in just a string nowadays, this class is of less importance.
 
 
 =head1 Synopsis

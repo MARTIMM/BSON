@@ -103,11 +103,10 @@ subtest "subdocs", {
   $d<b><a> = 11;
   $d<c><b><a> = 12;
 
-#  diag $d.perl;
-
   ok $d<b> ~~ BSON::Document, 'subdoc at b';
   is $d<b><a>, 11, 'is 11';
   is $d<c><b><a>, 12, 'is 12';
+#note "\nDoc; ", '-' x 75, $d.raku, '-' x 80;
 
   my Buf $b = $d.encode;
   $d .= new($b);
