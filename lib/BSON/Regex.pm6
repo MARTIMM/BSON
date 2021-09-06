@@ -37,7 +37,7 @@ The class can be used in queries to find documents on a database. However, it is
 
 The query part can be made different with newer servers and can be written as (See also L<mongodb query|https://docs.mongodb.com/v4.4/reference/operator/query/regex/#mongodb-query-op.-regex>)
 
-  .<query> = (:surname( '$regex' => 'hendrix|james', '$options' => ('<i>'))),
+  .<query> = (:surname( '$regex' => 'hendrix|james', '$options' => '<i>')),
 
 It looks that the object form is a bit simpler to write.
 =end pod
