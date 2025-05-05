@@ -11,5 +11,6 @@
 * [ ] Modify timestamp (en/de)coding to be an object
 * [ ] The exception objects are subject to change into a simpler class: one instead of several. This will become X::BSON.
 * [x] change raku source code file extensions
+* [ ] Use the ordered hash of Raku, introduced a short while ago. Might be faster than this implementation
 
 ### Bugs

@@ -4,10 +4,8 @@ Implements [BSON specification][spec].
 
 <!--
 ![Face](logotype/logo_32x32.png) [![Build Status](https://travis-ci.org/MARTIMM/BSON.svg?branch=master)](https://travis-ci.org/MARTIMM/BSON) [![AppVeyor Build Status](https://ci.appveyor.com/api/projects/status/github/MARTIMM/bson?branch=master&passingText=Windows%20-%20OK&failingText=Windows%20-%20FAIL&pendingText=Windows%20-%20pending&svg=true)](https://ci.appveyor.com/project/MARTIMM/bson/branch/master) [![License](http://martimm.github.io/label/License-label.svg)](http://www.perlfoundation.org/artistic_license_2_0)
--->
 
-
-![T][travis-svg] ![A][appveyor-svg] ![L][license-svg]
+![T][travis-svg] ![A][appveyor-svg]
 
 [travis-svg]: https://travis-ci.com/MARTIMM/BSON.svg?branch=master
 [travis-run]: https://travis-ci.com/MARTIMM/BSON
@@ -15,12 +13,17 @@ Implements [BSON specification][spec].
 [appveyor-svg]: https://ci.appveyor.com/api/projects/status/github/MARTIMM/BSON?branch=master&passingText=Windows%20-%20OK&failingText=Windows%20-%20FAIL&pendingText=Windows%20-%20pending&svg=true
 [appveyor-run]: https://ci.appveyor.com/project/MARTIMM/BSON/branch/master
 
+-->
+
+![L][license-svg]
+
 [license-svg]: https://martimm.github.io/label/License-label.svg
 [licence-lnk]: https://www.perlfoundation.org/artistic_license_2_0
 
+
 ## Synopsis
 
-The main entry point is  B<BSON::Document>. This structure is a Hash like object but will keep the order of its keys and because of that there is no need for cumbersome operations. At the moment it is much slower than the hashed variant even with the encoding happening in the background and parallel.
+The main entry point is  **BSON::Document**. This structure is a Hash like object but will keep the order of its keys and because of that there is no need for cumbersome operations. At the moment it is much slower than the hashed variant even with the encoding happening in the background and parallel.
 
 ```
 use BSON::Document;
