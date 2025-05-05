@@ -2,6 +2,9 @@ See [semantic versioning](http://semver.org/). Please note point 4. on
 that page: *Major version zero (0.y.z) is for initial development. Anything may
 change at any time. The public API should not be considered stable*.
 
+* 2025-05-05 0.13.3
+  * Changed filename extensions
+
 * 2021-08-31 0.13.2
   * Improve encoding/decoding a bit for CArray type.
   * Add documentation for all classes. Can be found at [mongodb website](https://martimm.github.io/raku-mongodb-driver/content-docs/reference/reference.html).
