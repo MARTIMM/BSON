@@ -6,6 +6,7 @@ Old/*
 .precomp
 */.precomp
 *.log
+*.tgz
 
 xt/decNumber/*
 xt/dfpal/*
