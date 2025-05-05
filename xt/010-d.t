@@ -2,7 +2,15 @@ use Test;
 use BSON::Document;
 
 #-------------------------------------------------------------------------------
-subtest {
+subtest 'empty doc', {
+
+  my BSON::Document $d .= new;
+  my Buf $b = $d.encode;
+  say $b;
+};
+
+#-------------------------------------------------------------------------------
+subtest 'empty array', {
 
   my BSON::Document $d .= new: (
     documents => []
@@ -11,7 +19,7 @@ subtest {
   my Buf $b = $d.encode;
   say $b;
 
-}, 'empty array';
+};
 
 
 #-------------------------------------------------------------------------------
