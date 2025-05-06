@@ -3,7 +3,8 @@ that page: *Major version zero (0.y.z) is for initial development. Anything may
 change at any time. The public API should not be considered stable*.
 
 * 2025-05-05 0.13.3
-  * Changed filename extensions
+  * Changed filename extensions.
+  * Removed some errors in links from README.
 
 * 2021-08-31 0.13.2
   * Improve encoding/decoding a bit for CArray type.
