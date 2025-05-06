@@ -12,6 +12,8 @@
     "Paweł Pabian"
   ],
 
+  "auth": "zef:martimm",
+
   "provides": {
     "BSON":                      "lib/BSON.rakumod",
     "BSON::Binary":              "lib/BSON/Binary.rakumod",
