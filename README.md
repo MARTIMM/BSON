@@ -60,11 +60,9 @@ $new-doc.decode($enc-doc);
 
 BSON/Document.pod
 * [ 🔗 Website]()<!--https://martimm.github.io/raku-mongodb-driver/-->
-* [ 🔗 Travis-ci run on master branch][travis-run]
-* [ 🔗 Appveyor run on master branch][appveyor-run]
 * [ 🔗 License document][licence-lnk]
-* [ 🔗 Release notes](https://martimm.github.io/raku-mongodb-driver/content-docs/about/release-notes.html)
-* [ 🔗 Issues](https://github.com/MARTIMM/raku-mongodb-driver/issues)
+* [ 🔗 Release notes](https://github.com/MARTIMM/BSON/blob/main/doc/CHANGES.md)
+* [ 🔗 Issues](https://github.com/MARTIMM/BSON/issues)
 
 <!--
 * [BSON::Binary][Binary]
@@ -86,7 +84,7 @@ When installing MongoDB, BSON will be installed automatically as a dependency.
 
 ## Version of Raku and MoarVM
 
-This module is tested using the latest Raku version on MoarVM
+This module is tested using the latest 6.d Raku version on MoarVM
 
 
 ## Authors
