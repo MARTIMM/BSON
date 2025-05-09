@@ -13,4 +13,50 @@
 * [x] change raku source code file extensions
 * [ ] Use the ordered hash of Raku. Some time ago there were problems and decided to go the way I have done it, see also [issue 2](https://github.com/lizmat/Hash-Ordered/issues/2)
 
-### Bugs
+
+### Decimal128
+
+Range: a max value of approximately **10 \*\* 6145**, and min value of approximately **-10 \*\* 6145**
+
+Clamping or Clipping, or clipping [definition](https://en.wikipedia.org/wiki/Clamp_(function)).
+  max(minimum, min(x, maximum))
+
+Mongo DB Spec for [Decimal128]( https://github.com/mongodb/specifications/blob/master/source/bson-decimal128/decimal128.md)
+
+[Decimal Arithmetic Encodings](https://speleotrove.com/decimal/decbits.html)
+[Exceptional conditions](https://speleotrove.com/decimal/daexcep.html)
+[English Wikipedia](https://en.wikipedia.org/wiki/Decimal128_floating-point_format)
+
+#### Raku thoughts
+  * FatRat can easily hold very large numbers
+  ```
+  > 9.2.FatRat**61450
+  … 8598942458433405630871526717546401804697940722379191825268045722261207051199429888739282487360934725818107777687684894340881135564919470832634062321093549747941293271363354624
+  ```
+  * The class **BSON::Decimal128** has functions `.get-value` and `.set-value` to get and set the value of the object. The type used is **Numeric** to be able to cope with `NaN` and `Inf`. `NaN` and `Inf` is only of type **Num**, so it needs special handling when in other types. _This is the responsability of the user._
+
+  * From the raku documentation: "The value Inf is an instance of Num and represents value that's too large to represent in 64-bit double-precision floating point number (roughly, above 1.7976931348623158e308 for positive Inf and below -1.7976931348623157e308 for negative Inf) as well as returned from certain operations as defined by the IEEE 754-2008 standard.". This means that officially `Inf` may be smaller than the max of Decimal128.
+
+#### Specification
+Specification of Decimal128 can be found [here](https://speleotrove.com/decimal/dbspec.html) and [here English Wikipedia](https://en.wikipedia.org/wiki/Decimal128_floating-point_format).
+
+* Fields in the Decimal128
+  | Use | bits |
+  |-|-|
+  Sign | 1
+  Combination field | 17
+  significand continuation | 110
+
+* Layout first 5 bits of combination field.
+  MSB: most significant bit
+  MSD: most significant digit
+  | Exponent MSBs | Coefficient MSD | Combination field | Meaning |
+  |-|-|-|-|
+  | a b |	0 c d e | a b c d e … 12 bits … |	Finite 	  
+  | c d |	1 0 0 e | 1 1 c d e … 12 bits … |	Finite 	  
+  | - - |	- - - - | 1 1 1 1 0 … 12 bits … |	Infinity 	
+  | - - |	- - - - | 1 1 1 1 1 … 12 bits … |	NaN 	    
+
+  
+  
+  

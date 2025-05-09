@@ -8,7 +8,7 @@ unit package BSON::Decimal128::Grammar:auth<github:MARTIM>:ver<0.1.0>;
 
 #-------------------------------------------------------------------------------
 #`{{
-  Grammar taken from https://github.com/mongodb/specifications/blob/master/source/bson-decimal128/decimal128.rst
+  Grammar taken from https://github.com/mongodb/specifications/blob/master/source/bson-decimal128/decimal128.md
 
   sign           ::=  ’+’ | ’-’
   digit          ::=  ’0’ | ’1’ | ’2’ | ’3’ | ’4’ | ’5’ | ’6’ | ’7’ |

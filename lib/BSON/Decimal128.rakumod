@@ -30,7 +30,6 @@ enum endianness <little-endian big-endian system-endian>;
 
 our $endian = little-endian;
 
-
 #-------------------------------------------------------------------------------
 method encode ( --> Buf ) {
 
@@ -44,4 +43,12 @@ method decode (
   --> BSON::Decimal128
 ) {
 
+}
+
+#-------------------------------------------------------------------------------
+method get-value ( --> Numeric ) {
+}
+
+#-------------------------------------------------------------------------------
+method set-value ( Numeric $number ) {
 }
