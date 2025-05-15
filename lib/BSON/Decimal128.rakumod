@@ -32,6 +32,7 @@ constant C-BIAS-D128 = 6176;
 enum endianness <little-endian big-endian system-endian>;
 
 our $endian = little-endian;
+has Buf $.d128;
 
 #-------------------------------------------------------------------------------
 method encode ( --> Buf ) {
@@ -58,8 +59,14 @@ multi method set-value ( Numeric $number ) {
 
 #-------------------------------------------------------------------------------
 multi method set-value ( Str $number ) {
-  my $matchObject = Decimal-Grammar.parse( $number, :actions(BSON::Decimal128::Actions.new));
-note "\n$?LINE ", $matchObject.raku, "\n\n", $matchObject.Str;
-note "\n", $matchObject.ast;
+  my BSON::Decimal128::Actions $actions .= new;
+  my $matchObject = Decimal-Grammar.parse( $number, :$actions);
 
+  note "\n$?LINE $number";
+  for < characteristic mantissa dec-negative
+        is-nan is-inf exponent exp-negative
+      > -> $method {
+    my $v = $actions."$method"();
+    note "  $method: $v", 
+  }
 }

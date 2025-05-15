@@ -26,8 +26,7 @@ grammar Decimal-Grammar is export {
   rule TOP { <.initialize> <numeric-string> }
   rule initialize { <?> }
 
-  token nsign { $<nsign> = <[+-]> }
-  token esign { $<esign> = <[+-]> }
+  token sign { <[+-]> }
   token indicator { :i e }
   token digits { \d+ }
   token decimal-part {
@@ -37,9 +36,9 @@ grammar Decimal-Grammar is export {
     $<characteristic> = <.digits>
   }
 
-  token exponent-part { <.indicator> <esign>? $<exponent> = <.digits> }
+  token exponent-part { <.indicator> <sign>? $<exponent> = <.digits> }
   token infinity { :i ['infinity' | 'Inf' ] }
   token nan { :i 'NaN' }
   token numeric-value { <decimal-part> <exponent-part>? | <infinity> }
-  token numeric-string { <nsign>? <numeric-value> | <nsign>? <nan> }
+  token numeric-string { <sign>? <numeric-value> | <sign>? <nan> }
 }
