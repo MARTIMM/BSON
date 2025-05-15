@@ -1,7 +1,7 @@
 use v6;
 
 #-------------------------------------------------------------------------------
-unit class BSON::Decimal128::Actions:auth<github:MARTIM>:ver<0.1.0>;
+unit class BSON::Decimal128::Actions:auth<github:MARTIM>;
 
 has Str $.characteristic;
 has Str $.mantissa;

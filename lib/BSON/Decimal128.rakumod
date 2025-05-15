@@ -1,5 +1,8 @@
 use v6.d;
 
+use BSON::Decimal128::Grammar;
+use BSON::Decimal128::Actions;
+
 #-------------------------------------------------------------------------------
 unit class BSON::Decimal128:auth<github:MARTIMM>:ver<0.1.0>;
 
@@ -50,5 +53,13 @@ method get-value ( --> Numeric ) {
 }
 
 #-------------------------------------------------------------------------------
-method set-value ( Numeric $number ) {
+multi method set-value ( Numeric $number ) {
+}
+
+#-------------------------------------------------------------------------------
+multi method set-value ( Str $number ) {
+  my $matchObject = Decimal-Grammar.parse( $number, :actions(BSON::Decimal128::Actions.new));
+note "\n$?LINE ", $matchObject.raku, "\n\n", $matchObject.Str;
+note "\n", $matchObject.ast;
+
 }

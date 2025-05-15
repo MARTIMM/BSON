@@ -1,10 +1,17 @@
 use v6;
 use Test;
-use BSON::Decimal;
+use BSON::Decimal128;
 
 #-------------------------------------------------------------------------------
 subtest "128 bit decimal", {
 
+  my BSON::Decimal128 $d128 .= new;
+  for < 0.73e-7 0 12 -76 12.70 +0.003 017. .5 4E+9 0.73e-7
+        Inf -infinity -Infinity NaN nan
+      > -> $value {
+    $d128.set-value($value.Str);
+last;
+  }
   diag '';
 }
 
