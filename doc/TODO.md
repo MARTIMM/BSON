@@ -15,6 +15,7 @@
 
 
 ### Decimal128
+In computing, decimal128 is a decimal floating-point number format that occupies 128 bits in memory. See alse the [wikipedia](https://en.wikipedia.org/wiki/Decimal128_floating-point_format).
 
 Range: a max value of approximately **10 \*\* 6145**, and min value of approximately **-10 \*\* 6145**
 
@@ -26,6 +27,8 @@ Mongo DB Spec for [Decimal128]( https://github.com/mongodb/specifications/blob/m
 [Decimal Arithmetic Encodings](https://speleotrove.com/decimal/decbits.html)
 [Exceptional conditions](https://speleotrove.com/decimal/daexcep.html)
 [English Wikipedia](https://en.wikipedia.org/wiki/Decimal128_floating-point_format)
+[Calculator useful for tests](https://numeral-systems.com/ieee-754-converter/)
+[Endianness](https://docs.oracle.com/en/operating-systems/oracle-linux/6/porting/ch03s04.html)
 
 #### Raku thoughts
   * FatRat can easily hold very large numbers
@@ -65,9 +68,18 @@ Specification of Decimal128 can be found [here](https://speleotrove.com/decimal/
   | 00, 01, 10 | 14 bits after sign bit¹ | 113 bits |
   | 11 | 14 bits shifted 2 bits to the right² | 111 bits |
 
-  1) there is an implicit leading 0 bit
-  2) there are 3 implicit leading 100 bits
+  1) there is an implicit leading '0' bit
+  2) there are 3 implicit leading '100' bits
 
+* This format uses a binary significand from 0 to 10\*\*34 − 1 = 9999999999999999999999999999999999 = 0x1ED09BEAD87C0378D8E63FFFFFFFF = 0b011110110100001001101111101010110110000111110000000011011110001101100011100110001111111111111111111111111111111111. 
+* The encoding can represent binary significands up to 10 × 2\*\*110 − 1 = 12980742146337069071326240823050239 but values larger than 10\*\*34 − 1 are illegal (and the standard requires implementations to treat them as 0, if encountered on input).
 
+* From converter
 
-  
+  | data type | size | exponent | mantissa | bias |
+  |-|-|-|-|-|
+  binary16  | 16 bits  | 5 bits | 10 bits | 15
+  binary32  | 32 bits  | 8 bits | 23 bits | 127
+  binary64  | 64 bits  |11 bits | 52 bits | 1023
+  binary128 | 128 bits |15 bits |112 bits | 16383
+    
