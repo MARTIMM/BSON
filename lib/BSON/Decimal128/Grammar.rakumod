@@ -30,7 +30,8 @@ grammar Decimal-Grammar is export {
   token indicator { :i e }
   token digits { \d+ }
   token decimal-part {
-    $<characteristic> = [ <.digits> '.' $<mantissa> = <.digits>? |
+    $<characteristic> = [ $<integer-part> = <.digits> '.'
+                          $<mantissa> = <.digits>? |
                           '.' $<mantissa> = <.digits>
                         ] |
     $<characteristic> = <.digits>
