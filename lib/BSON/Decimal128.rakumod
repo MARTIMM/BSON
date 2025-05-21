@@ -29,8 +29,7 @@ constant C-BUFLEN-D128 = 16;
 
 constant C-MANT-BITS-D128 = 112;
 constant C-EXP-BIAS-D128 = 16383;
-
-#constant C--D128 = ;
+constant C-EXP-BITS-D128 = 15;
 
 #-------------------------------------------------------------------------------
 enum EndianType is export <little-endian big-endian system-endian>;
@@ -71,6 +70,7 @@ multi method set-value ( Str $number ) {
   my BSON::Decimal128::Actions $actions .= new;
   my $matchObject = Decimal-Grammar.parse( $number, :$actions);
 
+#`{{
   note "\n$?LINE $number";
   for < characteristic integer-part mantissa dec-negative
         is-nan is-inf exponent exp-negative
@@ -78,21 +78,24 @@ multi method set-value ( Str $number ) {
     my $v = $actions."$method"();
     note "  $method: $v", 
   }
+}}
 
   my $dec-sign-bit = $actions.dec-negative ?? 1 !! 0;
-  self.set-bits(127) if $dec-sign-bit;
+#  self.set-bits(127) if $dec-sign-bit;
 
   my $exp-sign-bit = $actions.exp-negative ?? 1 !! 0;
 
   if $actions.is-nan {
     # NaN: sign = 0 or 1, exponent = 11111111,
     # mantissa = arbitrary, but not only zeros
+    self.set-bits(127) if $dec-sign-bit;
     self.set-bits( 119..126, 1, 0);
   }
 
   elsif $actions.is-inf {
     # Inf: sign = 0 or 1, exponent = 11111111
     # mantissa = 00000000000000000000000
+    self.set-bits(127) if $dec-sign-bit;
     self.set-bits(119..126);
   }
 
@@ -102,7 +105,7 @@ multi method set-value ( Str $number ) {
 #    my Str $m = ('0.' ~ $actions.mantissa).FatRat.base(2);
     my Str $m = self.set-binary-mantissa('0.' ~ $actions.mantissa);
     $m ~~ s/ '0.' //;
-note "$?LINE $i.$m";
+#note "$?LINE $i.$m";
     my Int $bin-exponent;
     my Int $m-length;
     my Str $result;
@@ -122,13 +125,16 @@ note "$?LINE $i.$m";
 
     # Rounding needed? Mantissa ( without '1.' upfront) <= 112 bits
     $m-length = $result.chars - 2;
-note "$?LINE $result, binary exp: $bin-exponent, length: $m-length";
+#note "$?LINE binary exp: $bin-exponent, length: $m-length";
     if $m-length > C-MANT-BITS-D128 {
       # check least significat bit + 1
       if $result.substr( C-MANT-BITS-D128 + 1, 1)  eq '1' {
-note "$?LINE $result.chars(), $result.substr( C-MANT-BITS-D128 + 1, 1)";
+#note "$?LINE $result.chars(), $result.substr( C-MANT-BITS-D128 + 1, 1)";
+        # Truncate to proper length
         $result .= substr( 0, C-MANT-BITS-D128);
-note "$?LINE $result.chars()\n$result";
+#note "$?LINE $result.chars()\n$result";
+        # Check if least significant bit is a '1'.
+        # Checked for different substution
         if $result.substr( C-MANT-BITS-D128, 1)  eq '1' {
           $result ~~ s/ 0 (1+) $/1$0/;
         }
@@ -136,36 +142,55 @@ note "$?LINE $result.chars()\n$result";
         else {
           $result ~~ s/ 0 $/1/;
         }
-#        my $c = $m-length;
-#        while $result.substr( $c, 1)  eq '1' {
-#          $result.subst( $c, 1, '0');
-#          $c--;
-#        }
-
-#        $result.subst( $c, 1, '1');
       }
 
       else {
         $result .= substr( 0, C-MANT-BITS-D128);
-note "$?LINE $result.chars()";
+#note "$?LINE $result.chars()";
       }
-
-      
     }
-note "$?LINE $result";
+#note "$?LINE mantisse: $result";
 
-    my $exponent = C-EXP-BIAS-D128 + $bin-exponent;
+    # The exponent is prefixed with '0's when too short
+    my Str $exponent = (C-EXP-BIAS-D128 + $bin-exponent).base(2);
+    my Int $fillup = C-EXP-BITS-D128 - $exponent.chars;
+    if $fillup < 0 {
+      # TODO: exponent too large
+    }
 
+    else {
+      $exponent = '0' x $fillup ~ $exponent;
+    }
+    
+    my Str $n = $dec-sign-bit ?? '1' !! '0';
+    $n ~= $exponent;
+    $n ~= $result;
+note "$?LINE n: $n.chars(), $n\n$exponent $result";
+    self.set-bits-from-string( 0, $n);
   }
 }
 
 #-------------------------------------------------------------------------------
-method reset-buf( ) {
+method reset-buf ( ) {
   $!d128 .= new( 0 xx C-BUFLEN-D128 );
 }
 
 #-------------------------------------------------------------------------------
-method set-bits( *@bit-positions ) {
+method set-bits-from-string ( Int $start-pos is copy, Str $bit-positions ) {
+  my @list = ();
+  # First bit is most significant
+  $start-pos = C-BITS-D128 - 1 - $start-pos if $!endian ~~ little-endian;
+  for $bit-positions.comb -> $bit {
+    @list.push: $start-pos if $bit eq '1';
+    $start-pos += $!endian ~~ little-endian ?? -1 !! 1;
+  }
+
+#note "$?LINE list: @list.raku()";
+  self.set-bits(@list);
+}
+
+#-------------------------------------------------------------------------------
+method set-bits ( *@bit-positions ) {
   for @bit-positions -> $bit-pos {
     my Int() $byte-pos =
       $!endian ~~ little-endian ?? $bit-pos / 8 !! (127 - $bit-pos) / 8;
@@ -175,7 +200,7 @@ method set-bits( *@bit-positions ) {
     $!d128[$byte-pos] +|= 1 +< $offset;
   }
 
-note "$?LINE ", $!d128>>.fmt('%0x');
+#note "$?LINE ", $!d128>>.fmt('0x%0x');
 }
 
 #-------------------------------------------------------------------------------
