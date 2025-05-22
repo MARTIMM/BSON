@@ -101,55 +101,64 @@ multi method set-value ( Str $number ) {
 
   else {
     my Str $i = $actions.integer-part.Int.base(2);
-# not good enough
-#    my Str $m = ('0.' ~ $actions.mantissa).FatRat.base(2);
     my Str $m = self.set-binary-mantissa('0.' ~ $actions.mantissa);
     $m ~~ s/ '0.' //;
 #note "$?LINE $i.$m";
     my Int $bin-exponent;
     my Int $m-length;
-    my Str $result;
+    my Str $mantissa;
 
-    # Test if exponent is negative
+    # Test the integer part to modify the exponent.
     if $i ~~ m/^ 0 / {
+      # When starting with '0', remove all zeros at start and calculate length.
+      # length is negative exponent. The next '1' is removed.
+      # This is the '1' before the comma.
       $m ~~ s/^ $<zeros> = 0+ //;
       $bin-exponent = - $/<zeros>.Str.chars - 1;
-      $result = $m.subst( '1', '', :1st);
+      $mantissa = $m.subst( '1', '', :1st);
     }
 
     else {
+      # When starting with '1', the positive exponent is the number
+      # of characters in the integer exponent minus one. The first '1'
+      # is removed. This is the '1' before the comma.
       $bin-exponent = $actions.exponent.Int + $i.chars - 1;
-      $result = $i.subst( '1', '', :1st) ~ $m;
+      $mantissa = $i.subst( '1', '', :1st) ~ $m;
     }
 
-
-    # Rounding needed? Mantissa ( without '1.' upfront) <= 112 bits
-    $m-length = $result.chars - 2;
+    # Rounding needed? Mantissa <= 112 bits
+    $m-length = $mantissa.chars;
 #note "$?LINE binary exp: $bin-exponent, length: $m-length";
     if $m-length > C-MANT-BITS-D128 {
+note "$?LINE ", $mantissa.substr( C-MANT-BITS-D128 + 1, 1)  eq '1';
       # check least significat bit + 1
-      if $result.substr( C-MANT-BITS-D128 + 1, 1)  eq '1' {
-#note "$?LINE $result.chars(), $result.substr( C-MANT-BITS-D128 + 1, 1)";
+      if $mantissa.substr( C-MANT-BITS-D128 + 1, 1)  eq '1' {
+#note "$?LINE $mantissa.chars(), $mantissa.substr( C-MANT-BITS-D128 + 1, 1)";
+$mantissa .= substr( 0, C-MANT-BITS-D128 + 2);
+note "$?LINE $mantissa.chars()\n$mantissa";
+
         # Truncate to proper length
-        $result .= substr( 0, C-MANT-BITS-D128);
-#note "$?LINE $result.chars()\n$result";
+        $mantissa .= substr( 0, C-MANT-BITS-D128);
+#note "$?LINE $mantissa.chars()\n$mantissa";
         # Check if least significant bit is a '1'.
         # Checked for different substution
-        if $result.substr( C-MANT-BITS-D128, 1)  eq '1' {
-          $result ~~ s/ 0 (1+) $/1$0/;
+        if $mantissa.substr( C-MANT-BITS-D128, 1)  eq '1' {
+          $mantissa ~~ s/ 0 (1+) $/1$0/;
         }
 
         else {
-          $result ~~ s/ 0 $/1/;
+note "$?LINE\n$mantissa";
+          $mantissa ~~ s/ 0 $/1/;
+note "$?LINE\n$mantissa";
         }
       }
 
       else {
-        $result .= substr( 0, C-MANT-BITS-D128);
-#note "$?LINE $result.chars()";
+        $mantissa .= substr( 0, C-MANT-BITS-D128);
+#note "$?LINE $mantissa.chars()";
       }
     }
-#note "$?LINE mantisse: $result";
+#note "$?LINE mantisse: $mantissa";
 
     # The exponent is prefixed with '0's when too short
     my Str $exponent = (C-EXP-BIAS-D128 + $bin-exponent).base(2);
@@ -164,8 +173,8 @@ multi method set-value ( Str $number ) {
     
     my Str $n = $dec-sign-bit ?? '1' !! '0';
     $n ~= $exponent;
-    $n ~= $result;
-note "$?LINE n: $n.chars(), $n\n$exponent $result";
+    $n ~= $mantissa;
+#note "$?LINE n: $n.chars(), $n\n$exponent $mantissa";
     self.set-bits-from-string( 0, $n);
   }
 }
@@ -213,8 +222,9 @@ method set-binary-mantissa ( FatRat() $number is copy --> Str ) {
   my constant $max-bits = 2 * C-MANT-BITS-D128;
   my constant $max-power = 2**($max-bits);
 
-  # Take twice the number of bits possible. This is because number is
-  # shifted up later to have a 1 before the point.
+  # Take twice the number of bits possible. This is because the number
+  # might be shifted up later to remove the leading zeros and
+  # get a negative exponent.
   for 2, 4, 8 ... $max-power -> $devider {
 #note "$?LINE $devider-count, $devider, $number";
     last if ( ($number ≤ $zero) or ($devider-count > $max-bits) );
