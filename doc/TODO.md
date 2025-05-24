@@ -29,6 +29,9 @@ Mongo DB Spec for [Decimal128]( https://github.com/mongodb/specifications/blob/m
 [English Wikipedia](https://en.wikipedia.org/wiki/Decimal128_floating-point_format)
 [Calculator useful for tests](https://numeral-systems.com/ieee-754-converter/)
 [Endianness](https://docs.oracle.com/en/operating-systems/oracle-linux/6/porting/ch03s04.html)
+[Explanation to rounding](https://medium.com/angular-in-depth/how-to-round-binary-fractions-625c8fa3a1af)
+
+TODO: Not sure if this is going on the right track. Can go to binary accorfing to the calculator, but there are several sites about talking about different things. For instance, the bias differs etc.
 
 #### Raku thoughts
   * FatRat can easily hold very large numbers
