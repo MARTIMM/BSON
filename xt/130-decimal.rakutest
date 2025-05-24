@@ -75,7 +75,15 @@ subtest "128 bit decimal values", {
                      0x6C, 0xD8, 0x15, 0x18, 0x31, 0x48, 0x52, 0x40
                    ),
             'set-value(): 12398734658976394765976345.456234';
-  
+ 
+  $d128.reset-buf;
+  $d128.set-value('12398734658976394765976.345456234e3');
+  is-deeply $d128.d128,
+            Buf.new( 0x0C, 0x78, 0x99, 0x2E, 0x63, 0x98, 0xDB, 0xF7,
+                     0x6C, 0xD8, 0x15, 0x18, 0x31, 0x48, 0x52, 0x40
+                   ),
+            'set-value(): 12398734658976394765976.345456234e3';
+ 
 #  for 0 .. 127 -> $bit {
 #    $d128.reset-buf;
 #    $d128.set-bits($bit);

@@ -70,7 +70,7 @@ multi method set-value ( Str $number ) {
   my BSON::Decimal128::Actions $actions .= new;
   my $matchObject = Decimal-Grammar.parse( $number, :$actions);
 
-#`{{
+##`{{
   note "\n$?LINE $number";
   for < characteristic integer-part mantissa dec-negative
         is-nan is-inf exponent exp-negative
@@ -78,7 +78,7 @@ multi method set-value ( Str $number ) {
     my $v = $actions."$method"();
     note "  $method: $v", 
   }
-}}
+#}}
 
   my $dec-sign-bit = $actions.dec-negative ?? 1 !! 0;
 #  self.set-bits(127) if $dec-sign-bit;
@@ -130,20 +130,23 @@ multi method set-value ( Str $number ) {
     $m-length = $mantissa.chars;
 #note "$?LINE binary exp: $bin-exponent, length: $m-length";
     if $m-length > C-MANT-BITS-D128 {
-note "$?LINE ", $mantissa.substr( C-MANT-BITS-D128 + 1, 1)  eq '1';
+#$mantissa .= substr( 0, C-MANT-BITS-D128 + 3);
+#note "$?LINE ", $mantissa.substr( C-MANT-BITS-D128, 1)  eq '1',
+     "\n$mantissa";
       # check least significat bit + 1
-      if $mantissa.substr( C-MANT-BITS-D128 + 1, 1)  eq '1' {
-#note "$?LINE $mantissa.chars(), $mantissa.substr( C-MANT-BITS-D128 + 1, 1)";
-$mantissa .= substr( 0, C-MANT-BITS-D128 + 2);
-note "$?LINE $mantissa.chars()\n$mantissa";
+      if $mantissa.substr( C-MANT-BITS-D128, 1)  eq '1' {
+#note "$?LINE\n$mantissa";
 
         # Truncate to proper length
         $mantissa .= substr( 0, C-MANT-BITS-D128);
 #note "$?LINE $mantissa.chars()\n$mantissa";
         # Check if least significant bit is a '1'.
         # Checked for different substution
-        if $mantissa.substr( C-MANT-BITS-D128, 1)  eq '1' {
-          $mantissa ~~ s/ 0 (1+) $/1$0/;
+        if $mantissa.substr( C-MANT-BITS-D128 - 1, 1)  eq '1' {
+          $mantissa ~~ m/ 0 $<make-zero> = [1+] $/;
+          my $zeros = $/<make-zero>.Str;
+          $zeros ~~ s:g/ 1 /0/;
+          $mantissa ~~ s/ 0 1+ $/1$zeros/;
         }
 
         else {
@@ -158,7 +161,7 @@ note "$?LINE\n$mantissa";
 #note "$?LINE $mantissa.chars()";
       }
     }
-#note "$?LINE mantisse: $mantissa";
+note "$?LINE\n$mantissa";
 
     # The exponent is prefixed with '0's when too short
     my Str $exponent = (C-EXP-BIAS-D128 + $bin-exponent).base(2);
@@ -219,15 +222,16 @@ method set-binary-mantissa ( FatRat() $number is copy --> Str ) {
   my FatRat $comparand; # = (2 ** $twos-exp).FatRat;
   my Str $result = '';
   my FatRat $zero .= new( 0, 1);
-  my constant $max-bits = 2 * C-MANT-BITS-D128;
-  my constant $max-power = 2**($max-bits);
 
   # Take twice the number of bits possible. This is because the number
   # might be shifted up later to remove the leading zeros and
   # get a negative exponent.
+  my constant $max-bits = 2 * C-MANT-BITS-D128;
+  my constant $max-power = 2**($max-bits);
+
   for 2, 4, 8 ... $max-power -> $devider {
 #note "$?LINE $devider-count, $devider, $number";
-    last if ( ($number ≤ $zero) or ($devider-count > $max-bits) );
+    last if ( ($number == $zero) or ($devider-count > $max-bits) );
 
     $comparand .= new( 1, $devider);
 #note "$?LINE $comparand";
